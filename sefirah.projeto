@@ -1,0 +1,6 @@
+(:nome "sefirah-lisp"
+ :versao "0.0.1"
+ :licenca "MIT"
+ :fontes ("fonte" "incluir")
+ :entrada "fonte/cli/principal.c"
+ :alvos (:windows-x64 :linux-x64 :linux-arm64 :macos-x64 :macos-arm64))

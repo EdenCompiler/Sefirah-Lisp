@@ -1,0 +1,9 @@
+/construir*/
+/build/
+/.cache/
+*.o
+*.obj
+*.exe
+*.pdb
+*.dSYM/
+compile_commands.json

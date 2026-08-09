@@ -1,0 +1,24 @@
+name: integracao
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compilar-e-testar:
+    strategy:
+      fail-fast: false
+      matrix:
+        sistema: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.sistema }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencias Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev
+      - name: Configurar
+        run: cmake -S . -B construir -DCMAKE_BUILD_TYPE=Debug -DSEFIRAH_AVISOS_COMO_ERROS=ON
+      - name: Compilar
+        run: cmake --build construir --config Debug --parallel
+      - name: Testar
+        run: ctest --test-dir construir -C Debug --output-on-failure
