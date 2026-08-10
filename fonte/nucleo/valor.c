@@ -483,6 +483,20 @@ bool sef_simbolo_tem_nome(SefValor valor, const char *nome) {
            strcmp(valor->como.simbolo.nome, nome) == 0;
 }
 
+bool sef_valores_eql(SefValor a, SefValor b) {
+    if (a == b)
+        return true;
+    if (a == NULL || b == NULL || a->tipo != b->tipo)
+        return false;
+    if (a->tipo == SEF_TIPO_INTEIRO)
+        return a->como.inteiro == b->como.inteiro;
+    if (a->tipo == SEF_TIPO_REAL)
+        return a->como.real == b->como.real;
+    if (a->tipo == SEF_TIPO_CARACTERE)
+        return a->como.caractere == b->como.caractere;
+    return false;
+}
+
 bool sef_e_lista_propria(SefRuntime *runtime, SefValor valor) {
     while (valor != runtime->nulo) {
         if (valor == NULL || valor->tipo != SEF_TIPO_PAR)

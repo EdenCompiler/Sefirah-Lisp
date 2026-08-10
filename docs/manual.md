@@ -35,7 +35,7 @@ faz parte do formato público.
 | composição | `COND`, `WHEN`, `UNLESS`, `AND`, `OR`, quasiquote, `,` e `,@` |
 | controle | `BLOCK`, `RETURN-FROM`, `RETURN`, `CATCH`, `THROW`, `UNWIND-PROTECT` |
 | condições | `ERROR`, `HANDLER-CASE`, `IGNORE-ERRORS` |
-| listas | `CONS`, `CAR`, `CDR`, `LIST`, `LENGTH`, `ATOM`, `NULL` |
+| listas | `CONS`, `CAR`, `CDR`, `FIRST`, `REST`, `LIST`, `APPEND`, `NCONC`, `NTH`, `NTHCDR`, `LAST` |
 | vetores | `VECTOR`, `MAKE-ARRAY`, `AREF`, `SVREF`, `VECTORP`, `ARRAYP` |
 | caracteres | `CHARACTERP`, `CHAR-CODE`, `CODE-CHAR` e comparadores `CHAR...` |
 | sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
@@ -53,6 +53,32 @@ uma função podem compartilhar o mesmo nome:
 ```
 
 `#'nome` consulta a célula de função.
+
+## Listas
+
+`CONSP`, `LISTP` e `ENDP` distinguem pares, listas e o fim de uma iteração.
+`FIRST`/`REST` são as variantes de leitura de `CAR`/`CDR`; `RPLACA`, `RPLACD` e
+os lugares correspondentes de `SETF` fazem alteração explícita.
+
+```lisp
+(append '(1 2) '(3 4) 'fim) ; => (1 2 3 4 . FIM)
+(nth 2 '(0 1 2 3))          ; => 2
+(last '(0 1 2 3) 2)         ; => (2 3)
+```
+
+`APPEND` copia as listas anteriores e reutiliza o último argumento. `NCONC`
+liga destrutivamente os argumentos anteriores. `MEMBER` e `ASSOC` usam `EQL`
+no estágio atual.
+
+`MAPCAR` aceita uma ou mais listas, para na mais curta e devolve os resultados;
+`MAPC` executa os mesmos chamados por efeito e devolve a primeira lista:
+
+```lisp
+(mapcar #'+ '(1 2 3) '(10 20)) ; => (11 22)
+```
+
+As variantes com `:KEY`, `:TEST` configurável e a família completa de
+mapeamento permanecem no roteiro de conformidade.
 
 ## Vetores e `SETF`
 

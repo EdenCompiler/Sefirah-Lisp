@@ -506,22 +506,8 @@ static SefValor primitiva_eq(SefRuntime *runtime, SefValor argumentos, SefErro *
     return iguais ? runtime->verdadeiro : runtime->nulo;
 }
 
-static bool valores_eql(SefValor a, SefValor b) {
-    if (a == b)
-        return true;
-    if (a->tipo != b->tipo)
-        return false;
-    if (a->tipo == SEF_TIPO_INTEIRO)
-        return a->como.inteiro == b->como.inteiro;
-    if (a->tipo == SEF_TIPO_REAL)
-        return a->como.real == b->como.real;
-    if (a->tipo == SEF_TIPO_CARACTERE)
-        return a->como.caractere == b->como.caractere;
-    return false;
-}
-
 static bool valores_equal(SefRuntime *runtime, SefValor a, SefValor b, unsigned int profundidade) {
-    if (valores_eql(a, b))
+    if (sef_valores_eql(a, b))
         return true;
     if (profundidade > 512 || a->tipo != b->tipo)
         return false;
@@ -538,7 +524,8 @@ static bool valores_equal(SefRuntime *runtime, SefValor a, SefValor b, unsigned 
 static SefValor primitiva_eql(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 2, 2, "EQL", erro))
         return NULL;
-    return valores_eql(car(argumentos), car(cdr(argumentos))) ? runtime->verdadeiro : runtime->nulo;
+    return sef_valores_eql(car(argumentos), car(cdr(argumentos))) ? runtime->verdadeiro
+                                                                  : runtime->nulo;
 }
 
 static SefValor primitiva_equal(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -1245,6 +1232,22 @@ static const struct {
                   {"CAR", primitiva_car},
                   {"CDR", primitiva_cdr},
                   {"LIST", primitiva_list},
+                  {"CONSP", sef_primitiva_consp},
+                  {"LISTP", sef_primitiva_listp},
+                  {"ENDP", sef_primitiva_endp},
+                  {"FIRST", sef_primitiva_first},
+                  {"REST", sef_primitiva_rest},
+                  {"RPLACA", sef_primitiva_rplaca},
+                  {"RPLACD", sef_primitiva_rplacd},
+                  {"NTH", sef_primitiva_nth},
+                  {"NTHCDR", sef_primitiva_nthcdr},
+                  {"LAST", sef_primitiva_last},
+                  {"APPEND", sef_primitiva_append},
+                  {"NCONC", sef_primitiva_nconc},
+                  {"MEMBER", sef_primitiva_member},
+                  {"ASSOC", sef_primitiva_assoc},
+                  {"MAPCAR", sef_primitiva_mapcar},
+                  {"MAPC", sef_primitiva_mapc},
                   {"VECTOR", primitiva_vector},
                   {"MAKE-ARRAY", primitiva_make_array},
                   {"AREF", primitiva_aref},

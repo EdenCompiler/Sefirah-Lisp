@@ -84,6 +84,8 @@ não significa que o marco inteiro esteja concluído.
   sequências com `ELT`.
 - [x] Algoritmos iniciais de sequência para listas, vetores e strings:
   `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL`.
+- [x] Protocolo inicial de listas com composição, navegação, busca e
+  `MAPCAR`/`MAPC` sobre múltiplas listas.
 - [x] Leitura retrocompatível de imagens v6/v7 e emissão do formato v8.
 - [ ] Cobertura ANSI Common Lisp acompanhada por relatório de conformidade.
 - [ ] CLOS e MOP documentada.

@@ -207,6 +207,7 @@ bool sef_funcao_compilada_instalar_objeto_biblioteca_i64(SefRuntime *runtime, Se
                                                          SefValor biblioteca, SefErro *erro);
 
 bool sef_simbolo_tem_nome(SefValor valor, const char *nome);
+bool sef_valores_eql(SefValor a, SefValor b);
 bool sef_e_lista_propria(SefRuntime *runtime, SefValor valor);
 size_t sef_lista_tamanho(SefRuntime *runtime, SefValor lista, bool *propria);
 SefValor sef_lista_inverter(SefRuntime *runtime, SefValor lista, SefErro *erro);
@@ -238,5 +239,21 @@ SefValor sef_primitiva_copy_seq(SefRuntime *runtime, SefValor argumentos, SefErr
 SefValor sef_primitiva_reverse(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
 SefValor sef_primitiva_subseq(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
 SefValor sef_primitiva_fill(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_consp(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_listp(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_endp(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_first(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_rest(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_rplaca(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_rplacd(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_nth(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_nthcdr(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_last(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_append(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_nconc(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_member(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_assoc(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_mapcar(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_mapc(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
 
 #endif

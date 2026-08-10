@@ -75,6 +75,35 @@ int main(int argc, char **argv) {
     remove("teste-sefirah-v6.imagem");
     verificar_texto(runtime, "(list (<= 1 1 2) (>= 3 2 2) (/= 1 2 3) (/= 1 2 1))", "(T T T NIL)");
     verificar_texto(runtime, "'(a b . c)", "(A B . C)");
+    verificar_texto(runtime,
+                    "(list (consp (cons 1 2)) (listp nil) (listp (cons 1 2)) "
+                    "(endp nil) (endp '(1)) (first '(1 2)) (rest '(1 2)))",
+                    "(T T T T NIL 1 (2))");
+    verificar_texto(runtime,
+                    "(list (nth 2 '(0 1 2 3)) (nth 9 '(0 1)) "
+                    "(nthcdr 2 '(0 1 2 3)) (last '(0 1 2 3)) "
+                    "(last '(0 1 2 3) 2) (last '(0 1) 0))",
+                    "(2 NIL (2 3) (3) (2 3) NIL)");
+    verificar_texto(runtime,
+                    "(let ((a (list 1 2)) (b (list 3 4))) "
+                    "(list (append a b 'fim) a b))",
+                    "((1 2 3 4 . FIM) (1 2) (3 4))");
+    verificar_texto(runtime,
+                    "(let ((a (list 1 2)) (b (list 3 4))) "
+                    "(list (eq (nconc a b) a) a))",
+                    "(T (1 2 3 4))");
+    verificar_texto(runtime, "(let ((p (cons 1 2))) (rplaca p 40) (rplacd p 2) p)", "(40 . 2)");
+    verificar_texto(runtime,
+                    "(list (member 2 '(1 2 3)) "
+                    "(assoc 'b (list (cons 'a 1) (cons 'b 2))))",
+                    "((2 3) (B . 2))");
+    verificar_texto(runtime,
+                    "(list (mapcar #'+ '(1 2 3) '(10 20)) "
+                    "(let ((s 0) (xs '(10 20 12))) "
+                    "(list (eq (mapc (lambda (x) (setq s (+ s x))) xs) xs) s)))",
+                    "((11 22) (T 42))");
+    verificar_texto(runtime, "(handler-case (endp 42) (error (c) :lista-exigida))",
+                    ":LISTA-EXIGIDA");
     verificar_texto(runtime, "(let ((x 20) (y 22)) (+ x y))", "42");
     verificar_texto(runtime, "(defun fat (n) (if (< n 2) 1 (* n (fat (- n 1))))) (fat 6)", "720");
     verificar_texto(runtime,

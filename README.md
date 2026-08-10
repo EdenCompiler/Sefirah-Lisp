@@ -50,6 +50,8 @@ nativa permanecem no roteiro.
   código e acesso uniforme por `ELT`;
 - algoritmos `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL` compartilhados por
   listas, vetores e strings;
+- biblioteca de listas com composição destrutiva e não destrutiva, busca,
+  navegação e mapeamento sobre uma ou mais listas;
 - compilação `DEFUN` → IR SSA → x86-64/AArch64 integrada a `COMPILE`;
 - páginas JIT W^X e suporte às ABIs System V, Microsoft x64 e AAPCS64;
 - geração direta de objetos ELF64, COFF e Mach-O para x86-64 e ARM64;

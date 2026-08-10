@@ -38,6 +38,7 @@ add_library(sefirah_nucleo
     fonte/nucleo/impressor.c
     fonte/nucleo/imagem.c
     fonte/nucleo/leitor.c
+    fonte/nucleo/listas.c
     fonte/nucleo/primitivas.c
     fonte/nucleo/runtime.c
     fonte/nucleo/sequencias.c
