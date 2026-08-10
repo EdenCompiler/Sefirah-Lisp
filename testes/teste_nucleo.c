@@ -6,6 +6,11 @@
 
 static int falhas = 0;
 
+static int64_t dobrar_i64(int64_t valor) { return (int64_t)((uint64_t)valor * 2u); }
+static int64_t combinar_i64(int64_t a, int64_t b) {
+    return (int64_t)((uint64_t)a * 10u + (uint64_t)b);
+}
+
 static void verificar(bool condicao, const char *mensagem) {
     if (!condicao) {
         fprintf(stderr, "FALHOU: %s\n", mensagem);
@@ -39,7 +44,7 @@ static void verificar_texto(SefRuntime *runtime, const char *codigo, const char 
     }
 }
 
-int main(void) {
+int main(int argc, char **argv) {
     SefErro erro;
     SefRuntime *runtime = sef_runtime_criar(&erro);
     if (runtime == NULL) {
@@ -66,6 +71,7 @@ int main(void) {
                     "(40 41 42)");
     verificar_texto(runtime, "((lambda (x &rest xs) (length xs)) 1 2 3 4)", "3");
     verificar_texto(runtime, "(type-of \"sefirah\")", "STRING");
+    verificar_texto(runtime, "(> (sefirah::object-count) 0)", "T");
     verificar_texto(runtime,
                     "(define celula-separada 41) "
                     "(defun celula-separada () 42) "
@@ -180,6 +186,114 @@ int main(void) {
     compilada = sef_runtime_compilar_funcao_i64(runtime, "OPERACAO-NAO-COMPILAVEL", &erro);
     verificar(compilada == NULL && erro.ocorreu,
               "frontend recusou operacao fora do subconjunto i64");
+    verificar_texto(runtime, "(defun chamar-externa (x) (external-i64 \"dobrar_i64\" x))",
+                    "CHAMAR-EXTERNA");
+    verificar_texto(runtime,
+                    "(defun combinar-externa (a b) "
+                    "(external-i64 \"combinar_i64\" a b))",
+                    "COMBINAR-EXTERNA");
+    compilada = sef_runtime_compilar_objeto_i64(runtime, "CHAMAR-EXTERNA", &erro);
+    verificar(compilada != NULL, "frontend Lisp baixou chamada C externa para objeto");
+    if (compilada != NULL) {
+        verificar(sef_funcao_compilada_gravar_elf(compilada, "chamar_externa",
+                                                  "teste-frontend-externo.o", &erro) &&
+                      sef_funcao_compilada_gravar_coff(compilada, "chamar_externa",
+                                                       "teste-frontend-externo.obj", &erro) &&
+                      sef_funcao_compilada_gravar_macho(compilada, "chamar_externa",
+                                                        "teste-frontend-externo-macho.o", &erro),
+                  "frontend externo gerou ELF, COFF e Mach-O");
+        int64_t argumento_externo = 21;
+        int64_t resultado_externo = 0;
+        verificar(
+            sef_funcao_compilada_vincular_externa_i64(compilada, "dobrar_i64", dobrar_i64, &erro) &&
+                sef_funcao_compilada_preparar_jit(compilada, &erro) &&
+                sef_funcao_compilada_executar_i64(compilada, &argumento_externo, 1,
+                                                  &resultado_externo, &erro) &&
+                resultado_externo == 42,
+            "frontend externo vinculou trampolim e executou no JIT");
+        sef_funcao_compilada_liberar(compilada);
+    }
+    remove("teste-frontend-externo.o");
+    remove("teste-frontend-externo.obj");
+    remove("teste-frontend-externo-macho.o");
+    compilada = sef_runtime_compilar_funcao_i64(runtime, "CHAMAR-EXTERNA", &erro);
+    verificar(compilada == NULL && erro.ocorreu,
+              "JIT rejeitou chamada externa sem resolvedor dinamico");
+    compilada = sef_runtime_compilar_objeto_i64(runtime, "COMBINAR-EXTERNA", &erro);
+    verificar(compilada != NULL, "frontend Lisp baixou chamada externa binaria");
+    if (compilada != NULL) {
+        int64_t argumentos_externos[2] = {4, 2};
+        int64_t resultado_externo = 0;
+        verificar(sef_funcao_compilada_vincular_externa_i64_binaria(compilada, "combinar_i64",
+                                                                    combinar_i64, &erro) &&
+                      sef_funcao_compilada_preparar_jit(compilada, &erro) &&
+                      sef_funcao_compilada_executar_i64(compilada, argumentos_externos, 2,
+                                                        &resultado_externo, &erro) &&
+                      resultado_externo == 42,
+                  "SDK vinculou e executou chamada externa binaria");
+        sef_funcao_compilada_liberar(compilada);
+    }
+    verificar(argc == 2, "teste recebeu caminho da biblioteca FFI");
+    if (argc == 2) {
+        char codigo_ffi[1024];
+        int escritos = snprintf(codigo_ffi, sizeof(codigo_ffi),
+                                "(list (compile-external-i64 'chamar-externa \"%s\") "
+                                "(chamar-externa 21) "
+                                "(compiled-function-p #'chamar-externa))",
+                                argv[1]);
+        verificar(escritos > 0 && (size_t)escritos < sizeof(codigo_ffi),
+                  "codigo de teste FFI coube no buffer");
+        if (escritos > 0 && (size_t)escritos < sizeof(codigo_ffi))
+            verificar_texto(runtime, codigo_ffi, "(CHAMAR-EXTERNA 42 T)");
+
+        escritos = snprintf(codigo_ffi, sizeof(codigo_ffi),
+                            "(define biblioteca-teste (open-shared-library \"%s\")) "
+                            "(list (shared-library-p biblioteca-teste) "
+                            "(shared-library-open-p biblioteca-teste) (type-of biblioteca-teste) "
+                            "(compile-external-i64 'chamar-externa biblioteca-teste) "
+                            "(compile-external-i64 'combinar-externa biblioteca-teste) "
+                            "(close-shared-library biblioteca-teste) "
+                            "(shared-library-open-p biblioteca-teste) "
+                            "(chamar-externa 21) (combinar-externa 4 2) biblioteca-teste)",
+                            argv[1]);
+        verificar(escritos > 0 && (size_t)escritos < sizeof(codigo_ffi),
+                  "codigo de objeto de biblioteca coube no buffer");
+        if (escritos > 0 && (size_t)escritos < sizeof(codigo_ffi))
+            verificar_texto(runtime, codigo_ffi,
+                            "(T T SEFIRAH::SHARED-LIBRARY CHAMAR-EXTERNA COMBINAR-EXTERNA "
+                            "T NIL 42 42 "
+                            "#<BIBLIOTECA-COMPARTILHADA FECHADA>)");
+        verificar_texto(runtime,
+                        "(list (handler-case "
+                        "(compile-external-i64 'chamar-externa biblioteca-teste) "
+                        "(error (c) :biblioteca-fechada)) "
+                        "(chamar-externa 21) (combinar-externa 4 2))",
+                        "(:BIBLIOTECA-FECHADA 42 42)");
+
+        escritos = snprintf(codigo_ffi, sizeof(codigo_ffi),
+                            "(define biblioteca-imagem (open-shared-library \"%s\"))", argv[1]);
+        verificar(escritos > 0 && (size_t)escritos < sizeof(codigo_ffi),
+                  "codigo de biblioteca para imagem coube no buffer");
+        if (escritos > 0 && (size_t)escritos < sizeof(codigo_ffi))
+            verificar_texto(runtime, codigo_ffi, "BIBLIOTECA-IMAGEM");
+        verificar(!sef_runtime_imagem_salvar(runtime, "imagem-biblioteca-aberta.imagem", &erro) &&
+                      erro.ocorreu,
+                  "imagem rejeita biblioteca compartilhada aberta");
+        verificar_texto(runtime, "(close-shared-library biblioteca-imagem)", "T");
+        remove("imagem-biblioteca-aberta.imagem");
+    }
+    verificar_texto(runtime, "(defun externa-invalida (x) (external-i64 42 x))",
+                    "EXTERNA-INVALIDA");
+    compilada = sef_runtime_compilar_objeto_i64(runtime, "EXTERNA-INVALIDA", &erro);
+    verificar(compilada == NULL && erro.ocorreu,
+              "frontend exigiu string como nome de simbolo externo");
+    verificar_texto(runtime,
+                    "(defun externa-com-argumentos-demais (a b c) "
+                    "(external-i64 \"combinar_i64\" a b c))",
+                    "EXTERNA-COM-ARGUMENTOS-DEMAIS");
+    compilada = sef_runtime_compilar_objeto_i64(runtime, "EXTERNA-COM-ARGUMENTOS-DEMAIS", &erro);
+    verificar(compilada == NULL && erro.ocorreu,
+              "frontend limitou chamada externa i64 a duas entradas");
     verificar_texto(runtime,
                     "(list (streamp *standard-input*) (streamp *standard-output*) "
                     "(type-of *error-output*))",
@@ -244,6 +358,15 @@ int main(void) {
                         "(list (streamp *standard-input*) (streamp *standard-output*) "
                         "(streamp *error-output*))",
                         "(T T T)");
+    if (runtime != NULL)
+        verificar_texto(runtime, "(> (sefirah::object-count) 0)", "T");
+    if (runtime != NULL && argc == 2)
+        verificar_texto(runtime,
+                        "(list (shared-library-p biblioteca-teste) "
+                        "(shared-library-open-p biblioteca-teste) "
+                        "(type-of biblioteca-imagem) biblioteca-imagem)",
+                        "(T NIL SEFIRAH::SHARED-LIBRARY "
+                        "#<BIBLIOTECA-COMPARTILHADA FECHADA>)");
     remove("teste-sefirah.imagem");
 
     sef_runtime_destruir(runtime);

@@ -18,8 +18,11 @@ typedef enum SefTipo {
     SEF_TIPO_AMBIENTE,
     SEF_TIPO_CONDICAO,
     SEF_TIPO_PACOTE,
-    SEF_TIPO_STREAM
+    SEF_TIPO_STREAM,
+    SEF_TIPO_BIBLIOTECA
 } SefTipo;
+
+typedef struct SefRecursoBiblioteca SefRecursoBiblioteca;
 
 typedef SefValor (*SefFuncaoNativa)(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
 
@@ -108,6 +111,10 @@ struct SefObjeto {
             bool fechado;
             unsigned char padrao;
         } stream;
+        struct {
+            SefRecursoBiblioteca *recurso;
+            bool fechada;
+        } biblioteca;
     } como;
 };
 
@@ -172,7 +179,19 @@ SefValor sef_condicao_nova(SefRuntime *runtime, SefValor classe, const char *men
                            SefErro *erro);
 SefValor sef_stream_novo(SefRuntime *runtime, FILE *arquivo, const char *caminho,
                          bool possui_arquivo, unsigned char padrao, SefErro *erro);
+SefValor sef_biblioteca_nova(SefRuntime *runtime, const char *caminho, SefErro *erro);
+bool sef_biblioteca_fechar(SefValor biblioteca, SefErro *erro);
+SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro *erro);
+void sef_biblioteca_recurso_reter(SefRecursoBiblioteca *recurso);
+void sef_biblioteca_recurso_liberar(SefRecursoBiblioteca *recurso);
+SefFuncaoExternaI64 sef_biblioteca_recurso_resolver(SefRecursoBiblioteca *recurso,
+                                                    const char *simbolo, SefErro *erro);
+const char *sef_biblioteca_recurso_caminho(const SefRecursoBiblioteca *recurso);
 bool sef_funcao_compilada_instalar_i64(SefRuntime *runtime, SefValor simbolo, SefErro *erro);
+bool sef_funcao_compilada_instalar_biblioteca_i64(SefRuntime *runtime, SefValor simbolo,
+                                                  const char *caminho, SefErro *erro);
+bool sef_funcao_compilada_instalar_objeto_biblioteca_i64(SefRuntime *runtime, SefValor simbolo,
+                                                         SefValor biblioteca, SefErro *erro);
 
 bool sef_simbolo_tem_nome(SefValor valor, const char *nome);
 bool sef_e_lista_propria(SefRuntime *runtime, SefValor valor);

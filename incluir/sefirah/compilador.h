@@ -28,7 +28,7 @@ typedef struct SefInstrucaoIr {
     uint32_t operando_a;
     uint32_t operando_b;
     int64_t imediato;
-    uint32_t bloco_a;
+    uint32_t bloco_a; /* primeiro alvo; aridade em SEF_IR_CHAMAR_EXTERNA_I64 */
     uint32_t bloco_b;
 } SefInstrucaoIr;
 
@@ -39,6 +39,7 @@ typedef struct SefBlocoIr {
 } SefBlocoIr;
 
 typedef int64_t (*SefFuncaoExternaI64)(int64_t argumento);
+typedef int64_t (*SefFuncaoExternaI64Binaria)(int64_t argumento_a, int64_t argumento_b);
 
 typedef struct SefSimboloExternoIr {
     char *nome;
@@ -73,6 +74,7 @@ typedef struct SefRelocacaoNativa {
     size_t deslocamento;
     char *simbolo;
     SefTipoRelocacaoNativa tipo;
+    SefFuncaoExternaI64 endereco;
 } SefRelocacaoNativa;
 
 typedef struct SefCodigoNativo {
@@ -96,6 +98,9 @@ bool sef_funcao_ir_adicionar_bloco(SefFuncaoIr *funcao, uint32_t *indice, SefErr
 bool sef_funcao_ir_adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
                                          SefFuncaoExternaI64 endereco, uint32_t *indice,
                                          SefErro *erro);
+bool sef_funcao_ir_adicionar_externa_i64_binaria(SefFuncaoIr *funcao, const char *nome,
+                                                 SefFuncaoExternaI64Binaria endereco,
+                                                 uint32_t *indice, SefErro *erro);
 bool sef_bloco_ir_emitir(SefFuncaoIr *funcao, uint32_t bloco, SefInstrucaoIr instrucao,
                          SefErro *erro);
 bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro);
@@ -109,6 +114,11 @@ bool sef_funcao_ir_emitir_x64(const SefFuncaoIr *funcao, SefAbiX64 abi, SefCodig
                               SefErro *erro);
 bool sef_funcao_ir_emitir_aarch64(const SefFuncaoIr *funcao, SefCodigoNativo *codigo,
                                   SefErro *erro);
+bool sef_codigo_nativo_vincular_externa_i64(SefCodigoNativo *codigo, const char *simbolo,
+                                            SefFuncaoExternaI64 endereco, SefErro *erro);
+bool sef_codigo_nativo_vincular_externa_i64_binaria(SefCodigoNativo *codigo, const char *simbolo,
+                                                    SefFuncaoExternaI64Binaria endereco,
+                                                    SefErro *erro);
 bool sef_codigo_nativo_preparar(SefCodigoNativo *codigo, SefErro *erro);
 bool sef_codigo_nativo_executar_i64(const SefCodigoNativo *codigo, const int64_t *argumentos,
                                     size_t quantidade_argumentos, int64_t *resultado,

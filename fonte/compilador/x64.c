@@ -125,7 +125,8 @@ static bool emitir_u64(EmissorX64 *emissor, uint64_t valor) {
     return true;
 }
 
-static bool adicionar_relocacao(EmissorX64 *emissor, size_t deslocamento, const char *simbolo) {
+static bool adicionar_relocacao(EmissorX64 *emissor, size_t deslocamento, const char *simbolo,
+                                SefFuncaoExternaI64 endereco) {
     SefCodigoNativo *codigo = emissor->codigo;
     if (codigo->quantidade_relocacoes == codigo->capacidade_relocacoes) {
         size_t capacidade =
@@ -147,7 +148,7 @@ static bool adicionar_relocacao(EmissorX64 *emissor, size_t deslocamento, const 
     }
     memcpy(copia, simbolo, tamanho);
     codigo->relocacoes[codigo->quantidade_relocacoes++] =
-        (SefRelocacaoNativa){deslocamento, copia, SEF_RELOCACAO_CHAMADA_REL32_X64};
+        (SefRelocacaoNativa){deslocamento, copia, SEF_RELOCACAO_CHAMADA_REL32_X64, endereco};
     return true;
 }
 
@@ -240,14 +241,23 @@ static bool emitir_instrucao_valor(EmissorX64 *e, SefInstrucaoIr ins) {
                emitir_u32(e, (uint32_t)deslocamento) && armazenar_rax(e, ins.destino, false);
     }
     if (ins.operacao == SEF_IR_CHAMAR_EXTERNA_I64) {
-        const char *simbolo = e->funcao->externas[ins.imediato].nome;
-        unsigned char destino_argumento = e->codigo->abi_x64 == SEF_ABI_X64_WINDOWS ? 0xc1u : 0xc7u;
+        SefSimboloExternoIr externa = e->funcao->externas[ins.imediato];
+        uint32_t aridade = ins.bloco_a == 0 ? 1u : ins.bloco_a;
+        unsigned char destino_argumento_a =
+            e->codigo->abi_x64 == SEF_ABI_X64_WINDOWS ? 0xc1u : 0xc7u;
+        unsigned char destino_argumento_b =
+            e->codigo->abi_x64 == SEF_ABI_X64_WINDOWS ? 0xc2u : 0xc6u;
         if (!carregar_rax(e, ins.operando_a, false) || !emitir_u8(e, 0x48) || !emitir_u8(e, 0x89) ||
-            !emitir_u8(e, destino_argumento) || !emitir_u8(e, 0xe8))
+            !emitir_u8(e, destino_argumento_a))
+            return false;
+        if (aridade == 2 && (!carregar_rax(e, ins.operando_b, false) || !emitir_u8(e, 0x48) ||
+                             !emitir_u8(e, 0x89) || !emitir_u8(e, destino_argumento_b)))
+            return false;
+        if (!emitir_u8(e, 0xe8))
             return false;
         size_t deslocamento_relocacao = e->codigo->tamanho;
-        return adicionar_relocacao(e, deslocamento_relocacao, simbolo) && emitir_u32(e, 0) &&
-               armazenar_rax(e, ins.destino, false);
+        return adicionar_relocacao(e, deslocamento_relocacao, externa.nome, externa.endereco) &&
+               emitir_u32(e, 0) && armazenar_rax(e, ins.destino, false);
     }
     if (!carregar_rax(e, ins.operando_a, false))
         return false;
@@ -369,6 +379,108 @@ bool sef_funcao_ir_emitir_x64(const SefFuncaoIr *funcao, SefAbiX64 abi, SefCodig
     return sucesso;
 }
 
+static bool vincular_externa_i64(SefCodigoNativo *codigo, const char *simbolo,
+                                 SefFuncaoExternaI64 endereco, SefErro *erro) {
+    erro_limpar(erro);
+    if (codigo == NULL || simbolo == NULL || simbolo[0] == '\0' || endereco == NULL ||
+        codigo->memoria_executavel != NULL) {
+        erro_definir(erro, "codigo, simbolo ou endereco invalido para vinculacao JIT");
+        return false;
+    }
+    bool encontrou = false;
+    for (size_t i = 0; i < codigo->quantidade_relocacoes; i++) {
+        if (strcmp(codigo->relocacoes[i].simbolo, simbolo) == 0) {
+            codigo->relocacoes[i].endereco = endereco;
+            encontrou = true;
+        }
+    }
+    if (!encontrou)
+        erro_definir(erro, "simbolo externo nao pertence ao codigo nativo");
+    return encontrou;
+}
+
+bool sef_codigo_nativo_vincular_externa_i64(SefCodigoNativo *codigo, const char *simbolo,
+                                            SefFuncaoExternaI64 endereco, SefErro *erro) {
+    return vincular_externa_i64(codigo, simbolo, endereco, erro);
+}
+
+bool sef_codigo_nativo_vincular_externa_i64_binaria(SefCodigoNativo *codigo, const char *simbolo,
+                                                    SefFuncaoExternaI64Binaria endereco,
+                                                    SefErro *erro) {
+    SefFuncaoExternaI64 endereco_armazenado = NULL;
+    _Static_assert(sizeof(endereco) == sizeof(endereco_armazenado),
+                   "ponteiros de funcoes i64 devem ter o mesmo tamanho");
+    memcpy(&endereco_armazenado, &endereco, sizeof(endereco_armazenado));
+    return vincular_externa_i64(codigo, simbolo, endereco_armazenado, erro);
+}
+
+static void escrever_u32_memoria(unsigned char *destino, uint32_t valor) {
+    for (unsigned int i = 0; i < 4; i++)
+        destino[i] = (unsigned char)(valor >> (i * 8u));
+}
+
+static void escrever_u64_memoria(unsigned char *destino, uint64_t valor) {
+    for (unsigned int i = 0; i < 8; i++)
+        destino[i] = (unsigned char)(valor >> (i * 8u));
+}
+
+static uint64_t endereco_externo_u64(SefFuncaoExternaI64 endereco) {
+    uint64_t valor = 0;
+    _Static_assert(sizeof(endereco) <= sizeof(valor),
+                   "ponteiro de funcao externo deve caber em 64 bits");
+    memcpy(&valor, &endereco, sizeof(endereco));
+    return valor;
+}
+
+static bool aplicar_trampolins(SefCodigoNativo *codigo, unsigned char *memoria,
+                               size_t inicio_trampolins, size_t tamanho_trampolim, SefErro *erro) {
+    memcpy(memoria, codigo->bytes, codigo->tamanho);
+    for (size_t i = 0; i < codigo->quantidade_relocacoes; i++) {
+        SefRelocacaoNativa relocacao = codigo->relocacoes[i];
+        unsigned char *trampolim = memoria + inicio_trampolins + i * tamanho_trampolim;
+        if (relocacao.endereco == NULL || relocacao.deslocamento > codigo->tamanho ||
+            4u > codigo->tamanho - relocacao.deslocamento) {
+            erro_definir(erro, "simbolo externo ainda nao foi vinculado ao JIT");
+            return false;
+        }
+        if (codigo->arquitetura == SEF_ARQUITETURA_X64) {
+            if (relocacao.tipo != SEF_RELOCACAO_CHAMADA_REL32_X64) {
+                erro_definir(erro, "tipo de relocacao x86-64 invalido para JIT");
+                return false;
+            }
+            int64_t distancia = (int64_t)(trampolim - (memoria + relocacao.deslocamento + 4u));
+            if (distancia < INT32_MIN || distancia > INT32_MAX) {
+                erro_definir(erro, "trampolim x86-64 excedeu o alcance rel32");
+                return false;
+            }
+            escrever_u32_memoria(memoria + relocacao.deslocamento, (uint32_t)(int32_t)distancia);
+            trampolim[0] = 0x48;
+            trampolim[1] = 0xb8; /* mov rax, endereco */
+            escrever_u64_memoria(trampolim + 2, endereco_externo_u64(relocacao.endereco));
+            trampolim[10] = 0xff;
+            trampolim[11] = 0xe0; /* jmp rax */
+        } else {
+            if (relocacao.tipo != SEF_RELOCACAO_CHAMADA26_AARCH64 ||
+                relocacao.deslocamento % 4u != 0) {
+                erro_definir(erro, "tipo ou alinhamento de relocacao AArch64 invalido para JIT");
+                return false;
+            }
+            int64_t distancia = (int64_t)(trampolim - (memoria + relocacao.deslocamento));
+            int64_t palavras = distancia / 4;
+            if (distancia % 4 != 0 || palavras < -(1ll << 25) || palavras >= (1ll << 25)) {
+                erro_definir(erro, "trampolim AArch64 excedeu o alcance de BL");
+                return false;
+            }
+            escrever_u32_memoria(memoria + relocacao.deslocamento,
+                                 0x94000000u | ((uint32_t)palavras & 0x03ffffffu));
+            escrever_u32_memoria(trampolim, 0x58000050u);     /* ldr x16, literal */
+            escrever_u32_memoria(trampolim + 4, 0xd61f0200u); /* br x16 */
+            escrever_u64_memoria(trampolim + 8, endereco_externo_u64(relocacao.endereco));
+        }
+    }
+    return true;
+}
+
 bool sef_codigo_nativo_preparar(SefCodigoNativo *codigo, SefErro *erro) {
     erro_limpar(erro);
     if (codigo == NULL || codigo->bytes == NULL || codigo->tamanho == 0 ||
@@ -376,41 +488,70 @@ bool sef_codigo_nativo_preparar(SefCodigoNativo *codigo, SefErro *erro) {
         erro_definir(erro, "codigo nativo ausente ou ja preparado");
         return false;
     }
-    if (codigo->quantidade_relocacoes > 0) {
-        erro_definir(erro, "codigo possui simbolos externos ainda nao resolvidos para JIT");
+#if defined(__x86_64__) || defined(_M_X64)
+    if (codigo->arquitetura != SEF_ARQUITETURA_X64 || codigo->abi_x64 != sef_abi_x64_hospedeiro()) {
+        erro_definir(erro, "arquitetura ou ABI do codigo nao corresponde ao hospedeiro JIT");
         return false;
     }
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    if (codigo->arquitetura != SEF_ARQUITETURA_AARCH64) {
+        erro_definir(erro, "arquitetura do codigo nao corresponde ao hospedeiro JIT");
+        return false;
+    }
+#else
+    erro_definir(erro, "hospedeiro nao possui backend JIT suportado");
+    return false;
+#endif
+    size_t tamanho_trampolim = codigo->arquitetura == SEF_ARQUITETURA_X64 ? 12u : 16u;
+    if (codigo->arquitetura == SEF_ARQUITETURA_AARCH64 && codigo->tamanho > SIZE_MAX - 7u) {
+        erro_definir(erro, "alinhamento dos trampolins excedeu o espaco de enderecamento");
+        return false;
+    }
+    size_t inicio_trampolins = codigo->arquitetura == SEF_ARQUITETURA_X64
+                                   ? codigo->tamanho
+                                   : (codigo->tamanho + 7u) & ~(size_t)7u;
+    if (codigo->quantidade_relocacoes > (SIZE_MAX - inicio_trampolins) / tamanho_trampolim) {
+        erro_definir(erro, "trampolins excederam o espaco de enderecamento");
+        return false;
+    }
+    size_t tamanho_total = inicio_trampolins + codigo->quantidade_relocacoes * tamanho_trampolim;
 #ifdef _WIN32
-    void *memoria = VirtualAlloc(NULL, codigo->tamanho, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    void *memoria = VirtualAlloc(NULL, tamanho_total, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     if (memoria == NULL) {
         erro_definir(erro, "Windows recusou memoria para codigo nativo");
         return false;
     }
-    memcpy(memoria, codigo->bytes, codigo->tamanho);
+    if (!aplicar_trampolins(codigo, memoria, inicio_trampolins, tamanho_trampolim, erro)) {
+        VirtualFree(memoria, 0, MEM_RELEASE);
+        return false;
+    }
     DWORD protecao_anterior;
-    if (!VirtualProtect(memoria, codigo->tamanho, PAGE_EXECUTE_READ, &protecao_anterior)) {
+    if (!VirtualProtect(memoria, tamanho_total, PAGE_EXECUTE_READ, &protecao_anterior)) {
         VirtualFree(memoria, 0, MEM_RELEASE);
         erro_definir(erro, "Windows recusou tornar o codigo executavel");
         return false;
     }
-    FlushInstructionCache(GetCurrentProcess(), memoria, codigo->tamanho);
+    FlushInstructionCache(GetCurrentProcess(), memoria, tamanho_total);
 #else
     void *memoria =
-        mmap(NULL, codigo->tamanho, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        mmap(NULL, tamanho_total, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (memoria == MAP_FAILED) {
         erro_definir(erro, "sistema recusou memoria para codigo nativo");
         return false;
     }
-    memcpy(memoria, codigo->bytes, codigo->tamanho);
-    if (mprotect(memoria, codigo->tamanho, PROT_READ | PROT_EXEC) != 0) {
-        munmap(memoria, codigo->tamanho);
+    if (!aplicar_trampolins(codigo, memoria, inicio_trampolins, tamanho_trampolim, erro)) {
+        munmap(memoria, tamanho_total);
+        return false;
+    }
+    if (mprotect(memoria, tamanho_total, PROT_READ | PROT_EXEC) != 0) {
+        munmap(memoria, tamanho_total);
         erro_definir(erro, "sistema recusou tornar o codigo executavel");
         return false;
     }
-    __builtin___clear_cache((char *)memoria, (char *)memoria + codigo->tamanho);
+    __builtin___clear_cache((char *)memoria, (char *)memoria + tamanho_total);
 #endif
     codigo->memoria_executavel = memoria;
-    codigo->tamanho_executavel = codigo->tamanho;
+    codigo->tamanho_executavel = tamanho_total;
     return true;
 }
 

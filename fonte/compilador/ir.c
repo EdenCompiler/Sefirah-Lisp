@@ -5,6 +5,10 @@
 
 #define SEF_IR_LIMITE_PASSOS 10000000u
 
+static uint32_t aridade_chamada_externa(SefInstrucaoIr instrucao) {
+    return instrucao.bloco_a == 0 ? 1u : instrucao.bloco_a;
+}
+
 static void erro_definir(SefErro *erro, const char *mensagem) {
     if (erro == NULL)
         return;
@@ -42,9 +46,8 @@ void sef_funcao_ir_liberar(SefFuncaoIr *funcao) {
     memset(funcao, 0, sizeof(*funcao));
 }
 
-bool sef_funcao_ir_adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
-                                         SefFuncaoExternaI64 endereco, uint32_t *indice,
-                                         SefErro *erro) {
+static bool adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
+                                  SefFuncaoExternaI64 endereco, uint32_t *indice, SefErro *erro) {
     erro_limpar(erro);
     if (funcao == NULL || nome == NULL || nome[0] == '\0' || indice == NULL) {
         erro_definir(erro, "funcao IR, nome externo ou indice ausente");
@@ -75,6 +78,22 @@ bool sef_funcao_ir_adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
     *indice = (uint32_t)funcao->quantidade_externas;
     funcao->externas[funcao->quantidade_externas++] = (SefSimboloExternoIr){copia, endereco};
     return true;
+}
+
+bool sef_funcao_ir_adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
+                                         SefFuncaoExternaI64 endereco, uint32_t *indice,
+                                         SefErro *erro) {
+    return adicionar_externa_i64(funcao, nome, endereco, indice, erro);
+}
+
+bool sef_funcao_ir_adicionar_externa_i64_binaria(SefFuncaoIr *funcao, const char *nome,
+                                                 SefFuncaoExternaI64Binaria endereco,
+                                                 uint32_t *indice, SefErro *erro) {
+    SefFuncaoExternaI64 endereco_armazenado = NULL;
+    _Static_assert(sizeof(endereco) == sizeof(endereco_armazenado),
+                   "ponteiros de funcoes i64 devem ter o mesmo tamanho");
+    memcpy(&endereco_armazenado, &endereco, sizeof(endereco_armazenado));
+    return adicionar_externa_i64(funcao, nome, endereco_armazenado, indice, erro);
 }
 
 bool sef_funcao_ir_adicionar_bloco(SefFuncaoIr *funcao, uint32_t *indice, SefErro *erro) {
@@ -250,7 +269,8 @@ static bool verificar_fluxo_ssa(const SefFuncaoIr *funcao, const uint32_t *bloco
                 quantidade_usos = 2;
             } else if (ins.operacao == SEF_IR_CHAMAR_EXTERNA_I64) {
                 usos[0] = ins.operando_a;
-                quantidade_usos = 1;
+                usos[1] = ins.operando_b;
+                quantidade_usos = aridade_chamada_externa(ins);
             } else if (ins.operacao == SEF_IR_RAMIFICAR || ins.operacao == SEF_IR_RETORNAR_I64) {
                 usos[0] = ins.operando_a;
                 quantidade_usos = 1;
@@ -352,8 +372,13 @@ bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
                                           erro) &&
                     verificar_registrador(ins->operando_b, funcao->quantidade_registradores, erro);
             } else if (ins->operacao == SEF_IR_CHAMAR_EXTERNA_I64) {
-                valido = verificar_registrador(ins->operando_a, funcao->quantidade_registradores,
+                uint32_t aridade = aridade_chamada_externa(*ins);
+                valido = aridade <= 2 &&
+                         verificar_registrador(ins->operando_a, funcao->quantidade_registradores,
                                                erro) &&
+                         (aridade != 2 ||
+                          verificar_registrador(ins->operando_b, funcao->quantidade_registradores,
+                                                erro)) &&
                          ins->imediato >= 0 &&
                          (uint64_t)ins->imediato < funcao->quantidade_externas;
             } else if (ins->operacao == SEF_IR_SALTAR) {
@@ -479,7 +504,15 @@ bool sef_funcao_ir_executar_i64(const SefFuncaoIr *funcao, const int64_t *argume
                     sucesso = false;
                     break;
                 }
-                reg[ins.destino] = externa(reg[ins.operando_a]);
+                if (aridade_chamada_externa(ins) == 2) {
+                    SefFuncaoExternaI64Binaria binaria = NULL;
+                    _Static_assert(sizeof(binaria) == sizeof(externa),
+                                   "ponteiros de funcoes i64 devem ter o mesmo tamanho");
+                    memcpy(&binaria, &externa, sizeof(binaria));
+                    reg[ins.destino] = binaria(reg[ins.operando_a], reg[ins.operando_b]);
+                } else {
+                    reg[ins.destino] = externa(reg[ins.operando_a]);
+                }
                 break;
             }
             case SEF_IR_SALTAR:

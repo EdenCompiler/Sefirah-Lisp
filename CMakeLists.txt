@@ -33,6 +33,7 @@ target_include_directories(sefirah_compilador PUBLIC incluir)
 add_library(sefirah_nucleo
     fonte/nucleo/ambiente.c
     fonte/nucleo/avaliador.c
+    fonte/nucleo/biblioteca.c
     fonte/nucleo/compilacao.c
     fonte/nucleo/impressor.c
     fonte/nucleo/imagem.c
@@ -42,7 +43,7 @@ add_library(sefirah_nucleo
     fonte/nucleo/valor.c
 )
 target_include_directories(sefirah_nucleo PUBLIC incluir PRIVATE fonte/nucleo)
-target_link_libraries(sefirah_nucleo PRIVATE sefirah_compilador)
+target_link_libraries(sefirah_nucleo PRIVATE sefirah_compilador ${CMAKE_DL_LIBS})
 
 add_library(sefirah_graficos
     fonte/graficos/fonte_bitmap.c
@@ -96,9 +97,11 @@ endforeach()
 
 if(SEFIRAH_CONSTRUIR_TESTES)
     enable_testing()
+    add_library(teste_ffi SHARED testes/biblioteca_ffi.c)
     add_executable(teste_nucleo testes/teste_nucleo.c)
     target_link_libraries(teste_nucleo PRIVATE sefirah_nucleo)
-    add_test(NAME nucleo COMMAND teste_nucleo)
+    add_test(NAME nucleo COMMAND teste_nucleo "./$<TARGET_FILE_NAME:teste_ffi>")
+    set_tests_properties(nucleo PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:teste_ffi>")
 
     add_executable(teste_graficos testes/teste_graficos.c)
     target_link_libraries(teste_graficos PRIVATE sefirah_graficos)
@@ -108,7 +111,7 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     target_link_libraries(teste_compilador PRIVATE sefirah_compilador)
     add_test(NAME compilador COMMAND teste_compilador)
 
-    add_executable(exemplo_gerar_objeto_externo exemplos/gerar_objeto_externo.c)
+    add_executable(exemplo_gerar_objeto_externo exemplos/integracao-c/gerar_objeto_externo.c)
     target_link_libraries(exemplo_gerar_objeto_externo PRIVATE sefirah_compilador)
     if(MSVC)
         target_compile_options(exemplo_gerar_objeto_externo PRIVATE /W4 /utf-8)

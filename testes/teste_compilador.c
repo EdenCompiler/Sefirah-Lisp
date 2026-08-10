@@ -5,6 +5,9 @@
 static int falhas = 0;
 
 static int64_t dobrar_i64(int64_t valor) { return (int64_t)((uint64_t)valor * 2u); }
+static int64_t combinar_i64(int64_t a, int64_t b) {
+    return (int64_t)((uint64_t)a * 10u + (uint64_t)b);
+}
 
 static void verificar(bool condicao, const char *mensagem) {
     if (!condicao) {
@@ -265,8 +268,13 @@ int main(void) {
             sef_codigo_nativo_gravar_elf(&codigo, "chamar_dobro", "teste-externa.o", &erro) &&
             sef_codigo_nativo_gravar_macho(&codigo, "chamar_dobro", "teste-externa-macho.o", &erro),
         "x86-64 e objetos Unix preservaram chamada externa");
-    verificar(!sef_codigo_nativo_preparar(&codigo, &erro) && erro.ocorreu,
-              "JIT recusou simbolo externo ainda nao resolvido");
+#if (defined(__x86_64__) || defined(_M_X64)) && !defined(_WIN32)
+    argumento = 21;
+    verificar(sef_codigo_nativo_preparar(&codigo, &erro) &&
+                  sef_codigo_nativo_executar_i64(&codigo, &argumento, 1, &resultado, &erro) &&
+                  resultado == 42,
+              "trampolim JIT System V executou chamada externa");
+#endif
     remove("teste-externa.o");
     remove("teste-externa-macho.o");
     sef_codigo_nativo_liberar(&codigo);
@@ -277,6 +285,13 @@ int main(void) {
             codigo.quantidade_relocacoes == 1 &&
             sef_codigo_nativo_gravar_coff(&codigo, "chamar_dobro", "teste-externa.obj", &erro),
         "COFF AMD64 preservou chamada externa Microsoft");
+#if defined(_M_X64) || (defined(__x86_64__) && defined(_WIN32))
+    argumento = 21;
+    verificar(sef_codigo_nativo_preparar(&codigo, &erro) &&
+                  sef_codigo_nativo_executar_i64(&codigo, &argumento, 1, &resultado, &erro) &&
+                  resultado == 42,
+              "trampolim JIT Microsoft x64 executou chamada externa");
+#endif
     remove("teste-externa.obj");
     sef_codigo_nativo_liberar(&codigo);
 
@@ -292,11 +307,78 @@ int main(void) {
             sef_codigo_nativo_gravar_macho(&codigo, "chamar_dobro", "teste-externa-arm-macho.o",
                                            &erro),
         "AArch64 e objetos desktop preservaram chamada externa");
+#if defined(__aarch64__) || defined(_M_ARM64)
+    argumento = 21;
+    verificar(sef_codigo_nativo_preparar(&codigo, &erro) &&
+                  sef_codigo_nativo_executar_i64(&codigo, &argumento, 1, &resultado, &erro) &&
+                  resultado == 42,
+              "trampolim JIT AArch64 executou chamada externa");
+#endif
     remove("teste-externa-arm.o");
     remove("teste-externa-arm.obj");
     remove("teste-externa-arm-macho.o");
     sef_codigo_nativo_liberar(&codigo);
     sef_funcao_ir_liberar(&chamada_externa);
+
+    SefFuncaoIr chamada_binaria;
+    sef_funcao_ir_iniciar(&chamada_binaria, "COMBINAR", 2, 3);
+    uint32_t bloco_binario, simbolo_binario;
+    bool montou_binaria =
+        sef_funcao_ir_adicionar_bloco(&chamada_binaria, &bloco_binario, &erro) &&
+        sef_funcao_ir_adicionar_externa_i64_binaria(&chamada_binaria, "combinar_i64", combinar_i64,
+                                                    &simbolo_binario, &erro) &&
+        emitir(&chamada_binaria, bloco_binario,
+               (SefInstrucaoIr){SEF_IR_PARAMETRO, 0, 0, 0, 0, 0, 0}) &&
+        emitir(&chamada_binaria, bloco_binario,
+               (SefInstrucaoIr){SEF_IR_PARAMETRO, 1, 0, 0, 1, 0, 0}) &&
+        emitir(&chamada_binaria, bloco_binario,
+               (SefInstrucaoIr){SEF_IR_CHAMAR_EXTERNA_I64, 2, 0, 1, simbolo_binario, 2, 0}) &&
+        emitir(&chamada_binaria, bloco_binario,
+               (SefInstrucaoIr){SEF_IR_RETORNAR_I64, 0, 2, 0, 0, 0, 0});
+    int64_t argumentos_binarios[2] = {4, 2};
+    verificar(montou_binaria && sef_funcao_ir_verificar(&chamada_binaria, &erro) &&
+                  sef_funcao_ir_executar_i64(&chamada_binaria, argumentos_binarios, 2, &resultado,
+                                             &erro) &&
+                  resultado == 42,
+              "IR interpretou chamada C externa binaria");
+
+    sef_codigo_nativo_iniciar(&codigo);
+    verificar(sef_funcao_ir_emitir_x64(&chamada_binaria, SEF_ABI_X64_SYSV, &codigo, &erro),
+              "x86-64 System V emitiu chamada externa binaria");
+#if (defined(__x86_64__) || defined(_M_X64)) && !defined(_WIN32)
+    verificar(
+        sef_codigo_nativo_preparar(&codigo, &erro) &&
+            sef_codigo_nativo_executar_i64(&codigo, argumentos_binarios, 2, &resultado, &erro) &&
+            resultado == 42,
+        "JIT System V executou chamada externa binaria");
+#endif
+    sef_codigo_nativo_liberar(&codigo);
+
+    sef_codigo_nativo_iniciar(&codigo);
+    verificar(sef_funcao_ir_emitir_x64(&chamada_binaria, SEF_ABI_X64_WINDOWS, &codigo, &erro),
+              "x86-64 Microsoft emitiu chamada externa binaria");
+#if defined(_M_X64) || (defined(__x86_64__) && defined(_WIN32))
+    verificar(
+        sef_codigo_nativo_preparar(&codigo, &erro) &&
+            sef_codigo_nativo_executar_i64(&codigo, argumentos_binarios, 2, &resultado, &erro) &&
+            resultado == 42,
+        "JIT Microsoft executou chamada externa binaria");
+#endif
+    sef_codigo_nativo_liberar(&codigo);
+
+    sef_codigo_nativo_iniciar(&codigo);
+    verificar(sef_funcao_ir_emitir_aarch64(&chamada_binaria, &codigo, &erro) &&
+                  contem_instrucao_aarch64(&codigo, 0xf94003e1u | (1u << 10u)),
+              "AArch64 emitiu segundo argumento externo em x1");
+#if defined(__aarch64__) || defined(_M_ARM64)
+    verificar(
+        sef_codigo_nativo_preparar(&codigo, &erro) &&
+            sef_codigo_nativo_executar_i64(&codigo, argumentos_binarios, 2, &resultado, &erro) &&
+            resultado == 42,
+        "JIT AArch64 executou chamada externa binaria");
+#endif
+    sef_codigo_nativo_liberar(&codigo);
+    sef_funcao_ir_liberar(&chamada_binaria);
 
     fatorial.blocos[corpo].instrucoes[0].operando_a = 5;
     verificar(!sef_funcao_ir_verificar(&fatorial, &erro) && erro.ocorreu,

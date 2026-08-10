@@ -1,7 +1,7 @@
 #ifndef SEFIRAH_RUNTIME_H
 #define SEFIRAH_RUNTIME_H
 
-#include "sefirah/erro.h"
+#include "sefirah/compilador.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -41,6 +41,17 @@ bool sef_valor_e_nulo(SefRuntime *runtime, SefValor valor);
 
 SefFuncaoCompilada *sef_runtime_compilar_funcao_i64(SefRuntime *runtime, const char *nome,
                                                     SefErro *erro);
+SefFuncaoCompilada *sef_runtime_compilar_objeto_i64(SefRuntime *runtime, const char *nome,
+                                                    SefErro *erro);
+bool sef_funcao_compilada_vincular_externa_i64(SefFuncaoCompilada *funcao, const char *simbolo,
+                                               SefFuncaoExternaI64 endereco, SefErro *erro);
+bool sef_funcao_compilada_vincular_externa_i64_binaria(SefFuncaoCompilada *funcao,
+                                                       const char *simbolo,
+                                                       SefFuncaoExternaI64Binaria endereco,
+                                                       SefErro *erro);
+bool sef_funcao_compilada_vincular_biblioteca_i64(SefFuncaoCompilada *funcao, const char *caminho,
+                                                  SefErro *erro);
+bool sef_funcao_compilada_preparar_jit(SefFuncaoCompilada *funcao, SefErro *erro);
 bool sef_funcao_compilada_executar_i64(const SefFuncaoCompilada *funcao, const int64_t *argumentos,
                                        size_t quantidade_argumentos, int64_t *resultado,
                                        SefErro *erro);

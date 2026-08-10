@@ -259,6 +259,13 @@ static bool escrever_objeto(FILE *arquivo, SefValor objeto, SefValor *objetos, u
         }
         return escrever_u8(arquivo, objeto->como.stream.padrao, erro) &&
                escrever_u8(arquivo, objeto->como.stream.fechado ? 1 : 0, erro);
+    case SEF_TIPO_BIBLIOTECA:
+        if (!objeto->como.biblioteca.fechada) {
+            sef_erro_definir(erro, 0, 0,
+                             "feche bibliotecas compartilhadas antes de salvar a imagem");
+            return false;
+        }
+        return true;
     }
     return false;
 }
@@ -363,7 +370,7 @@ static void registros_liberar(RegistroImagem *registros, uint32_t quantidade) {
 static bool ler_registro(FILE *arquivo, RegistroImagem *registro, SefErro *erro) {
     uint8_t tipo;
     uint64_t bits;
-    if (!ler_u8(arquivo, &tipo, erro) || tipo > SEF_TIPO_STREAM) {
+    if (!ler_u8(arquivo, &tipo, erro) || tipo > SEF_TIPO_BIBLIOTECA) {
         if (!erro->ocorreu)
             sef_erro_definir(erro, 0, 0, "tipo de objeto invalido na imagem");
         return false;
@@ -484,6 +491,8 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, SefErro *erro)
         registro->macro = fechado != 0;
         return true;
     }
+    case SEF_TIPO_BIBLIOTECA:
+        return true;
     }
     return false;
 }
@@ -758,6 +767,10 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                 objeto->como.stream.arquivo = stdout;
             else if (objeto->como.stream.padrao == 3)
                 objeto->como.stream.arquivo = stderr;
+            break;
+        case SEF_TIPO_BIBLIOTECA:
+            objeto->como.biblioteca.recurso = NULL;
+            objeto->como.biblioteca.fechada = true;
             break;
         }
     }

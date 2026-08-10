@@ -872,6 +872,7 @@ SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, Sef
     case SEF_TIPO_CONDICAO:
     case SEF_TIPO_PACOTE:
     case SEF_TIPO_STREAM:
+    case SEF_TIPO_BIBLIOTECA:
         return forma;
     case SEF_TIPO_SIMBOLO: {
         if (forma == runtime->verdadeiro || forma->como.simbolo.pacote == runtime->pacote_keyword)

@@ -1,61 +1,149 @@
-# Roteiro de implementacao
+# Roteiro do Sefirah Lisp 1.0
 
-O plano de 1.0 e intencionalmente maior que o marco de bootstrap. Este arquivo
-impede que uma demonstracao visual seja confundida com a plataforma terminada.
+O 1.0 é uma plataforma Lisp desktop completa, não apenas uma demonstração do
+runtime ou da GUI. Este documento separa trabalho concluído de intenção e
+define as evidências necessárias para cada marco.
 
-## Marco 0 — fundacao executavel
+## Estado dos marcos
+
+| Marco | Objetivo | Estado |
+| --- | --- | --- |
+| 0 | fundação executável | base funcional; itens listados concluídos |
+| 1 | runtime compilável | em andamento |
+| 2 | Common Lisp hospedado e imagem viva | pendente |
+| 3 | GUI desktop | base inicial; capacidades desktop pendentes |
+| 4 | ambiente e distribuição 1.0 | pendente |
+
+Uma caixa marcada significa que existe implementação e teste correspondente;
+não significa que o marco inteiro esteja concluído.
+
+## Marco 0 — fundação executável
 
 - [x] Build C17 modular e testes em CMake.
 - [x] Objetos, ambientes lexicais, leitor, impressor e avaliador.
-- [x] Funcoes, macros, recursao e primitivas essenciais.
-- [x] Coletor mark-and-sweep nos limites de avaliacao.
-- [x] Rasterizador CPU, fonte bitmap e composicao visual propria.
+- [x] Funções, macros, recursão e primitivas essenciais.
+- [x] Coletor mark-and-sweep nos limites de avaliação.
+- [x] Rasterizador CPU, fonte bitmap e composição visual própria.
 - [x] Janela X11 e Win32; ponte macOS escrita em C puro.
-- [x] Ouvinte grafico ligado ao runtime em X11 e Win32.
+- [x] Ouvinte gráfico ligado ao runtime em X11 e Win32.
 - [x] CI declarada para Linux, Windows e macOS.
-- [x] Primeira imagem versionada com gravacao atomica e restauracao do heap.
-- [x] Handles de raiz explicitos para integracao segura com C/IDE/FFI.
-- [x] Quasiquote, unquote e splice para macros legiveis.
-- [x] Packages no heap, símbolos qualificados, `KEYWORD`, herança por `:USE` e imagens.
-- [x] Streams padrão e de arquivo, leitura/escrita textual e política segura de imagem.
+- [x] Imagem versionada com gravação atômica e restauração do heap.
+- [x] Handles de raiz explícitos para integração segura com C, IDE e FFI.
+- [x] Quasiquote, unquote e splice para macros legíveis.
+- [x] Packages no heap, símbolos qualificados, `KEYWORD`, herança por `:USE` e
+  persistência em imagem.
+- [x] Streams padrão e de arquivo, leitura/escrita textual e política segura de
+  imagem.
+- [x] Package interno `SEFIRAH` para tipos e operações da implementação.
 
-## Marco 1 — runtime compilavel
+## Marco 1 — runtime compilável
 
-- [ ] Raizes explicitas, pontos seguros e GC geracional preciso.
-- [ ] Condicoes e restarts completos, streams compostos e numeric tower.
-- [x] Namespaces distintos de valor/funcao e controle nao local com limpeza.
-- [x] Primeiros objetos de condicao e tratamento recuperavel por `HANDLER-CASE`.
-- [x] Primeira IR SSA tipada, verificador de dominancia e interpretador de referencia.
-- [x] Primeiro emissor x86-64 SysV/Windows e carregamento W^X validado nas duas ABIs.
-- [x] Primeiro frontend `DEFUN` -> SSA -> x86-64, integrado a `COMPILE` e chamadas Lisp.
-- [x] Primeiro emissor AArch64 AAPCS64 com selecao nativa no frontend Lisp.
-- [x] Primeiro gravador ELF64 relocavel x86-64/AArch64 e comando `compilar-elf`.
-- [x] Primeiro gravador COFF AMD64/ARM64 e comando `compilar-coff`.
-- [x] Primeiro gravador Mach-O x86-64/ARM64 e comando `compilar-macho`.
-- [x] Primeiras relocacoes ELF/COFF/Mach-O e chamada externa unaria na IR.
-- [ ] Compilador bootstrap escrito em Sefirah e self-hosting reproduzivel.
+### Runtime e linguagem
 
-## Marco 2 — Common Lisp e imagem viva
+- [ ] Raízes explícitas em todos os limites nativos, pontos seguros e GC
+  geracional preciso.
+- [ ] Condições e restarts completos.
+- [ ] Streams compostos e protocolo completo de streams.
+- [ ] Numeric tower de Common Lisp.
+- [x] Namespaces distintos de valor/função e controle não local com limpeza.
+- [x] Objetos iniciais de condição e tratamento recuperável por
+  `HANDLER-CASE`.
 
-- [ ] Cobertura completa ANSI Common Lisp com relatorio de conformidade.
-- [ ] CLOS, condicoes/restarts completos, threads e FFI C.
-- [ ] Migracoes de imagem e recuperacao de recursos externos nao serializaveis.
+### Compilador
+
+- [x] IR SSA tipada, verificador de dominância e interpretador de referência.
+- [x] Emissor x86-64 System V/Microsoft e carregamento W^X nas duas ABIs.
+- [x] Frontend `DEFUN` → SSA → código nativo integrado a `COMPILE`.
+- [x] Emissor AArch64 AAPCS64 com seleção nativa no frontend.
+- [x] Gravador ELF64 relocável x86-64/AArch64 e comando `compilar-elf`.
+- [x] Gravador COFF AMD64/ARM64 e comando `compilar-coff`.
+- [x] Gravador Mach-O x86-64/ARM64 e comando `compilar-macho`.
+- [x] Relocações desktop e chamadas externas i64 de uma ou duas entradas.
+- [x] Forma Lisp `EXTERNAL-I64` para imports em objetos nativos.
+- [x] Trampolins JIT x86-64/AArch64 com vinculação explícita e W^X.
+- [ ] Representação nativa de valores Lisp etiquetados.
+- [ ] Chamadas Lisp gerais, alocação, pontos seguros e metadados de exceção.
+- [ ] Alocação de registradores e otimizações além do bootstrap.
+- [ ] Compilador bootstrap escrito em Sefirah e self-hosting reproduzível.
+
+### FFI
+
+- [x] Carregamento `.so`, `.dylib` e `.dll` por `COMPILE-EXTERNAL-I64`.
+- [x] Objetos de biblioteca com fechamento explícito e referências seguras.
+- [x] Política de imagem para bibliotecas compartilhadas.
+- [ ] Descritores de tipos estrangeiros.
+- [ ] Assinaturas gerais com inteiros, floats, ponteiros, strings, structs e
+  retorno `void`.
+- [ ] Callbacks C para Lisp com ownership e tratamento de erros definidos.
+
+## Marco 2 — Common Lisp hospedado e imagem viva
+
+- [ ] Cobertura ANSI Common Lisp acompanhada por relatório de conformidade.
+- [ ] CLOS e MOP documentada.
+- [ ] Condições e restarts completos integrados ao compilador.
+- [ ] Threads, sincronização e interação segura com GC/FFI.
+- [ ] Migrações de imagem entre versões.
+- [ ] Recuperação declarativa de recursos externos não serializáveis.
 - [ ] ASDF, Quicklisp e gerenciador Sefirah com lockfile.
+- [ ] Compilador e bibliotecas centrais carregáveis a partir da imagem.
 
 ## Marco 3 — GUI desktop
 
-- [ ] Wayland, entrada Unicode/IME e ponte de teclado macOS.
-- [ ] Paths, clipping, alpha, imagens, fontes vetoriais e HiDPI.
-- [ ] Layout, componentes, temas, foco, comandos e acessibilidade (base de
-  componentes, layout, tema, hit-testing, foco, ações e integração da IDE
-  concluída).
-- [ ] Clipboard, drag-and-drop, dialogs, impressao e notificacoes.
-- [ ] Rede/TLS, processos, SQLite e audio basico.
+### Renderização e texto
 
-## Marco 4 — ambiente e distribuicao 1.0
+- [x] Superfície RGB, rasterizador CPU e fonte bitmap inicial.
+- [x] Árvore de componentes, layout, temas, hit-testing, foco e ações.
+- [ ] Paths, clipping geral, alpha e composição.
+- [ ] Imagens, fontes vetoriais, shaping e fallback tipográfico.
+- [ ] HiDPI e escala fracionária.
 
-- [ ] Editor textual/estrutural, inspetor, debugger, profiler e DWIM reversivel.
-- [ ] Historico transacional, Git, autosave e restauracao de sessao.
-- [ ] IDE recompila o compilador e a si propria.
-- [ ] Pacotes MSIX, DMG, AppImage, DEB e RPM com hooks de assinatura.
-- [ ] Matriz oficial Windows x64, macOS Intel/ARM e Linux x64/ARM com X11/Wayland.
+### Plataforma e acessibilidade
+
+- [x] Janela e eventos iniciais em X11 e Win32.
+- [x] Ponte Cocoa/CoreGraphics escrita em C.
+- [ ] Wayland.
+- [ ] Entrada Unicode, IME e ponte de teclado macOS.
+- [ ] Árvore semântica e integração com tecnologias assistivas.
+- [ ] Clipboard, drag-and-drop, diálogos, impressão e notificações.
+
+### Serviços de aplicações
+
+- [ ] Rede e TLS.
+- [ ] Processos e comunicação entre processos.
+- [ ] SQLite.
+- [ ] Áudio básico.
+
+## Marco 4 — ambiente e distribuição 1.0
+
+### Ambiente Lisp
+
+- [ ] Editor textual e estrutural.
+- [ ] Inspetor de objetos e navegador de código.
+- [ ] Debugger, profiler e navegação por condições/restarts.
+- [ ] DWIM reversível e histórico transacional.
+- [ ] Integração Git, autosave e restauração de sessão.
+- [ ] IDE recompila o compilador e a si própria.
+
+### Distribuição
+
+- [ ] Pacote MSIX para Windows.
+- [ ] Aplicativo DMG para macOS Intel e Apple Silicon.
+- [ ] AppImage, DEB e RPM para Linux.
+- [ ] Hooks de assinatura, metadados, ícones e atualização.
+- [ ] Matriz oficial Windows x64, macOS Intel/ARM e Linux x64/ARM com
+  X11/Wayland.
+
+## Critérios de entrega do 1.0
+
+O objetivo só estará concluído quando houver evidência para todos estes itens:
+
+1. suíte de conformidade documentando a superfície Common Lisp suportada;
+2. bootstrap self-hosted reproduzível em x86-64 e AArch64;
+3. imagem capaz de restaurar uma sessão de desenvolvimento real;
+4. aplicação desktop Sefirah funcional em Windows, Linux e macOS;
+5. IDE com edição, avaliação, inspeção e depuração integradas;
+6. pacotes instaláveis e testes de instalação nas plataformas oficiais;
+7. documentação de usuário, arquitetura, SDK e migração correspondente à
+   versão entregue.
+
+Enquanto qualquer evidência estiver ausente, a versão permanece pré-1.0.

@@ -340,6 +340,43 @@ static SefValor primitiva_streamp(SefRuntime *runtime, SefValor argumentos, SefE
     return car(argumentos)->tipo == SEF_TIPO_STREAM ? runtime->verdadeiro : runtime->nulo;
 }
 
+static SefValor primitiva_open_shared_library(SefRuntime *runtime, SefValor argumentos,
+                                              SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "OPEN-SHARED-LIBRARY", erro))
+        return NULL;
+    SefValor caminho = car(argumentos);
+    if (caminho->tipo != SEF_TIPO_TEXTO || caminho->como.texto.tamanho == 0 ||
+        memchr(caminho->como.texto.dados, '\0', caminho->como.texto.tamanho) != NULL) {
+        sef_erro_definir(erro, 0, 0, "OPEN-SHARED-LIBRARY exige um caminho como string");
+        return NULL;
+    }
+    return sef_biblioteca_nova(runtime, caminho->como.texto.dados, erro);
+}
+
+static SefValor primitiva_close_shared_library(SefRuntime *runtime, SefValor argumentos,
+                                               SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "CLOSE-SHARED-LIBRARY", erro))
+        return NULL;
+    return sef_biblioteca_fechar(car(argumentos), erro) ? runtime->verdadeiro : NULL;
+}
+
+static SefValor primitiva_shared_library_p(SefRuntime *runtime, SefValor argumentos,
+                                           SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "SHARED-LIBRARY-P", erro))
+        return NULL;
+    return car(argumentos)->tipo == SEF_TIPO_BIBLIOTECA ? runtime->verdadeiro : runtime->nulo;
+}
+
+static SefValor primitiva_shared_library_open_p(SefRuntime *runtime, SefValor argumentos,
+                                                SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "SHARED-LIBRARY-OPEN-P", erro))
+        return NULL;
+    SefValor biblioteca = car(argumentos);
+    return biblioteca->tipo == SEF_TIPO_BIBLIOTECA && !biblioteca->como.biblioteca.fechada
+               ? runtime->verdadeiro
+               : runtime->nulo;
+}
+
 static SefValor primitiva_open(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, (size_t)-1, "OPEN", erro))
         return NULL;
@@ -538,7 +575,8 @@ static SefValor primitiva_type_of(SefRuntime *runtime, SefValor argumentos, SefE
                                   "SEFIRAH::ENVIRONMENT",
                                   NULL,
                                   "PACKAGE",
-                                  "STREAM"};
+                                  "STREAM",
+                                  "SEFIRAH::SHARED-LIBRARY"};
     SefValor valor = car(argumentos);
     if (valor->tipo == SEF_TIPO_CONDICAO)
         return valor->como.condicao.classe;
@@ -652,6 +690,29 @@ static SefValor primitiva_compile(SefRuntime *runtime, SefValor argumentos, SefE
         return NULL;
     SefValor simbolo = car(argumentos);
     return sef_funcao_compilada_instalar_i64(runtime, simbolo, erro) ? simbolo : NULL;
+}
+
+static SefValor primitiva_compile_external_i64(SefRuntime *runtime, SefValor argumentos,
+                                               SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, "COMPILE-EXTERNAL-I64", erro))
+        return NULL;
+    SefValor simbolo = car(argumentos);
+    SefValor biblioteca = car(cdr(argumentos));
+    if (biblioteca->tipo == SEF_TIPO_BIBLIOTECA)
+        return sef_funcao_compilada_instalar_objeto_biblioteca_i64(runtime, simbolo, biblioteca,
+                                                                   erro)
+                   ? simbolo
+                   : NULL;
+    if (biblioteca->tipo != SEF_TIPO_TEXTO || biblioteca->como.texto.tamanho == 0 ||
+        memchr(biblioteca->como.texto.dados, '\0', biblioteca->como.texto.tamanho) != NULL) {
+        sef_erro_definir(erro, 0, 0,
+                         "COMPILE-EXTERNAL-I64 exige caminho ou biblioteca compartilhada");
+        return NULL;
+    }
+    return sef_funcao_compilada_instalar_biblioteca_i64(runtime, simbolo,
+                                                        biblioteca->como.texto.dados, erro)
+               ? simbolo
+               : NULL;
 }
 
 static SefValor primitiva_compiled_function_p(SefRuntime *runtime, SefValor argumentos,
@@ -855,12 +916,25 @@ static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErr
 }
 
 static bool instalar(SefRuntime *runtime, const char *nome, SefFuncaoNativa funcao, SefErro *erro) {
+    const char *separador = strstr(nome, "::");
+    SefValor pacote = runtime->pacote_common_lisp;
+    const char *nome_simbolo = nome;
+    bool exportar = true;
+    if (separador != NULL) {
+        pacote = sef_pacote_encontrar(runtime, nome, (size_t)(separador - nome));
+        nome_simbolo = separador + 2;
+        exportar = false;
+    }
+    if (pacote == NULL || nome_simbolo[0] == '\0') {
+        sef_erro_definir(erro, 0, 0, "pacote de primitiva interna nao existe");
+        return false;
+    }
     SefValor simbolo =
-        sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, nome, strlen(nome), erro);
+        sef_simbolo_internar_em(runtime, pacote, nome_simbolo, strlen(nome_simbolo), erro);
     SefValor valor = simbolo == NULL ? NULL : sef_nativa_nova(runtime, nome, funcao, erro);
     return valor != NULL &&
            sef_ambiente_definir_funcao(runtime, runtime->ambiente_global, simbolo, valor, erro) &&
-           sef_pacote_exportar(runtime, runtime->pacote_common_lisp, simbolo, erro);
+           (!exportar || sef_pacote_exportar(runtime, pacote, simbolo, erro));
 }
 
 static const struct {
@@ -887,6 +961,10 @@ static const struct {
                   {"LENGTH", primitiva_length},
                   {"PRINT", primitiva_print},
                   {"STREAMP", primitiva_streamp},
+                  {"OPEN-SHARED-LIBRARY", primitiva_open_shared_library},
+                  {"CLOSE-SHARED-LIBRARY", primitiva_close_shared_library},
+                  {"SHARED-LIBRARY-P", primitiva_shared_library_p},
+                  {"SHARED-LIBRARY-OPEN-P", primitiva_shared_library_open_p},
                   {"OPEN", primitiva_open},
                   {"CLOSE", primitiva_close},
                   {"WRITE-STRING", primitiva_write_string},
@@ -903,6 +981,7 @@ static const struct {
                   {"SET", primitiva_set},
                   {"FUNCTIONP", primitiva_functionp},
                   {"COMPILE", primitiva_compile},
+                  {"COMPILE-EXTERNAL-I64", primitiva_compile_external_i64},
                   {"COMPILED-FUNCTION-P", primitiva_compiled_function_p},
                   {"ERROR", primitiva_error},
                   {"MAKE-PACKAGE", primitiva_make_package},

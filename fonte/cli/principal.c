@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
             SefValor ignorado = NULL;
             SefFuncaoCompilada *funcao = NULL;
             if (!sef_runtime_executar_arquivo(runtime, argv[2], &ignorado, &erro) ||
-                (funcao = sef_runtime_compilar_funcao_i64(runtime, argv[3], &erro)) == NULL ||
+                (funcao = sef_runtime_compilar_objeto_i64(runtime, argv[3], &erro)) == NULL ||
                 !sef_funcao_compilada_gravar_elf(funcao, argv[3], argv[4], &erro)) {
                 resultado = mostrar_erro(&erro);
             } else {
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
             SefValor ignorado = NULL;
             SefFuncaoCompilada *funcao = NULL;
             if (!sef_runtime_executar_arquivo(runtime, argv[2], &ignorado, &erro) ||
-                (funcao = sef_runtime_compilar_funcao_i64(runtime, argv[3], &erro)) == NULL ||
+                (funcao = sef_runtime_compilar_objeto_i64(runtime, argv[3], &erro)) == NULL ||
                 !sef_funcao_compilada_gravar_coff(funcao, argv[3], argv[4], &erro)) {
                 resultado = mostrar_erro(&erro);
             } else {
@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
             SefValor ignorado = NULL;
             SefFuncaoCompilada *funcao = NULL;
             if (!sef_runtime_executar_arquivo(runtime, argv[2], &ignorado, &erro) ||
-                (funcao = sef_runtime_compilar_funcao_i64(runtime, argv[3], &erro)) == NULL ||
+                (funcao = sef_runtime_compilar_objeto_i64(runtime, argv[3], &erro)) == NULL ||
                 !sef_funcao_compilada_gravar_macho(funcao, argv[3], argv[4], &erro)) {
                 resultado = mostrar_erro(&erro);
             } else {

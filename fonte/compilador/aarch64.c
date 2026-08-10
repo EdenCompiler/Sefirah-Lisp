@@ -70,7 +70,8 @@ static bool emitir_instrucao(EmissorAarch64 *emissor, uint32_t instrucao) {
     return true;
 }
 
-static bool adicionar_relocacao(EmissorAarch64 *emissor, size_t deslocamento, const char *simbolo) {
+static bool adicionar_relocacao(EmissorAarch64 *emissor, size_t deslocamento, const char *simbolo,
+                                SefFuncaoExternaI64 endereco) {
     SefCodigoNativo *codigo = emissor->codigo;
     if (codigo->quantidade_relocacoes == codigo->capacidade_relocacoes) {
         size_t capacidade =
@@ -92,7 +93,7 @@ static bool adicionar_relocacao(EmissorAarch64 *emissor, size_t deslocamento, co
     }
     memcpy(copia, simbolo, tamanho);
     codigo->relocacoes[codigo->quantidade_relocacoes++] =
-        (SefRelocacaoNativa){deslocamento, copia, SEF_RELOCACAO_CHAMADA26_AARCH64};
+        (SefRelocacaoNativa){deslocamento, copia, SEF_RELOCACAO_CHAMADA26_AARCH64, endereco};
     return true;
 }
 
@@ -196,11 +197,14 @@ static bool emitir_valor(EmissorAarch64 *emissor, SefInstrucaoIr ins) {
                armazenar_x0(emissor, ins.destino, false);
     }
     if (ins.operacao == SEF_IR_CHAMAR_EXTERNA_I64) {
-        const char *simbolo = emissor->funcao->externas[ins.imediato].nome;
-        if (!carregar_x0(emissor, ins.operando_a, false))
+        SefSimboloExternoIr externa = emissor->funcao->externas[ins.imediato];
+        uint32_t aridade = ins.bloco_a == 0 ? 1u : ins.bloco_a;
+        if (!carregar_x0(emissor, ins.operando_a, false) ||
+            (aridade == 2 && !carregar_x1(emissor, ins.operando_b)))
             return false;
         size_t deslocamento_relocacao = emissor->codigo->tamanho;
-        return adicionar_relocacao(emissor, deslocamento_relocacao, simbolo) &&
+        return adicionar_relocacao(emissor, deslocamento_relocacao, externa.nome,
+                                   externa.endereco) &&
                emitir_instrucao(emissor, 0x94000000u) && armazenar_x0(emissor, ins.destino, false);
     }
     if (!carregar_x0(emissor, ins.operando_a, false) || !carregar_x1(emissor, ins.operando_b))

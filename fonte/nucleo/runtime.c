@@ -71,6 +71,7 @@ static void marcar(SefValor valor) {
             marcar(valor->como.pacote.exportados[i]);
         break;
     case SEF_TIPO_STREAM:
+    case SEF_TIPO_BIBLIOTECA:
         break;
     default:
         break;
@@ -92,6 +93,9 @@ static void objeto_conteudo_liberar(SefValor objeto) {
             objeto->como.stream.arquivo != NULL)
             fclose(objeto->como.stream.arquivo);
         free(objeto->como.stream.caminho);
+    } else if (objeto->tipo == SEF_TIPO_BIBLIOTECA) {
+        if (!objeto->como.biblioteca.fechada)
+            sef_biblioteca_recurso_liberar(objeto->como.biblioteca.recurso);
     } else if (objeto->tipo == SEF_TIPO_FUNCAO) {
         sef_funcao_compilada_liberar(objeto->como.funcao.compilada_i64);
     } else if (objeto->tipo == SEF_TIPO_AMBIENTE) {
@@ -166,9 +170,10 @@ SefRuntime *sef_runtime_criar(SefErro *erro) {
         goto falhou;
     runtime->pacote_common_lisp = sef_pacote_novo(runtime, "COMMON-LISP", erro);
     runtime->pacote_keyword = sef_pacote_novo(runtime, "KEYWORD", erro);
+    SefValor pacote_sefirah = sef_pacote_novo(runtime, "SEFIRAH", erro);
     SefValor pacote_usuario = sef_pacote_novo(runtime, "COMMON-LISP-USER", erro);
     if (runtime->pacote_common_lisp == NULL || runtime->pacote_keyword == NULL ||
-        pacote_usuario == NULL)
+        pacote_sefirah == NULL || pacote_usuario == NULL)
         goto falhou;
     runtime->pacote_atual = pacote_usuario;
     if (!sef_pacote_usar(runtime, pacote_usuario, runtime->pacote_common_lisp, erro))

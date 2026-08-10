@@ -157,6 +157,13 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
             return anexar(texto, "#<FILE-STREAM ", erro) &&
                    anexar(texto, valor->como.stream.caminho, erro) && anexar(texto, ">", erro);
         return anexar(texto, "#<STREAM PADRAO>", erro);
+    case SEF_TIPO_BIBLIOTECA:
+        if (valor->como.biblioteca.fechada)
+            return anexar(texto, "#<BIBLIOTECA-COMPARTILHADA FECHADA>", erro);
+        return anexar(texto, "#<BIBLIOTECA-COMPARTILHADA ", erro) &&
+               anexar(texto, sef_biblioteca_recurso_caminho(valor->como.biblioteca.recurso),
+                      erro) &&
+               anexar(texto, ">", erro);
     }
     return anexar(texto, "#<DESCONHECIDO>", erro);
 }
