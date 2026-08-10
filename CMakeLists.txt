@@ -40,6 +40,8 @@ add_library(sefirah_nucleo
     fonte/nucleo/leitor.c
     fonte/nucleo/primitivas.c
     fonte/nucleo/runtime.c
+    fonte/nucleo/sequencias.c
+    fonte/nucleo/utf8.c
     fonte/nucleo/valor.c
 )
 target_include_directories(sefirah_nucleo PUBLIC incluir PRIVATE fonte/nucleo)
@@ -99,6 +101,9 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     enable_testing()
     add_library(teste_ffi SHARED testes/biblioteca_ffi.c)
     add_executable(teste_nucleo testes/teste_nucleo.c)
+    if(MSVC)
+        target_compile_options(teste_nucleo PRIVATE /utf-8)
+    endif()
     target_link_libraries(teste_nucleo PRIVATE sefirah_nucleo)
     add_test(NAME nucleo COMMAND teste_nucleo "./$<TARGET_FILE_NAME:teste_ffi>")
     set_tests_properties(nucleo PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:teste_ffi>")

@@ -19,7 +19,9 @@ typedef enum SefTipo {
     SEF_TIPO_CONDICAO,
     SEF_TIPO_PACOTE,
     SEF_TIPO_STREAM,
-    SEF_TIPO_BIBLIOTECA
+    SEF_TIPO_BIBLIOTECA,
+    SEF_TIPO_VETOR,
+    SEF_TIPO_CARACTERE
 } SefTipo;
 
 typedef struct SefRecursoBiblioteca SefRecursoBiblioteca;
@@ -115,6 +117,11 @@ struct SefObjeto {
             SefRecursoBiblioteca *recurso;
             bool fechada;
         } biblioteca;
+        struct {
+            SefValor *itens;
+            size_t tamanho;
+        } vetor;
+        uint32_t caractere;
     } como;
 };
 
@@ -158,6 +165,10 @@ SefValor sef_objeto_novo(SefRuntime *runtime, SefTipo tipo, SefErro *erro);
 SefValor sef_inteiro_novo(SefRuntime *runtime, int64_t numero, SefErro *erro);
 SefValor sef_real_novo(SefRuntime *runtime, double numero, SefErro *erro);
 SefValor sef_texto_novo(SefRuntime *runtime, const char *texto, size_t tamanho, SefErro *erro);
+SefValor sef_texto_caractere_obter(SefRuntime *runtime, SefValor texto, size_t indice,
+                                   SefErro *erro);
+bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t indice,
+                                 SefValor caractere, SefErro *erro);
 SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho, SefErro *erro);
 SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const char *nome,
                                  size_t tamanho, SefErro *erro);
@@ -180,6 +191,8 @@ SefValor sef_condicao_nova(SefRuntime *runtime, SefValor classe, const char *men
 SefValor sef_stream_novo(SefRuntime *runtime, FILE *arquivo, const char *caminho,
                          bool possui_arquivo, unsigned char padrao, SefErro *erro);
 SefValor sef_biblioteca_nova(SefRuntime *runtime, const char *caminho, SefErro *erro);
+SefValor sef_vetor_novo(SefRuntime *runtime, size_t tamanho, SefValor inicial, SefErro *erro);
+SefValor sef_caractere_novo(SefRuntime *runtime, uint32_t codigo, SefErro *erro);
 bool sef_biblioteca_fechar(SefValor biblioteca, SefErro *erro);
 SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro *erro);
 void sef_biblioteca_recurso_reter(SefRecursoBiblioteca *recurso);
@@ -198,6 +211,12 @@ bool sef_e_lista_propria(SefRuntime *runtime, SefValor valor);
 size_t sef_lista_tamanho(SefRuntime *runtime, SefValor lista, bool *propria);
 SefValor sef_lista_inverter(SefRuntime *runtime, SefValor lista, SefErro *erro);
 
+bool sef_utf8_decodificar(const char *dados, size_t tamanho, size_t *consumidos, uint32_t *codigo);
+size_t sef_utf8_codificar(uint32_t codigo, char saida[4]);
+size_t sef_utf8_quantidade(const char *dados, size_t tamanho, bool *valido);
+bool sef_utf8_localizar(const char *dados, size_t tamanho, size_t indice, size_t *inicio,
+                        size_t *comprimento, uint32_t *codigo);
+
 bool sef_ambiente_definir(SefRuntime *runtime, SefValor ambiente, SefValor simbolo, SefValor valor,
                           SefErro *erro);
 bool sef_ambiente_obter(SefValor ambiente, SefValor simbolo, SefValor *valor);
@@ -215,5 +234,9 @@ SefValor sef_aplicar(SefRuntime *runtime, SefValor funcao, SefValor argumentos, 
 bool sef_primitivas_instalar(SefRuntime *runtime, SefErro *erro);
 SefFuncaoNativa sef_primitiva_buscar(const char *nome);
 const char *sef_primitiva_nome(SefFuncaoNativa funcao);
+SefValor sef_primitiva_copy_seq(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_reverse(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_subseq(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
+SefValor sef_primitiva_fill(SefRuntime *runtime, SefValor argumentos, SefErro *erro);
 
 #endif

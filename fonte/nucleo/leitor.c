@@ -84,6 +84,8 @@ static SefValor ler_texto(SefLeitor *leitor, SefErro *erro) {
                 caractere = '\r';
             else if (caractere == 't')
                 caractere = '\t';
+            else if (caractere == '0')
+                caractere = '\0';
         }
         if (tamanho + 1 >= capacidade) {
             capacidade *= 2;
@@ -212,6 +214,108 @@ static SefValor ler_lista(SefLeitor *leitor, SefErro *erro) {
     return cabeca;
 }
 
+static SefValor ler_vetor(SefLeitor *leitor, SefErro *erro) {
+    avancar(leitor);
+    SefValor itens = ler_lista(leitor, erro);
+    if (itens == NULL)
+        return NULL;
+    bool propria = false;
+    size_t tamanho = sef_lista_tamanho(leitor->runtime, itens, &propria);
+    if (!propria) {
+        sef_erro_definir(erro, leitor->linha, leitor->coluna,
+                         "vetor literal nao aceita cauda pontuada");
+        return NULL;
+    }
+    SefValor vetor = sef_vetor_novo(leitor->runtime, tamanho, leitor->runtime->nulo, erro);
+    if (vetor == NULL)
+        return NULL;
+    for (size_t i = 0; i < tamanho; i++) {
+        vetor->como.vetor.itens[i] = itens->como.par.primeiro;
+        itens = itens->como.par.resto;
+    }
+    return vetor;
+}
+
+static bool nome_igual(const char *texto, size_t tamanho, const char *nome) {
+    if (strlen(nome) != tamanho)
+        return false;
+    for (size_t i = 0; i < tamanho; i++) {
+        if (toupper((unsigned char)texto[i]) != toupper((unsigned char)nome[i]))
+            return false;
+    }
+    return true;
+}
+
+static bool codigo_hexadecimal(const char *texto, size_t tamanho, uint32_t *codigo) {
+    if (tamanho < 3 || (texto[0] != 'U' && texto[0] != 'u') || texto[1] != '+')
+        return false;
+    uint32_t resultado = 0;
+    for (size_t i = 2; i < tamanho; i++) {
+        unsigned char caractere = (unsigned char)texto[i];
+        uint32_t digito;
+        if (caractere >= '0' && caractere <= '9')
+            digito = caractere - '0';
+        else if (caractere >= 'a' && caractere <= 'f')
+            digito = caractere - 'a' + 10u;
+        else if (caractere >= 'A' && caractere <= 'F')
+            digito = caractere - 'A' + 10u;
+        else
+            return false;
+        if (resultado > 0x10ffffu / 16u)
+            return false;
+        resultado = resultado * 16u + digito;
+    }
+    *codigo = resultado;
+    return true;
+}
+
+static SefValor ler_caractere(SefLeitor *leitor, SefErro *erro) {
+    size_t linha = leitor->linha;
+    size_t coluna = leitor->coluna;
+    avancar(leitor);
+    avancar(leitor);
+    if (atual(leitor) == '\0') {
+        sef_erro_definir(erro, linha, coluna, "literal de caractere incompleto");
+        return NULL;
+    }
+
+    const char *inicio = leitor->atual;
+    size_t tamanho;
+    if (delimitador(atual(leitor))) {
+        avancar(leitor);
+        tamanho = 1;
+    } else {
+        while (!delimitador(atual(leitor)))
+            avancar(leitor);
+        tamanho = (size_t)(leitor->atual - inicio);
+    }
+
+    uint32_t codigo;
+    size_t consumidos;
+    if (nome_igual(inicio, tamanho, "SPACE"))
+        codigo = ' ';
+    else if (nome_igual(inicio, tamanho, "NEWLINE"))
+        codigo = '\n';
+    else if (nome_igual(inicio, tamanho, "TAB"))
+        codigo = '\t';
+    else if (nome_igual(inicio, tamanho, "RETURN"))
+        codigo = '\r';
+    else if (nome_igual(inicio, tamanho, "PAGE"))
+        codigo = '\f';
+    else if (nome_igual(inicio, tamanho, "RUBOUT"))
+        codigo = 0x7fu;
+    else if (nome_igual(inicio, tamanho, "NULL"))
+        codigo = 0;
+    else if (codigo_hexadecimal(inicio, tamanho, &codigo)) {
+        /* O construtor valida o valor escalar. */
+    } else if (!sef_utf8_decodificar(inicio, tamanho, &consumidos, &codigo) ||
+               consumidos != tamanho) {
+        sef_erro_definir(erro, linha, coluna, "nome de caractere desconhecido");
+        return NULL;
+    }
+    return sef_caractere_novo(leitor->runtime, codigo, erro);
+}
+
 static SefValor ler_interno(SefLeitor *leitor, SefErro *erro) {
     ignorar_espaco(leitor);
     char caractere = atual(leitor);
@@ -254,6 +358,10 @@ static SefValor ler_interno(SefLeitor *leitor, SefErro *erro) {
         SefValor forma = ler_interno(leitor, erro);
         return forma == NULL ? NULL : formar_unaria(leitor, "FUNCTION", forma, erro);
     }
+    if (caractere == '#' && leitor->atual[1] == '(')
+        return ler_vetor(leitor, erro);
+    if (caractere == '#' && leitor->atual[1] == '\\')
+        return ler_caractere(leitor, erro);
     return ler_atomo(leitor, erro);
 }
 

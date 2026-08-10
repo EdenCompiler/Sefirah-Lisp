@@ -63,8 +63,10 @@ texto .lisp
 ```
 
 O leitor e o avaliador são a implementação de referência durante o bootstrap.
-Símbolos possuem células separadas de valor e função; packages também são
-objetos do heap e preservam identidade na imagem.
+Símbolos possuem células separadas de valor e função; packages, vetores e
+caracteres também são objetos do heap e preservam identidade e referências na
+imagem. Strings armazenam UTF-8 e são indexadas por ponto de código na API
+Lisp.
 
 ## Fluxo do compilador
 
@@ -117,9 +119,11 @@ própria referência. O último proprietário executa `dlclose` ou `FreeLibrary`
 
 ## Imagem persistente
 
-O formato binário v6 preserva o grafo de objetos, símbolos, packages,
-ambientes, funções, macros, condições e streams restauráveis. A gravação usa um
-arquivo temporário e substituição atômica.
+O formato binário v8 preserva o grafo de objetos, símbolos, packages, vetores,
+caracteres, ambientes, funções, macros, condições e streams restauráveis. A
+gravação usa um arquivo temporário e substituição atômica. O carregador
+reconhece v6, v7 e v8; uma imagem antiga carregada e salva novamente é emitida
+no formato corrente.
 
 Recursos do processo seguem uma política explícita:
 

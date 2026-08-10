@@ -44,6 +44,16 @@ static void verificar_texto(SefRuntime *runtime, const char *codigo, const char 
     }
 }
 
+static void converter_assinatura(const char *caminho, int versao) {
+    FILE *arquivo = fopen(caminho, "r+b");
+    verificar(arquivo != NULL, "imagem de compatibilidade foi aberta para ajuste");
+    if (arquivo == NULL)
+        return;
+    verificar(fseek(arquivo, 6, SEEK_SET) == 0 && fputc(versao, arquivo) == versao,
+              "assinatura de compatibilidade foi convertida");
+    verificar(fclose(arquivo) == 0, "imagem de compatibilidade foi fechada");
+}
+
 int main(int argc, char **argv) {
     SefErro erro;
     SefRuntime *runtime = sef_runtime_criar(&erro);
@@ -53,6 +63,16 @@ int main(int argc, char **argv) {
     }
 
     verificar_texto(runtime, "(+ 1 2 39)", "42");
+    verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v6.imagem", &erro),
+              "imagem sem vetores foi salva no formato atual");
+    converter_assinatura("teste-sefirah-v6.imagem", 6);
+    SefRuntime *runtime_v6 = sef_runtime_imagem_abrir("teste-sefirah-v6.imagem", &erro);
+    verificar(runtime_v6 != NULL, "leitor atual aceitou imagem v6");
+    if (runtime_v6 != NULL) {
+        verificar_texto(runtime_v6, "(+ 40 2)", "42");
+        sef_runtime_destruir(runtime_v6);
+    }
+    remove("teste-sefirah-v6.imagem");
     verificar_texto(runtime, "(list (<= 1 1 2) (>= 3 2 2) (/= 1 2 3) (/= 1 2 1))", "(T T T NIL)");
     verificar_texto(runtime, "'(a b . c)", "(A B . C)");
     verificar_texto(runtime, "(let ((x 20) (y 22)) (+ x y))", "42");
@@ -70,6 +90,97 @@ int main(int argc, char **argv) {
                     "(fazer-lista 40 41 42)",
                     "(40 41 42)");
     verificar_texto(runtime, "((lambda (x &rest xs) (length xs)) 1 2 3 4)", "3");
+    verificar_texto(runtime, "#()", "#()");
+    verificar_texto(runtime, "#(1 2 (+ 1 2))", "#(1 2 (+ 1 2))");
+    verificar_texto(runtime, "#(#() #(1 2))", "#(#() #(1 2))");
+    verificar_texto(runtime, "(vector 1 (+ 1 1) 'tres)", "#(1 2 TRES)");
+    verificar_texto(runtime,
+                    "(let ((v (make-array 3 :initial-element 7))) "
+                    "(setf (aref v 1) 42) "
+                    "(list v (length v) (aref v 0) (svref v 1) "
+                    "(vectorp v) (arrayp v) (type-of v)))",
+                    "(#(7 42 7) 3 7 42 T T VECTOR)");
+    verificar_texto(runtime,
+                    "(let ((x 1) (p (list 2 3))) "
+                    "(setf x 40 (car p) 41 (cdr p) (list 42)) (list x p))",
+                    "(40 (41 42))");
+    verificar_texto(runtime, "(handler-case (aref #(1 2) 2) (error (c) :limite-detectado))",
+                    ":LIMITE-DETECTADO");
+    SefValor vetor_sdk = avaliar(runtime, "(vector 40 41 42)");
+    verificar(sef_valor_e_vetor(vetor_sdk), "SDK reconheceu vetor");
+    verificar(sef_vetor_tamanho(vetor_sdk) == 3, "SDK informou tamanho do vetor");
+    verificar(sef_valor_como_inteiro(sef_vetor_obter(vetor_sdk, 2)) == 42,
+              "SDK obteve item do vetor");
+    verificar(sef_vetor_definir(vetor_sdk, 1, sef_vetor_obter(vetor_sdk, 2), &erro) &&
+                  sef_valor_como_inteiro(sef_vetor_obter(vetor_sdk, 1)) == 42,
+              "SDK alterou item do vetor");
+    verificar(sef_vetor_obter(vetor_sdk, 3) == NULL, "SDK rejeitou indice fora do vetor");
+    SefValor vetor_criado = sef_vetor_criar(runtime, 2, sef_vetor_obter(vetor_sdk, 2), &erro);
+    verificar(vetor_criado != NULL && sef_vetor_tamanho(vetor_criado) == 2 &&
+                  sef_valor_como_inteiro(sef_vetor_obter(vetor_criado, 0)) == 42,
+              "SDK criou vetor inicializado");
+    verificar_texto(runtime, "(define vetor-v7 #(40 41 42))", "VETOR-V7");
+    verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v7.imagem", &erro),
+              "imagem com vetor foi salva no formato atual");
+    converter_assinatura("teste-sefirah-v7.imagem", 7);
+    SefRuntime *runtime_v7 = sef_runtime_imagem_abrir("teste-sefirah-v7.imagem", &erro);
+    verificar(runtime_v7 != NULL, "leitor atual aceitou imagem v7 com vetor");
+    if (runtime_v7 != NULL) {
+        verificar_texto(runtime_v7, "vetor-v7", "#(40 41 42)");
+        sef_runtime_destruir(runtime_v7);
+    }
+    remove("teste-sefirah-v7.imagem");
+    verificar_texto(runtime, "(list #\\A #\\Space #\\Newline #\\é #\\U+03BB)",
+                    "(#\\A #\\Space #\\Newline #\\é #\\λ)");
+    verificar_texto(runtime,
+                    "(list (characterp #\\é) (stringp \"ação\") "
+                    "(char-code #\\é) (code-char 233) (type-of #\\λ))",
+                    "(T T 233 #\\é CHARACTER)");
+    verificar_texto(runtime,
+                    "(list (char= #\\a #\\a) (char/= #\\a #\\b #\\c) "
+                    "(char< #\\a #\\b #\\c) (char>= #\\c #\\b #\\b) "
+                    "(eql #\\λ #\\λ) (equal \"ação\" \"ação\") "
+                    "(equal '(1 #\\a) '(1 #\\a)))",
+                    "(T T T T T T T)");
+    verificar_texto(runtime,
+                    "(list (length \"ação\") (char \"ação\" 1) "
+                    "(schar \"ação\" 3) (elt '(40 41 42) 2) (elt #(40 41 42) 2))",
+                    "(4 #\\ç #\\o 42 42)");
+    verificar_texto(runtime,
+                    "(let ((s \"abc\") (t2 \"ação\") (nulo \"a\") "
+                    "(v #(1 2 3)) (l (list 1 2 3))) "
+                    "(setf (char s 1) #\\é (char t2 1) #\\X "
+                    "(char nulo 0) #\\Null (elt v 1) 42 (elt l 2) 42) "
+                    "(list s t2 nulo (length nulo) v l))",
+                    "(\"aéc\" \"aXão\" \"\\0\" 1 #(1 42 3) (1 2 42))");
+    verificar_texto(runtime,
+                    "(list (reverse #(1 2 3)) (reverse \"ação\") "
+                    "(reverse '(1 2 3)) (subseq #(0 1 2 3) 1 3) "
+                    "(subseq \"ação\" 1 3) (subseq '(0 1 2 3) 2))",
+                    "(#(3 2 1) \"oãça\" (3 2 1) #(1 2) \"çã\" (2 3))");
+    verificar_texto(runtime,
+                    "(let* ((v #(1 2 3)) (vc (copy-seq v)) "
+                    "(s \"ação\") (sc (copy-seq s)) "
+                    "(l (list 1 2 3)) (lc (copy-seq l))) "
+                    "(setf (aref vc 1) 42 (char sc 1) #\\X (car lc) 42) "
+                    "(list v vc s sc l lc))",
+                    "(#(1 2 3) #(1 42 3) \"ação\" \"aXão\" (1 2 3) (42 2 3))");
+    verificar_texto(runtime,
+                    "(let ((v #(1 2 3 4)) (s \"ação\") (l (list 1 2 3 4))) "
+                    "(fill v 9 :start 1 :end 3) "
+                    "(fill s #\\λ :start 1 :end 3) (fill l 9 :start 2) "
+                    "(list v s l))",
+                    "(#(1 9 9 4) \"aλλo\" (1 2 9 9))");
+    verificar_texto(runtime,
+                    "(handler-case (subseq #(1 2) 2 1) "
+                    "(error (c) :intervalo-detectado))",
+                    ":INTERVALO-DETECTADO");
+    SefValor caractere_sdk = sef_caractere_criar(runtime, 0x03bbu, &erro);
+    verificar(sef_valor_e_caractere(caractere_sdk) &&
+                  sef_caractere_codigo(caractere_sdk) == 0x03bbu,
+              "SDK criou e consultou caractere Unicode");
+    verificar(sef_caractere_criar(runtime, 0xd800u, &erro) == NULL && erro.ocorreu,
+              "SDK rejeitou surrogate Unicode");
     verificar_texto(runtime, "(type-of \"sefirah\")", "STRING");
     verificar_texto(runtime, "(> (sefirah::object-count) 0)", "T");
     verificar_texto(runtime,
@@ -329,8 +440,10 @@ int main(int argc, char **argv) {
 
     verificar_texto(runtime,
                     "(define base-da-imagem 40) "
-                    "(defun usar-imagem (x) (+ base-da-imagem x))",
-                    "USAR-IMAGEM");
+                    "(defun usar-imagem (x) (+ base-da-imagem x)) "
+                    "(define vetor-da-imagem (vector 'persistente 41 42)) "
+                    "(define caractere-da-imagem #\\λ)",
+                    "CARACTERE-DA-IMAGEM");
     verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah.imagem", &erro),
               "imagem foi salva");
     sef_runtime_destruir(runtime);
@@ -338,6 +451,12 @@ int main(int argc, char **argv) {
     verificar(runtime != NULL, "imagem foi reaberta");
     if (runtime != NULL)
         verificar_texto(runtime, "(usar-imagem 2)", "42");
+    if (runtime != NULL)
+        verificar_texto(runtime, "(setf (aref vetor-da-imagem 1) 42) vetor-da-imagem",
+                        "#(PERSISTENTE 42 42)");
+    if (runtime != NULL)
+        verificar_texto(runtime, "(list caractere-da-imagem (char-code caractere-da-imagem))",
+                        "(#\\λ 955)");
     if (runtime != NULL)
         verificar_texto(runtime, "condicao-salva", "#<ERROR persistente>");
     if (runtime != NULL)

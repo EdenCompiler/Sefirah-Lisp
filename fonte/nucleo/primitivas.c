@@ -258,6 +258,244 @@ static SefValor primitiva_list(SefRuntime *runtime, SefValor argumentos, SefErro
     return argumentos;
 }
 
+static SefValor primitiva_vector(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    bool propria = false;
+    size_t tamanho = sef_lista_tamanho(runtime, argumentos, &propria);
+    if (!propria) {
+        sef_erro_definir(erro, 0, 0, "VECTOR recebeu argumentos improprios");
+        return NULL;
+    }
+    SefValor vetor = sef_vetor_novo(runtime, tamanho, runtime->nulo, erro);
+    if (vetor == NULL)
+        return NULL;
+    for (size_t i = 0; i < tamanho; i++) {
+        vetor->como.vetor.itens[i] = car(argumentos);
+        argumentos = cdr(argumentos);
+    }
+    return vetor;
+}
+
+static SefValor primitiva_make_array(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, (size_t)-1, "MAKE-ARRAY", erro))
+        return NULL;
+    SefValor dimensao = car(argumentos);
+    if (dimensao->tipo != SEF_TIPO_INTEIRO || dimensao->como.inteiro < 0 ||
+        (uint64_t)dimensao->como.inteiro > SIZE_MAX) {
+        sef_erro_definir(erro, 0, 0, "MAKE-ARRAY exige uma dimensao inteira nao negativa");
+        return NULL;
+    }
+    SefValor inicial = runtime->nulo;
+    argumentos = cdr(argumentos);
+    while (argumentos != runtime->nulo) {
+        SefValor chave = car(argumentos);
+        argumentos = cdr(argumentos);
+        if (argumentos == runtime->nulo) {
+            sef_erro_definir(erro, 0, 0, "MAKE-ARRAY recebeu uma opcao sem valor");
+            return NULL;
+        }
+        if (!sef_simbolo_tem_nome(chave, "INITIAL-ELEMENT")) {
+            sef_erro_definir(erro, 0, 0, "opcao desconhecida para MAKE-ARRAY");
+            return NULL;
+        }
+        inicial = car(argumentos);
+        argumentos = cdr(argumentos);
+    }
+    return sef_vetor_novo(runtime, (size_t)dimensao->como.inteiro, inicial, erro);
+}
+
+static SefValor acessar_vetor(SefRuntime *runtime, SefValor argumentos, const char *nome,
+                              SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, nome, erro))
+        return NULL;
+    SefValor vetor = car(argumentos);
+    SefValor indice = car(cdr(argumentos));
+    if (vetor->tipo != SEF_TIPO_VETOR) {
+        sef_erro_definir(erro, 0, 0, "%s exige um vetor", nome);
+        return NULL;
+    }
+    if (indice->tipo != SEF_TIPO_INTEIRO || indice->como.inteiro < 0 ||
+        (uint64_t)indice->como.inteiro >= vetor->como.vetor.tamanho) {
+        sef_erro_definir(erro, 0, 0, "indice fora dos limites em %s", nome);
+        return NULL;
+    }
+    return vetor->como.vetor.itens[(size_t)indice->como.inteiro];
+}
+
+static SefValor primitiva_aref(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    return acessar_vetor(runtime, argumentos, "AREF", erro);
+}
+
+static SefValor primitiva_svref(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    return acessar_vetor(runtime, argumentos, "SVREF", erro);
+}
+
+static SefValor primitiva_vectorp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "VECTORP", erro))
+        return NULL;
+    return car(argumentos)->tipo == SEF_TIPO_VETOR ? runtime->verdadeiro : runtime->nulo;
+}
+
+static SefValor primitiva_arrayp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "ARRAYP", erro))
+        return NULL;
+    return car(argumentos)->tipo == SEF_TIPO_VETOR ? runtime->verdadeiro : runtime->nulo;
+}
+
+static bool obter_indice(SefValor valor, const char *nome, size_t *indice, SefErro *erro) {
+    if (valor->tipo != SEF_TIPO_INTEIRO || valor->como.inteiro < 0 ||
+        (uint64_t)valor->como.inteiro > SIZE_MAX) {
+        sef_erro_definir(erro, 0, 0, "%s exige um indice inteiro nao negativo", nome);
+        return false;
+    }
+    *indice = (size_t)valor->como.inteiro;
+    return true;
+}
+
+static SefValor acessar_texto(SefRuntime *runtime, SefValor argumentos, const char *nome,
+                              SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, nome, erro))
+        return NULL;
+    SefValor texto = car(argumentos);
+    size_t indice;
+    if (texto->tipo != SEF_TIPO_TEXTO) {
+        sef_erro_definir(erro, 0, 0, "%s exige uma string", nome);
+        return NULL;
+    }
+    if (!obter_indice(car(cdr(argumentos)), nome, &indice, erro))
+        return NULL;
+    return sef_texto_caractere_obter(runtime, texto, indice, erro);
+}
+
+static SefValor primitiva_char(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    return acessar_texto(runtime, argumentos, "CHAR", erro);
+}
+
+static SefValor primitiva_schar(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    return acessar_texto(runtime, argumentos, "SCHAR", erro);
+}
+
+static SefValor primitiva_elt(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, "ELT", erro))
+        return NULL;
+    SefValor sequencia = car(argumentos);
+    size_t indice;
+    if (!obter_indice(car(cdr(argumentos)), "ELT", &indice, erro))
+        return NULL;
+    if (sequencia->tipo == SEF_TIPO_TEXTO)
+        return sef_texto_caractere_obter(runtime, sequencia, indice, erro);
+    if (sequencia->tipo == SEF_TIPO_VETOR) {
+        if (indice >= sequencia->como.vetor.tamanho) {
+            sef_erro_definir(erro, 0, 0, "indice fora dos limites em ELT");
+            return NULL;
+        }
+        return sequencia->como.vetor.itens[indice];
+    }
+    SefValor cursor = sequencia;
+    for (size_t i = 0; i < indice; i++) {
+        if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
+            sef_erro_definir(erro, 0, 0, "indice fora dos limites ou lista impropria em ELT");
+            return NULL;
+        }
+        cursor = cdr(cursor);
+    }
+    if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
+        sef_erro_definir(erro, 0, 0, "ELT exige uma sequencia e indice valido");
+        return NULL;
+    }
+    return car(cursor);
+}
+
+static SefValor primitiva_characterp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "CHARACTERP", erro))
+        return NULL;
+    return car(argumentos)->tipo == SEF_TIPO_CARACTERE ? runtime->verdadeiro : runtime->nulo;
+}
+
+static SefValor primitiva_stringp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "STRINGP", erro))
+        return NULL;
+    return car(argumentos)->tipo == SEF_TIPO_TEXTO ? runtime->verdadeiro : runtime->nulo;
+}
+
+static SefValor primitiva_char_code(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "CHAR-CODE", erro))
+        return NULL;
+    SefValor caractere = car(argumentos);
+    if (caractere->tipo != SEF_TIPO_CARACTERE) {
+        sef_erro_definir(erro, 0, 0, "CHAR-CODE exige um caractere");
+        return NULL;
+    }
+    return sef_inteiro_novo(runtime, (int64_t)caractere->como.caractere, erro);
+}
+
+static SefValor primitiva_code_char(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "CODE-CHAR", erro))
+        return NULL;
+    SefValor codigo = car(argumentos);
+    if (codigo->tipo != SEF_TIPO_INTEIRO || codigo->como.inteiro < 0 ||
+        codigo->como.inteiro > 0x10ffffll ||
+        (codigo->como.inteiro >= 0xd800ll && codigo->como.inteiro <= 0xdfffll)) {
+        sef_erro_definir(erro, 0, 0, "CODE-CHAR exige um valor escalar Unicode");
+        return NULL;
+    }
+    return sef_caractere_novo(runtime, (uint32_t)codigo->como.inteiro, erro);
+}
+
+typedef bool (*ComparadorCaractere)(uint32_t, uint32_t);
+static bool caractere_menor(uint32_t a, uint32_t b) { return a < b; }
+static bool caractere_maior(uint32_t a, uint32_t b) { return a > b; }
+static bool caractere_menor_igual(uint32_t a, uint32_t b) { return a <= b; }
+static bool caractere_maior_igual(uint32_t a, uint32_t b) { return a >= b; }
+static bool caractere_igual(uint32_t a, uint32_t b) { return a == b; }
+static bool caractere_diferente(uint32_t a, uint32_t b) { return a != b; }
+
+static SefValor comparar_caracteres(SefRuntime *runtime, SefValor argumentos,
+                                    ComparadorCaractere comparador, const char *nome,
+                                    bool todos_pares, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, (size_t)-1, nome, erro))
+        return NULL;
+    for (SefValor cursor = argumentos; cursor != runtime->nulo; cursor = cdr(cursor)) {
+        SefValor atual = car(cursor);
+        if (atual->tipo != SEF_TIPO_CARACTERE) {
+            sef_erro_definir(erro, 0, 0, "%s aceita somente caracteres", nome);
+            return NULL;
+        }
+        SefValor proximos = cdr(cursor);
+        if (!todos_pares && proximos != runtime->nulo) {
+            SefValor proximo = car(proximos);
+            if (proximo->tipo != SEF_TIPO_CARACTERE) {
+                sef_erro_definir(erro, 0, 0, "%s aceita somente caracteres", nome);
+                return NULL;
+            }
+            if (!comparador(atual->como.caractere, proximo->como.caractere))
+                return runtime->nulo;
+        } else if (todos_pares) {
+            for (; proximos != runtime->nulo; proximos = cdr(proximos)) {
+                SefValor proximo = car(proximos);
+                if (proximo->tipo != SEF_TIPO_CARACTERE) {
+                    sef_erro_definir(erro, 0, 0, "%s aceita somente caracteres", nome);
+                    return NULL;
+                }
+                if (!comparador(atual->como.caractere, proximo->como.caractere))
+                    return runtime->nulo;
+            }
+        }
+    }
+    return runtime->verdadeiro;
+}
+
+#define DEFINIR_COMPARADOR_CARACTERE(nome_c, nome_lisp, funcao, pares)                             \
+    static SefValor nome_c(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {              \
+        return comparar_caracteres(runtime, argumentos, funcao, nome_lisp, pares, erro);           \
+    }
+
+DEFINIR_COMPARADOR_CARACTERE(primitiva_char_equal, "CHAR=", caractere_igual, false)
+DEFINIR_COMPARADOR_CARACTERE(primitiva_char_not_equal, "CHAR/=", caractere_diferente, true)
+DEFINIR_COMPARADOR_CARACTERE(primitiva_char_less, "CHAR<", caractere_menor, false)
+DEFINIR_COMPARADOR_CARACTERE(primitiva_char_greater, "CHAR>", caractere_maior, false)
+DEFINIR_COMPARADOR_CARACTERE(primitiva_char_not_greater, "CHAR<=", caractere_menor_igual, false)
+DEFINIR_COMPARADOR_CARACTERE(primitiva_char_not_less, "CHAR>=", caractere_maior_igual, false)
+
 static SefValor primitiva_eq(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 2, 2, "EQ", erro))
         return NULL;
@@ -266,6 +504,48 @@ static SefValor primitiva_eq(SefRuntime *runtime, SefValor argumentos, SefErro *
     bool iguais = a == b || (a->tipo == SEF_TIPO_INTEIRO && b->tipo == SEF_TIPO_INTEIRO &&
                              a->como.inteiro == b->como.inteiro);
     return iguais ? runtime->verdadeiro : runtime->nulo;
+}
+
+static bool valores_eql(SefValor a, SefValor b) {
+    if (a == b)
+        return true;
+    if (a->tipo != b->tipo)
+        return false;
+    if (a->tipo == SEF_TIPO_INTEIRO)
+        return a->como.inteiro == b->como.inteiro;
+    if (a->tipo == SEF_TIPO_REAL)
+        return a->como.real == b->como.real;
+    if (a->tipo == SEF_TIPO_CARACTERE)
+        return a->como.caractere == b->como.caractere;
+    return false;
+}
+
+static bool valores_equal(SefRuntime *runtime, SefValor a, SefValor b, unsigned int profundidade) {
+    if (valores_eql(a, b))
+        return true;
+    if (profundidade > 512 || a->tipo != b->tipo)
+        return false;
+    if (a->tipo == SEF_TIPO_TEXTO)
+        return a->como.texto.tamanho == b->como.texto.tamanho &&
+               memcmp(a->como.texto.dados, b->como.texto.dados, a->como.texto.tamanho) == 0;
+    if (a->tipo == SEF_TIPO_PAR)
+        return valores_equal(runtime, car(a), car(b), profundidade + 1) &&
+               valores_equal(runtime, cdr(a), cdr(b), profundidade + 1);
+    (void)runtime;
+    return false;
+}
+
+static SefValor primitiva_eql(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, "EQL", erro))
+        return NULL;
+    return valores_eql(car(argumentos), car(cdr(argumentos))) ? runtime->verdadeiro : runtime->nulo;
+}
+
+static SefValor primitiva_equal(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, "EQUAL", erro))
+        return NULL;
+    return valores_equal(runtime, car(argumentos), car(cdr(argumentos)), 0) ? runtime->verdadeiro
+                                                                            : runtime->nulo;
 }
 
 static SefValor primitiva_atom(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -285,12 +565,21 @@ static SefValor primitiva_length(SefRuntime *runtime, SefValor argumentos, SefEr
         return NULL;
     SefValor valor = car(argumentos);
     if (valor->tipo == SEF_TIPO_TEXTO) {
-        return sef_inteiro_novo(runtime, (int64_t)valor->como.texto.tamanho, erro);
+        bool valido = false;
+        size_t tamanho =
+            sef_utf8_quantidade(valor->como.texto.dados, valor->como.texto.tamanho, &valido);
+        if (!valido) {
+            sef_erro_definir(erro, 0, 0, "LENGTH recebeu string com UTF-8 invalido");
+            return NULL;
+        }
+        return sef_inteiro_novo(runtime, (int64_t)tamanho, erro);
     }
+    if (valor->tipo == SEF_TIPO_VETOR)
+        return sef_inteiro_novo(runtime, (int64_t)valor->como.vetor.tamanho, erro);
     bool propria = false;
     size_t tamanho = sef_lista_tamanho(runtime, valor, &propria);
     if (!propria) {
-        sef_erro_definir(erro, 0, 0, "LENGTH exige texto ou lista propria");
+        sef_erro_definir(erro, 0, 0, "LENGTH exige texto, vetor ou lista propria");
         return NULL;
     }
     return sef_inteiro_novo(runtime, (int64_t)tamanho, erro);
@@ -576,7 +865,9 @@ static SefValor primitiva_type_of(SefRuntime *runtime, SefValor argumentos, SefE
                                   NULL,
                                   "PACKAGE",
                                   "STREAM",
-                                  "SEFIRAH::SHARED-LIBRARY"};
+                                  "SEFIRAH::SHARED-LIBRARY",
+                                  "VECTOR",
+                                  "CHARACTER"};
     SefValor valor = car(argumentos);
     if (valor->tipo == SEF_TIPO_CONDICAO)
         return valor->como.condicao.classe;
@@ -954,11 +1245,36 @@ static const struct {
                   {"CAR", primitiva_car},
                   {"CDR", primitiva_cdr},
                   {"LIST", primitiva_list},
+                  {"VECTOR", primitiva_vector},
+                  {"MAKE-ARRAY", primitiva_make_array},
+                  {"AREF", primitiva_aref},
+                  {"SVREF", primitiva_svref},
+                  {"VECTORP", primitiva_vectorp},
+                  {"ARRAYP", primitiva_arrayp},
+                  {"CHAR", primitiva_char},
+                  {"SCHAR", primitiva_schar},
+                  {"ELT", primitiva_elt},
+                  {"CHARACTERP", primitiva_characterp},
+                  {"STRINGP", primitiva_stringp},
+                  {"CHAR-CODE", primitiva_char_code},
+                  {"CODE-CHAR", primitiva_code_char},
+                  {"CHAR=", primitiva_char_equal},
+                  {"CHAR/=", primitiva_char_not_equal},
+                  {"CHAR<", primitiva_char_less},
+                  {"CHAR>", primitiva_char_greater},
+                  {"CHAR<=", primitiva_char_not_greater},
+                  {"CHAR>=", primitiva_char_not_less},
                   {"EQ", primitiva_eq},
+                  {"EQL", primitiva_eql},
+                  {"EQUAL", primitiva_equal},
                   {"ATOM", primitiva_atom},
                   {"NOT", primitiva_not},
                   {"NULL", primitiva_not},
                   {"LENGTH", primitiva_length},
+                  {"COPY-SEQ", sef_primitiva_copy_seq},
+                  {"REVERSE", sef_primitiva_reverse},
+                  {"SUBSEQ", sef_primitiva_subseq},
+                  {"FILL", sef_primitiva_fill},
                   {"PRINT", primitiva_print},
                   {"STREAMP", primitiva_streamp},
                   {"OPEN-SHARED-LIBRARY", primitiva_open_shared_library},

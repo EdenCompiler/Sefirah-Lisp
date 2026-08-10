@@ -78,11 +78,18 @@ não significa que o marco inteiro esteja concluído.
 
 ## Marco 2 — Common Lisp hospedado e imagem viva
 
+- [x] Vetores simples no heap, sintaxe `#(...)`, acesso, mutação, GC e
+  persistência.
+- [x] Caracteres Unicode, sintaxe `#\`, strings UTF-8 e protocolo inicial de
+  sequências com `ELT`.
+- [x] Algoritmos iniciais de sequência para listas, vetores e strings:
+  `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL`.
+- [x] Leitura retrocompatível de imagens v6/v7 e emissão do formato v8.
 - [ ] Cobertura ANSI Common Lisp acompanhada por relatório de conformidade.
 - [ ] CLOS e MOP documentada.
 - [ ] Condições e restarts completos integrados ao compilador.
 - [ ] Threads, sincronização e interação segura com GC/FFI.
-- [ ] Migrações de imagem entre versões.
+- [ ] Infraestrutura geral de migrações para versões futuras da imagem.
 - [ ] Recuperação declarativa de recursos externos não serializáveis.
 - [ ] ASDF, Quicklisp e gerenciador Sefirah com lockfile.
 - [ ] Compilador e bibliotecas centrais carregáveis a partir da imagem.

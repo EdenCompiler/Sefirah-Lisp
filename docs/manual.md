@@ -28,14 +28,17 @@ faz parte do formato público.
 
 | Área | Formas e funções principais |
 | --- | --- |
-| valores | inteiros, reais, strings, símbolos, listas próprias e pares |
+| valores | inteiros, reais, caracteres Unicode, strings, símbolos, listas, pares e vetores simples |
 | avaliação | `QUOTE`, `IF`, `PROGN`, `LAMBDA`, `FUNCTION` |
-| bindings | `DEFINE`, `DEFVAR`, `DEFPARAMETER`, `SETQ`, `LET`, `LET*` |
+| bindings | `DEFINE`, `DEFVAR`, `DEFPARAMETER`, `SETQ`, `SETF`, `LET`, `LET*` |
 | funções e macros | `DEFUN`, `DEFMACRO`, `FLET`, `LABELS`, `MACROLET`, `&REST` |
 | composição | `COND`, `WHEN`, `UNLESS`, `AND`, `OR`, quasiquote, `,` e `,@` |
 | controle | `BLOCK`, `RETURN-FROM`, `RETURN`, `CATCH`, `THROW`, `UNWIND-PROTECT` |
 | condições | `ERROR`, `HANDLER-CASE`, `IGNORE-ERRORS` |
 | listas | `CONS`, `CAR`, `CDR`, `LIST`, `LENGTH`, `ATOM`, `NULL` |
+| vetores | `VECTOR`, `MAKE-ARRAY`, `AREF`, `SVREF`, `VECTORP`, `ARRAYP` |
+| caracteres | `CHARACTERP`, `CHAR-CODE`, `CODE-CHAR` e comparadores `CHAR...` |
+| sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | números | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=` e `/=` |
 | funções | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION` |
 | valores | `BOUNDP`, `SYMBOL-VALUE`, `SET`, `EQ`, `NOT`, `TYPE-OF` |
@@ -50,6 +53,87 @@ uma função podem compartilhar o mesmo nome:
 ```
 
 `#'nome` consulta a célula de função.
+
+## Vetores e `SETF`
+
+`#(...)` lê um vetor literal autoavaliável. Assim como em Common Lisp, as
+formas contidas no literal não são avaliadas; `VECTOR` constrói um vetor com
+argumentos avaliados:
+
+```lisp
+#(1 (+ 1 1))          ; => #(1 (+ 1 1))
+(vector 1 (+ 1 1))   ; => #(1 2)
+```
+
+O primeiro modelo de array é simples e unidimensional. `MAKE-ARRAY` recebe uma
+dimensão inteira não negativa e aceita `:INITIAL-ELEMENT`:
+
+```lisp
+(let ((valores (make-array 3 :initial-element 7)))
+  (setf (aref valores 1) 42)
+  (list valores
+        (length valores)
+        (svref valores 1)))
+; => (#(7 42 7) 3 42)
+```
+
+O `SETF` inicial aceita variáveis e os lugares `AREF`, `SVREF`, `CAR` e `CDR`.
+Outros protocolos de lugares generalizados, arrays multidimensionais,
+element-types especializados e vetores ajustáveis permanecem pendentes.
+
+No SDK C, `sef_vetor_criar`, `sef_vetor_tamanho`, `sef_vetor_obter` e
+`sef_vetor_definir` operam sobre o mesmo objeto coletado. Um valor mantido pelo
+hospedeiro entre avaliações deve continuar protegido por `SefRaiz`.
+
+## Caracteres Unicode e strings
+
+`#\A`, `#\Space`, `#\Newline` e `#\λ` produzem objetos `CHARACTER` reais. A
+forma legível `#\U+NNNN` cobre códigos de controle sem nome. `CHAR-CODE` e
+`CODE-CHAR` convertem entre caracteres e valores escalares Unicode; surrogates
+e valores acima de `U+10FFFF` são rejeitados.
+
+Strings permanecem armazenadas em UTF-8, mas `LENGTH`, `CHAR`, `SCHAR` e `ELT`
+contam caracteres, não bytes:
+
+```lisp
+(length "ação")       ; => 4
+(char "ação" 1)       ; => #\ç
+
+(let ((texto "abc"))
+  (setf (char texto 1) #\é)
+  texto)               ; => "aéc"
+```
+
+A atribuição recompõe o UTF-8 quando o novo caractere usa outra quantidade de
+bytes. `ELT` consulta e altera listas, vetores e strings. Os comparadores
+`CHAR=`, `CHAR/=`, `CHAR<`, `CHAR>`, `CHAR<=` e `CHAR>=` usam a ordem dos pontos
+de código; variantes sem distinção de caixa ainda não foram implementadas.
+
+O SDK expõe `sef_caractere_criar`, `sef_valor_e_caractere` e
+`sef_caractere_codigo`.
+
+### Algoritmos de sequência
+
+Listas próprias, vetores e strings compartilham cópia, inversão, recorte e
+preenchimento. As operações não destrutivas mantêm o tipo da entrada:
+
+```lisp
+(reverse #(1 2 3))        ; => #(3 2 1)
+(reverse "ação")          ; => "oãça"
+(subseq '(0 1 2 3) 1 3)  ; => (1 2)
+```
+
+`COPY-SEQ` cria a estrutura externa independente e mantém os elementos. `FILL`
+altera a sequência recebida e aceita `:START` e `:END`; para strings, o item
+precisa ser um caractere:
+
+```lisp
+(let ((valores #(1 2 3 4)))
+  (fill valores 9 :start 1 :end 3)
+  valores) ; => #(1 9 9 4)
+```
+
+Os intervalos usam fim exclusivo e são validados antes da mutação.
 
 ## Compilação nativa inicial
 
@@ -218,10 +302,11 @@ arquivo enquanto valores múltiplos não estiverem disponíveis.
 
 ## Imagem persistente
 
-O formato binário v6 `.imagem` preserva o grafo do heap, símbolos, packages,
-ambientes, funções, macros, condições e recursos restauráveis. A gravação usa
-arquivo temporário e substituição atômica. Primitivas C são restauradas pelo
-nome, nunca pelo endereço.
+O formato binário v8 `.imagem` preserva o grafo do heap, incluindo vetores,
+caracteres, símbolos, packages, ambientes, funções, macros, condições e recursos
+restauráveis. A gravação usa arquivo temporário e substituição atômica.
+Primitivas C são restauradas pelo nome, nunca pelo endereço. O leitor v8 aceita
+imagens v6 e v7; uma nova gravação as atualiza para v8.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
@@ -257,8 +342,8 @@ encaminha teclado, e o editor e o inspetor permanecem demonstrativos.
 ## Leitor e impressão
 
 O leitor converte nomes ASCII para maiúsculas, reconhece comentários iniciados
-por `;`, listas pontuadas, quote, function quote, quasiquote com `,`/`,@` e
-escapes simples em strings.
+por `;`, listas pontuadas, vetores `#(...)`, caracteres `#\`, quote, function
+quote, quasiquote com `,`/`,@` e escapes simples em strings.
 
 Objetos opacos possuem representações legíveis para diagnóstico, como streams,
 funções compiladas, condições e bibliotecas compartilhadas.
@@ -267,6 +352,8 @@ funções compiladas, condições e bibliotecas compartilhadas.
 
 - GC mark-and-sweep somente entre unidades de avaliação;
 - ausência de bignums, racionais, complexos e numeric tower completo;
+- arrays limitados a vetores simples unidimensionais;
+- operações Unicode sem normalização, grapheme clusters ou case folding;
 - divisão sempre produz `FLOAT`;
 - REPL textual com uma linha por interação;
 - condições e restarts ainda incompletos;

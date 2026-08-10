@@ -26,8 +26,8 @@ nativa permanecem no roteiro.
 
 | Subsistema | Estado atual |
 | --- | --- |
-| Linguagem | Subconjunto Common Lisp com funções, macros, packages, controle não local e condições iniciais |
-| Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v6 |
+| Linguagem | Subconjunto Common Lisp com funções, macros, caracteres Unicode, vetores, packages e controle não local |
+| Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v8 |
 | Compilador | IR SSA i64, interpretador de referência, JIT W^X x86-64/AArch64 e objetos relocáveis |
 | FFI | Bibliotecas compartilhadas explícitas e chamadas C i64 com uma ou duas entradas |
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
@@ -44,6 +44,12 @@ nativa permanecem no roteiro.
   Lisp;
 - células separadas de valor e função, macros, quasiquote, packages e controle
   não local com limpeza;
+- vetores simples `#(...)`, arrays unidimensionais, acesso por `AREF`/`SVREF` e
+  mutação básica por `SETF`;
+- objetos `CHARACTER`, literais `#\`, strings UTF-8 indexadas por ponto de
+  código e acesso uniforme por `ELT`;
+- algoritmos `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL` compartilhados por
+  listas, vetores e strings;
 - compilação `DEFUN` → IR SSA → x86-64/AArch64 integrada a `COMPILE`;
 - páginas JIT W^X e suporte às ABIs System V, Microsoft x64 e AAPCS64;
 - geração direta de objetos ELF64, COFF e Mach-O para x86-64 e ARM64;
@@ -98,6 +104,14 @@ Um programa Sefirah comum continua legível como Lisp:
 (fatorial 6) ; => 720
 ```
 
+Vetores são objetos do heap, participam do GC e sobrevivem à imagem viva:
+
+```lisp
+(let ((valores (make-array 3 :initial-element 0)))
+  (setf (aref valores 1) 42)
+  valores) ; => #(0 42 0)
+```
+
 ### Compilação nativa
 
 O subconjunto i64 pode ser instalado no próprio processo ou gravado como
@@ -148,8 +162,9 @@ descarregado quando o objeto e todas as funções compiladas deixam de possuí-l
 ./construir/sefirah imagem abrir desenvolvimento.imagem
 ```
 
-A imagem preserva o grafo Lisp portável, mas não bytes JIT nem handles do
-processo. Streams de arquivo e bibliotecas compartilhadas precisam estar
+A imagem v8 preserva o grafo Lisp portável, inclusive vetores e caracteres,
+mas não bytes JIT nem handles do processo. O leitor continua aceitando imagens
+v6 e v7. Streams de arquivo e bibliotecas compartilhadas precisam estar
 fechados antes da gravação.
 
 ### GUI e IDE

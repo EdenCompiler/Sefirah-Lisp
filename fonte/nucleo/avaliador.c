@@ -281,6 +281,135 @@ static SefValor especial_setq(SefRuntime *runtime, SefValor argumentos, SefValor
     return resultado;
 }
 
+static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor forma_valor,
+                               SefValor ambiente, SefErro *erro) {
+    if (lugar->tipo == SEF_TIPO_SIMBOLO) {
+        SefValor valor = sef_avaliar(runtime, forma_valor, ambiente, erro);
+        if (valor == NULL)
+            return NULL;
+        if (!sef_ambiente_atribuir(ambiente, lugar, valor)) {
+            sef_erro_definir(erro, 0, 0, "simbolo %s nao esta vinculado", lugar->como.simbolo.nome);
+            return NULL;
+        }
+        return valor;
+    }
+    if (lugar == runtime->nulo || lugar->tipo != SEF_TIPO_PAR ||
+        !sef_e_lista_propria(runtime, lugar)) {
+        sef_erro_definir(erro, 0, 0, "lugar invalido em SETF");
+        return NULL;
+    }
+
+    SefValor operador = primeiro(lugar);
+    SefValor argumentos = resto(lugar);
+    if (operador->tipo != SEF_TIPO_SIMBOLO) {
+        sef_erro_definir(erro, 0, 0, "operador de lugar invalido em SETF");
+        return NULL;
+    }
+    bool lugar_aref =
+        sef_simbolo_tem_nome(operador, "AREF") || sef_simbolo_tem_nome(operador, "SVREF");
+    bool lugar_texto =
+        sef_simbolo_tem_nome(operador, "CHAR") || sef_simbolo_tem_nome(operador, "SCHAR");
+    bool lugar_elt = sef_simbolo_tem_nome(operador, "ELT");
+    if (lugar_aref || lugar_texto || lugar_elt) {
+        if (!contar_exato(runtime, argumentos, 2, "lugar indexado de SETF", erro))
+            return NULL;
+        SefValor sequencia = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+        if (sequencia == NULL)
+            return NULL;
+        SefValor indice = sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro);
+        if (indice == NULL)
+            return NULL;
+        SefValor valor = sef_avaliar(runtime, forma_valor, ambiente, erro);
+        if (valor == NULL)
+            return NULL;
+        if (indice->tipo != SEF_TIPO_INTEIRO || indice->como.inteiro < 0 ||
+            (uint64_t)indice->como.inteiro > SIZE_MAX) {
+            sef_erro_definir(erro, 0, 0, "SETF indexado exige indice inteiro nao negativo");
+            return NULL;
+        }
+        size_t posicao = (size_t)indice->como.inteiro;
+        if (lugar_aref && sequencia->tipo != SEF_TIPO_VETOR) {
+            sef_erro_definir(erro, 0, 0, "SETF de AREF exige um vetor");
+            return NULL;
+        }
+        if (lugar_texto && sequencia->tipo != SEF_TIPO_TEXTO) {
+            sef_erro_definir(erro, 0, 0, "SETF de CHAR exige uma string");
+            return NULL;
+        }
+        if ((lugar_aref || (lugar_elt && sequencia->tipo == SEF_TIPO_VETOR)) &&
+            posicao >= sequencia->como.vetor.tamanho) {
+            sef_erro_definir(erro, 0, 0, "indice fora dos limites em SETF de AREF");
+            return NULL;
+        }
+        if (lugar_aref || (lugar_elt && sequencia->tipo == SEF_TIPO_VETOR)) {
+            sequencia->como.vetor.itens[posicao] = valor;
+            return valor;
+        }
+        if (lugar_texto || (lugar_elt && sequencia->tipo == SEF_TIPO_TEXTO))
+            return sef_texto_caractere_definir(runtime, sequencia, posicao, valor, erro) ? valor
+                                                                                         : NULL;
+        if (lugar_elt) {
+            SefValor cursor = sequencia;
+            for (size_t i = 0; i < posicao; i++) {
+                if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
+                    sef_erro_definir(erro, 0, 0,
+                                     "indice fora dos limites ou lista impropria em SETF de ELT");
+                    return NULL;
+                }
+                cursor = resto(cursor);
+            }
+            if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
+                sef_erro_definir(erro, 0, 0, "SETF de ELT exige uma sequencia e indice valido");
+                return NULL;
+            }
+            cursor->como.par.primeiro = valor;
+            return valor;
+        }
+    }
+    if (sef_simbolo_tem_nome(operador, "CAR") || sef_simbolo_tem_nome(operador, "CDR")) {
+        if (!contar_exato(runtime, argumentos, 1, "lugar de lista em SETF", erro))
+            return NULL;
+        SefValor par = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+        if (par == NULL)
+            return NULL;
+        SefValor valor = sef_avaliar(runtime, forma_valor, ambiente, erro);
+        if (valor == NULL)
+            return NULL;
+        if (par->tipo != SEF_TIPO_PAR) {
+            sef_erro_definir(erro, 0, 0, "SETF de CAR ou CDR exige um par");
+            return NULL;
+        }
+        if (sef_simbolo_tem_nome(operador, "CAR"))
+            par->como.par.primeiro = valor;
+        else
+            par->como.par.resto = valor;
+        return valor;
+    }
+    sef_erro_definir(erro, 0, 0, "lugar ainda nao suportado por SETF: %s",
+                     operador->como.simbolo.nome);
+    return NULL;
+}
+
+static SefValor especial_setf(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
+                              SefErro *erro) {
+    bool propria = false;
+    size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
+    if (!propria || quantidade == 0 || quantidade % 2 != 0) {
+        sef_erro_definir(erro, 0, 0, "SETF exige pares de lugar e forma");
+        return NULL;
+    }
+    SefValor resultado = runtime->nulo;
+    while (argumentos != runtime->nulo) {
+        SefValor lugar = primeiro(argumentos);
+        argumentos = resto(argumentos);
+        resultado = atribuir_lugar(runtime, lugar, primeiro(argumentos), ambiente, erro);
+        if (resultado == NULL)
+            return NULL;
+        argumentos = resto(argumentos);
+    }
+    return resultado;
+}
+
 static SefValor especial_let(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                              bool sequencial, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
@@ -873,6 +1002,8 @@ SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, Sef
     case SEF_TIPO_PACOTE:
     case SEF_TIPO_STREAM:
     case SEF_TIPO_BIBLIOTECA:
+    case SEF_TIPO_VETOR:
+    case SEF_TIPO_CARACTERE:
         return forma;
     case SEF_TIPO_SIMBOLO: {
         if (forma == runtime->verdadeiro || forma->como.simbolo.pacote == runtime->pacote_keyword)
@@ -914,6 +1045,8 @@ SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, Sef
             return especial_variavel_global(runtime, argumentos, ambiente, true, erro);
         if (sef_simbolo_tem_nome(operador, "SETQ"))
             return especial_setq(runtime, argumentos, ambiente, erro);
+        if (sef_simbolo_tem_nome(operador, "SETF"))
+            return especial_setf(runtime, argumentos, ambiente, erro);
         if (sef_simbolo_tem_nome(operador, "LET"))
             return especial_let(runtime, argumentos, ambiente, false, erro);
         if (sef_simbolo_tem_nome(operador, "LET*"))

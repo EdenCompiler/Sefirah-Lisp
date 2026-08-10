@@ -15,11 +15,14 @@
 #define SEF_IMAGEM_MAX_TEXTO (64u * 1024u * 1024u)
 #define SEF_ID_INVALIDO UINT32_MAX
 
-static const unsigned char assinatura[8] = {'S', 'E', 'F', 'I', 'M', 'G', 6, 0};
+static const unsigned char assinatura_v6[8] = {'S', 'E', 'F', 'I', 'M', 'G', 6, 0};
+static const unsigned char assinatura_v7[8] = {'S', 'E', 'F', 'I', 'M', 'G', 7, 0};
+static const unsigned char assinatura_v8[8] = {'S', 'E', 'F', 'I', 'M', 'G', 8, 0};
 
 typedef struct RegistroImagem {
     SefTipo tipo;
     int64_t inteiro;
+    uint32_t caractere;
     double real;
     char *texto;
     uint32_t tamanho_texto;
@@ -35,6 +38,8 @@ typedef struct RegistroImagem {
     uint32_t *usados;
     uint32_t quantidade_exportados;
     uint32_t *exportados;
+    uint32_t quantidade_itens_vetor;
+    uint32_t *itens_vetor;
 } RegistroImagem;
 
 static bool escrever_bytes(FILE *arquivo, const void *dados, size_t tamanho, SefErro *erro) {
@@ -266,6 +271,21 @@ static bool escrever_objeto(FILE *arquivo, SefValor objeto, SefValor *objetos, u
             return false;
         }
         return true;
+    case SEF_TIPO_VETOR:
+        if (objeto->como.vetor.tamanho > UINT32_MAX) {
+            sef_erro_definir(erro, 0, 0, "vetor grande demais para imagem");
+            return false;
+        }
+        if (!escrever_u32(arquivo, (uint32_t)objeto->como.vetor.tamanho, erro))
+            return false;
+        for (size_t i = 0; i < objeto->como.vetor.tamanho; i++) {
+            if (!escrever_referencia(arquivo, objetos, quantidade, objeto->como.vetor.itens[i],
+                                     erro))
+                return false;
+        }
+        return true;
+    case SEF_TIPO_CARACTERE:
+        return escrever_u32(arquivo, objeto->como.caractere, erro);
     }
     return false;
 }
@@ -309,7 +329,7 @@ bool sef_runtime_imagem_salvar(SefRuntime *runtime, const char *caminho, SefErro
     }
 
     bool sucesso =
-        escrever_bytes(arquivo, assinatura, sizeof(assinatura), erro) &&
+        escrever_bytes(arquivo, assinatura_v8, sizeof(assinatura_v8), erro) &&
         escrever_u32(arquivo, quantidade, erro) &&
         escrever_u32(arquivo, id_de(objetos, quantidade, runtime->nulo), erro) &&
         escrever_u32(arquivo, id_de(objetos, quantidade, runtime->verdadeiro), erro) &&
@@ -363,14 +383,18 @@ static void registros_liberar(RegistroImagem *registros, uint32_t quantidade) {
         free(registros[i].simbolos_pacote);
         free(registros[i].usados);
         free(registros[i].exportados);
+        free(registros[i].itens_vetor);
     }
     free(registros);
 }
 
-static bool ler_registro(FILE *arquivo, RegistroImagem *registro, SefErro *erro) {
+static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int versao,
+                         SefErro *erro) {
     uint8_t tipo;
     uint64_t bits;
-    if (!ler_u8(arquivo, &tipo, erro) || tipo > SEF_TIPO_BIBLIOTECA) {
+    SefTipo maior_tipo =
+        versao >= 8 ? SEF_TIPO_CARACTERE : (versao >= 7 ? SEF_TIPO_VETOR : SEF_TIPO_BIBLIOTECA);
+    if (!ler_u8(arquivo, &tipo, erro) || tipo > maior_tipo) {
         if (!erro->ocorreu)
             sef_erro_definir(erro, 0, 0, "tipo de objeto invalido na imagem");
         return false;
@@ -493,6 +517,22 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, SefErro *erro)
     }
     case SEF_TIPO_BIBLIOTECA:
         return true;
+    case SEF_TIPO_VETOR:
+        if (!ler_u32(arquivo, &registro->quantidade_itens_vetor, erro) ||
+            registro->quantidade_itens_vetor > SEF_IMAGEM_MAX_OBJETOS)
+            return false;
+        registro->itens_vetor = malloc((size_t)registro->quantidade_itens_vetor * sizeof(uint32_t));
+        if (registro->itens_vetor == NULL && registro->quantidade_itens_vetor > 0) {
+            sef_erro_definir(erro, 0, 0, "memoria insuficiente para vetor da imagem");
+            return false;
+        }
+        for (uint32_t i = 0; i < registro->quantidade_itens_vetor; i++) {
+            if (!ler_u32(arquivo, &registro->itens_vetor[i], erro))
+                return false;
+        }
+        return true;
+    case SEF_TIPO_CARACTERE:
+        return ler_u32(arquivo, &registro->caractere, erro);
     }
     return false;
 }
@@ -500,6 +540,13 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, SefErro *erro)
 static bool id_valido(uint32_t id, uint32_t quantidade) { return id < quantidade; }
 
 static bool validar_registro(const RegistroImagem *registro, uint32_t quantidade, SefErro *erro) {
+    if (registro->tipo == SEF_TIPO_CARACTERE) {
+        uint32_t codigo = registro->caractere;
+        if (codigo > 0x10ffffu || (codigo >= 0xd800u && codigo <= 0xdfffu)) {
+            sef_erro_definir(erro, 0, 0, "caractere invalido na imagem");
+            return false;
+        }
+    }
     uint32_t referencias = 0;
     if (registro->tipo == SEF_TIPO_PAR || registro->tipo == SEF_TIPO_CONDICAO)
         referencias = 2;
@@ -545,6 +592,12 @@ static bool validar_registro(const RegistroImagem *registro, uint32_t quantidade
             return false;
         }
     }
+    for (uint32_t i = 0; i < registro->quantidade_itens_vetor; i++) {
+        if (!id_valido(registro->itens_vetor[i], quantidade)) {
+            sef_erro_definir(erro, 0, 0, "item de vetor invalido na imagem");
+            return false;
+        }
+    }
     return true;
 }
 
@@ -560,11 +613,17 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
     uint32_t quantidade = 0, id_nulo = 0, id_verdadeiro = 0, id_global = 0, total_simbolos = 0;
     uint32_t id_pacote_atual = 0, id_common_lisp = 0, id_keyword = 0, total_pacotes = 0;
     uint32_t id_entrada_padrao = 0, id_saida_padrao = 0, id_erro_padrao = 0;
-    bool sucesso = ler_bytes(arquivo, recebida, sizeof(recebida), erro) &&
-                   memcmp(recebida, assinatura, sizeof(assinatura)) == 0 &&
-                   ler_u32(arquivo, &quantidade, erro) && ler_u32(arquivo, &id_nulo, erro) &&
-                   ler_u32(arquivo, &id_verdadeiro, erro) && ler_u32(arquivo, &id_global, erro) &&
-                   ler_u32(arquivo, &total_simbolos, erro);
+    bool cabecalho_lido = ler_bytes(arquivo, recebida, sizeof(recebida), erro);
+    unsigned int versao = 0;
+    if (cabecalho_lido && memcmp(recebida, assinatura_v6, sizeof(assinatura_v6)) == 0)
+        versao = 6;
+    else if (cabecalho_lido && memcmp(recebida, assinatura_v7, sizeof(assinatura_v7)) == 0)
+        versao = 7;
+    else if (cabecalho_lido && memcmp(recebida, assinatura_v8, sizeof(assinatura_v8)) == 0)
+        versao = 8;
+    bool sucesso = cabecalho_lido && versao != 0 && ler_u32(arquivo, &quantidade, erro) &&
+                   ler_u32(arquivo, &id_nulo, erro) && ler_u32(arquivo, &id_verdadeiro, erro) &&
+                   ler_u32(arquivo, &id_global, erro) && ler_u32(arquivo, &total_simbolos, erro);
     if (sucesso && (quantidade == 0 || quantidade > SEF_IMAGEM_MAX_OBJETOS ||
                     total_simbolos > quantidade || !id_valido(id_nulo, quantidade) ||
                     !id_valido(id_verdadeiro, quantidade) || !id_valido(id_global, quantidade))) {
@@ -611,7 +670,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
     if (!sucesso && !erro->ocorreu)
         sef_erro_definir(erro, 0, 0, "streams padrao invalidos na imagem");
     for (uint32_t i = 0; sucesso && i < quantidade; i++)
-        sucesso = ler_registro(arquivo, &registros[i], erro) &&
+        sucesso = ler_registro(arquivo, &registros[i], versao, erro) &&
                   validar_registro(&registros[i], quantidade, erro);
     fclose(arquivo);
 
@@ -771,6 +830,25 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
         case SEF_TIPO_BIBLIOTECA:
             objeto->como.biblioteca.recurso = NULL;
             objeto->como.biblioteca.fechada = true;
+            break;
+        case SEF_TIPO_VETOR:
+            objeto->como.vetor.tamanho = registro->quantidade_itens_vetor;
+            if (registro->quantidade_itens_vetor > 0) {
+                objeto->como.vetor.itens =
+                    malloc((size_t)registro->quantidade_itens_vetor * sizeof(SefValor));
+                if (objeto->como.vetor.itens == NULL) {
+                    sef_erro_definir(erro, 0, 0, "memoria insuficiente para vetor da imagem");
+                    sucesso = false;
+                    break;
+                }
+                for (uint32_t j = 0; j < registro->quantidade_itens_vetor; j++)
+                    objeto->como.vetor.itens[j] = objetos[registro->itens_vetor[j]];
+                runtime->bytes_aproximados +=
+                    (size_t)registro->quantidade_itens_vetor * sizeof(SefValor);
+            }
+            break;
+        case SEF_TIPO_CARACTERE:
+            objeto->como.caractere = registro->caractere;
             break;
         }
     }

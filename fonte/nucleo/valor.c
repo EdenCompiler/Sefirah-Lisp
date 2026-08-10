@@ -49,6 +49,104 @@ SefValor sef_texto_novo(SefRuntime *runtime, const char *texto, size_t tamanho, 
     return valor;
 }
 
+SefValor sef_texto_caractere_obter(SefRuntime *runtime, SefValor texto, size_t indice,
+                                   SefErro *erro) {
+    if (texto == NULL || texto->tipo != SEF_TIPO_TEXTO) {
+        sef_erro_definir(erro, 0, 0, "acesso de caractere exige uma string");
+        return NULL;
+    }
+    uint32_t codigo;
+    if (!sef_utf8_localizar(texto->como.texto.dados, texto->como.texto.tamanho, indice, NULL, NULL,
+                            &codigo)) {
+        bool valido = false;
+        size_t tamanho =
+            sef_utf8_quantidade(texto->como.texto.dados, texto->como.texto.tamanho, &valido);
+        sef_erro_definir(erro, 0, 0,
+                         valido && indice >= tamanho ? "indice fora dos limites da string"
+                                                     : "string contem UTF-8 invalido");
+        return NULL;
+    }
+    return sef_caractere_novo(runtime, codigo, erro);
+}
+
+bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t indice,
+                                 SefValor caractere, SefErro *erro) {
+    if (texto == NULL || texto->tipo != SEF_TIPO_TEXTO || caractere == NULL ||
+        caractere->tipo != SEF_TIPO_CARACTERE) {
+        sef_erro_definir(erro, 0, 0, "alteracao de string exige string e caractere");
+        return false;
+    }
+    size_t inicio, anterior;
+    if (!sef_utf8_localizar(texto->como.texto.dados, texto->como.texto.tamanho, indice, &inicio,
+                            &anterior, NULL)) {
+        bool valido = false;
+        size_t tamanho =
+            sef_utf8_quantidade(texto->como.texto.dados, texto->como.texto.tamanho, &valido);
+        sef_erro_definir(erro, 0, 0,
+                         valido && indice >= tamanho ? "indice fora dos limites da string"
+                                                     : "string contem UTF-8 invalido");
+        return false;
+    }
+    char novo[4];
+    size_t quantidade_nova = sef_utf8_codificar(caractere->como.caractere, novo);
+    size_t tamanho_novo = texto->como.texto.tamanho - anterior + quantidade_nova;
+    if (quantidade_nova != anterior) {
+        char *novos_dados = malloc(tamanho_novo + 1);
+        if (novos_dados == NULL) {
+            sef_erro_definir(erro, 0, 0, "memoria insuficiente ao alterar string");
+            return false;
+        }
+        memcpy(novos_dados, texto->como.texto.dados, inicio);
+        memcpy(novos_dados + inicio + quantidade_nova, texto->como.texto.dados + inicio + anterior,
+               texto->como.texto.tamanho - inicio - anterior + 1);
+        if (tamanho_novo > texto->como.texto.tamanho)
+            runtime->bytes_aproximados += tamanho_novo - texto->como.texto.tamanho;
+        free(texto->como.texto.dados);
+        texto->como.texto.dados = novos_dados;
+        texto->como.texto.tamanho = tamanho_novo;
+    }
+    memcpy(texto->como.texto.dados + inicio, novo, quantidade_nova);
+    return true;
+}
+
+SefValor sef_vetor_novo(SefRuntime *runtime, size_t tamanho, SefValor inicial, SefErro *erro) {
+    if (runtime == NULL || inicial == NULL) {
+        sef_erro_definir(erro, 0, 0, "runtime ou valor inicial ausente ao criar vetor");
+        return NULL;
+    }
+    if (tamanho > SIZE_MAX / sizeof(SefValor)) {
+        sef_erro_definir(erro, 0, 0, "vetor grande demais");
+        return NULL;
+    }
+    SefValor valor = sef_objeto_novo(runtime, SEF_TIPO_VETOR, erro);
+    if (valor == NULL)
+        return NULL;
+    if (tamanho > 0) {
+        valor->como.vetor.itens = malloc(tamanho * sizeof(SefValor));
+        if (valor->como.vetor.itens == NULL) {
+            sef_erro_definir(erro, 0, 0, "memoria insuficiente ao criar vetor");
+            return NULL;
+        }
+        for (size_t i = 0; i < tamanho; i++)
+            valor->como.vetor.itens[i] = inicial;
+    }
+    valor->como.vetor.tamanho = tamanho;
+    runtime->bytes_aproximados += tamanho * sizeof(SefValor);
+    return valor;
+}
+
+SefValor sef_caractere_novo(SefRuntime *runtime, uint32_t codigo, SefErro *erro) {
+    char codificado[4];
+    if (runtime == NULL || sef_utf8_codificar(codigo, codificado) == 0) {
+        sef_erro_definir(erro, 0, 0, "codigo Unicode invalido ao criar caractere");
+        return NULL;
+    }
+    SefValor valor = sef_objeto_novo(runtime, SEF_TIPO_CARACTERE, erro);
+    if (valor != NULL)
+        valor->como.caractere = codigo;
+    return valor;
+}
+
 static char *copiar_nome_maiusculo(const char *nome, size_t tamanho) {
     char *copia = malloc(tamanho + 1);
     if (copia == NULL)
@@ -435,4 +533,52 @@ long long sef_valor_como_inteiro(SefValor valor) {
 
 bool sef_valor_e_nulo(SefRuntime *runtime, SefValor valor) {
     return runtime != NULL && valor == runtime->nulo;
+}
+
+bool sef_valor_e_vetor(SefValor valor) { return valor != NULL && valor->tipo == SEF_TIPO_VETOR; }
+
+SefValor sef_vetor_criar(SefRuntime *runtime, size_t tamanho, SefValor inicial, SefErro *erro) {
+    sef_erro_limpar(erro);
+    return sef_vetor_novo(runtime, tamanho, inicial, erro);
+}
+
+size_t sef_vetor_tamanho(SefValor vetor) {
+    return sef_valor_e_vetor(vetor) ? vetor->como.vetor.tamanho : 0;
+}
+
+SefValor sef_vetor_obter(SefValor vetor, size_t indice) {
+    if (!sef_valor_e_vetor(vetor) || indice >= vetor->como.vetor.tamanho)
+        return NULL;
+    return vetor->como.vetor.itens[indice];
+}
+
+bool sef_vetor_definir(SefValor vetor, size_t indice, SefValor valor, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (!sef_valor_e_vetor(vetor)) {
+        sef_erro_definir(erro, 0, 0, "valor nao e um vetor");
+        return false;
+    }
+    if (indice >= vetor->como.vetor.tamanho) {
+        sef_erro_definir(erro, 0, 0, "indice fora dos limites do vetor");
+        return false;
+    }
+    if (valor == NULL) {
+        sef_erro_definir(erro, 0, 0, "valor ausente ao alterar vetor");
+        return false;
+    }
+    vetor->como.vetor.itens[indice] = valor;
+    return true;
+}
+
+bool sef_valor_e_caractere(SefValor valor) {
+    return valor != NULL && valor->tipo == SEF_TIPO_CARACTERE;
+}
+
+SefValor sef_caractere_criar(SefRuntime *runtime, uint32_t codigo, SefErro *erro) {
+    sef_erro_limpar(erro);
+    return sef_caractere_novo(runtime, codigo, erro);
+}
+
+uint32_t sef_caractere_codigo(SefValor caractere) {
+    return sef_valor_e_caractere(caractere) ? caractere->como.caractere : 0;
 }

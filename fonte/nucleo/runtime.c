@@ -70,6 +70,10 @@ static void marcar(SefValor valor) {
         for (size_t i = 0; i < valor->como.pacote.quantidade_exportados; i++)
             marcar(valor->como.pacote.exportados[i]);
         break;
+    case SEF_TIPO_VETOR:
+        for (size_t i = 0; i < valor->como.vetor.tamanho; i++)
+            marcar(valor->como.vetor.itens[i]);
+        break;
     case SEF_TIPO_STREAM:
     case SEF_TIPO_BIBLIOTECA:
         break;
@@ -98,6 +102,8 @@ static void objeto_conteudo_liberar(SefValor objeto) {
             sef_biblioteca_recurso_liberar(objeto->como.biblioteca.recurso);
     } else if (objeto->tipo == SEF_TIPO_FUNCAO) {
         sef_funcao_compilada_liberar(objeto->como.funcao.compilada_i64);
+    } else if (objeto->tipo == SEF_TIPO_VETOR) {
+        free(objeto->como.vetor.itens);
     } else if (objeto->tipo == SEF_TIPO_AMBIENTE) {
         SefVinculo *vinculo = objeto->como.ambiente.vinculos;
         while (vinculo != NULL) {
@@ -216,12 +222,13 @@ SefRuntime *sef_runtime_criar(SefErro *erro) {
             goto falhou;
     }
     static const char *formas_common_lisp[] = {
-        "QUOTE",          "QUASIQUOTE",    "IF",           "PROGN",        "LAMBDA", "FUNCTION",
-        "DEFUN",          "DEFMACRO",      "DEFVAR",       "DEFPARAMETER", "SETQ",   "LET",
-        "LET*",           "COND",          "WHEN",         "UNLESS",       "FLET",   "LABELS",
-        "MACROLET",       "BLOCK",         "RETURN-FROM",  "RETURN",       "CATCH",  "THROW",
-        "UNWIND-PROTECT", "IGNORE-ERRORS", "HANDLER-CASE", "AND",          "OR",     "IN-PACKAGE",
-        "DEFPACKAGE"};
+        "QUOTE",          "QUASIQUOTE",    "IF",           "PROGN",  "LAMBDA",
+        "FUNCTION",       "DEFUN",         "DEFMACRO",     "DEFVAR", "DEFPARAMETER",
+        "SETQ",           "SETF",          "LET",          "LET*",   "COND",
+        "WHEN",           "UNLESS",        "FLET",         "LABELS", "MACROLET",
+        "BLOCK",          "RETURN-FROM",   "RETURN",       "CATCH",  "THROW",
+        "UNWIND-PROTECT", "IGNORE-ERRORS", "HANDLER-CASE", "AND",    "OR",
+        "IN-PACKAGE",     "DEFPACKAGE"};
     for (size_t i = 0; i < sizeof(formas_common_lisp) / sizeof(formas_common_lisp[0]); i++) {
         SefValor forma =
             sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, formas_common_lisp[i],

@@ -38,6 +38,14 @@ void sef_raiz_liberar(SefRaiz *raiz);
 bool sef_valor_e_inteiro(SefValor valor);
 long long sef_valor_como_inteiro(SefValor valor);
 bool sef_valor_e_nulo(SefRuntime *runtime, SefValor valor);
+bool sef_valor_e_vetor(SefValor valor);
+SefValor sef_vetor_criar(SefRuntime *runtime, size_t tamanho, SefValor inicial, SefErro *erro);
+size_t sef_vetor_tamanho(SefValor vetor);
+SefValor sef_vetor_obter(SefValor vetor, size_t indice);
+bool sef_vetor_definir(SefValor vetor, size_t indice, SefValor valor, SefErro *erro);
+bool sef_valor_e_caractere(SefValor valor);
+SefValor sef_caractere_criar(SefRuntime *runtime, uint32_t codigo, SefErro *erro);
+uint32_t sef_caractere_codigo(SefValor caractere);
 
 SefFuncaoCompilada *sef_runtime_compilar_funcao_i64(SefRuntime *runtime, const char *nome,
                                                     SefErro *erro);

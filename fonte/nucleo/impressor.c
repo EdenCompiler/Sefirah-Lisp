@@ -56,6 +56,8 @@ static bool imprimir_texto(TextoDinamico *saida, SefValor valor, bool legivel, S
             escape = "\\r";
         else if (caractere == '\t')
             escape = "\\t";
+        else if (caractere == '\0')
+            escape = "\\0";
         else if (caractere == '\\')
             escape = "\\\\";
         else if (caractere == '"')
@@ -91,6 +93,53 @@ static bool imprimir_lista(TextoDinamico *texto, SefRuntime *runtime, SefValor l
         }
     }
     return anexar(texto, ")", erro);
+}
+
+static bool imprimir_vetor(TextoDinamico *texto, SefRuntime *runtime, SefValor vetor, bool legivel,
+                           int profundidade, SefErro *erro) {
+    if (!anexar(texto, "#(", erro))
+        return false;
+    for (size_t i = 0; i < vetor->como.vetor.tamanho; i++) {
+        if ((i > 0 && !anexar(texto, " ", erro)) ||
+            !imprimir_valor(texto, runtime, vetor->como.vetor.itens[i], legivel, profundidade + 1,
+                            erro))
+            return false;
+    }
+    return anexar(texto, ")", erro);
+}
+
+static bool imprimir_caractere(TextoDinamico *texto, uint32_t codigo, bool legivel, SefErro *erro) {
+    char codificado[4];
+    size_t tamanho = sef_utf8_codificar(codigo, codificado);
+    if (tamanho == 0) {
+        sef_erro_definir(erro, 0, 0, "objeto CHARACTER possui codigo Unicode invalido");
+        return false;
+    }
+    if (!legivel)
+        return anexar_n(texto, codificado, tamanho, erro);
+    const char *nome = NULL;
+    if (codigo == ' ')
+        nome = "Space";
+    else if (codigo == '\n')
+        nome = "Newline";
+    else if (codigo == '\t')
+        nome = "Tab";
+    else if (codigo == '\r')
+        nome = "Return";
+    else if (codigo == '\f')
+        nome = "Page";
+    else if (codigo == 0x7fu)
+        nome = "Rubout";
+    else if (codigo == 0)
+        nome = "Null";
+    if (nome != NULL)
+        return anexar(texto, "#\\", erro) && anexar(texto, nome, erro);
+    if (codigo < 0x20u) {
+        char escape[16];
+        snprintf(escape, sizeof(escape), "#\\U+%04X", (unsigned int)codigo);
+        return anexar(texto, escape, erro);
+    }
+    return anexar(texto, "#\\", erro) && anexar_n(texto, codificado, tamanho, erro);
 }
 
 static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor valor, bool legivel,
@@ -164,6 +213,10 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
                anexar(texto, sef_biblioteca_recurso_caminho(valor->como.biblioteca.recurso),
                       erro) &&
                anexar(texto, ">", erro);
+    case SEF_TIPO_VETOR:
+        return imprimir_vetor(texto, runtime, valor, legivel, profundidade, erro);
+    case SEF_TIPO_CARACTERE:
+        return imprimir_caractere(texto, valor->como.caractere, legivel, erro);
     }
     return anexar(texto, "#<DESCONHECIDO>", erro);
 }
