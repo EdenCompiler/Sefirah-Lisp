@@ -172,7 +172,7 @@ fechados antes da gravação.
 ### GUI e IDE
 
 ```bash
-./construir/sefirah ide
+./construir/sefirah_ide
 ```
 
 A composição é rasterizada pelo Sefirah sobre `SefSuperficie`. Painéis,

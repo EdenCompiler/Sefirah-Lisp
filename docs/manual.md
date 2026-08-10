@@ -351,10 +351,10 @@ fechados permanecem objetos fechados.
 
 ## GUI própria
 
-`sefirah ide` abre a composição inicial rasterizada pelo próprio projeto:
+`sefirah_ide` abre a composição inicial rasterizada pelo próprio projeto:
 
 ```bash
-sefirah ide
+sefirah_ide
 ```
 
 A API C17 oferece `SefComponente` para painéis, rótulos, botões e campos;

@@ -1,4 +1,3 @@
-#include "ide.h"
 #include "sefirah/runtime.h"
 
 #include <stdio.h>
@@ -16,7 +15,6 @@ static void uso(FILE *saida) {
           "  compilar-macho <arquivo.lisp> <funcao> <saida.o>\n"
           "  imagem salvar <imagem> <arquivo.lisp>\n"
           "  imagem abrir <imagem> [forma]\n"
-          "  ide                  abre o primeiro ambiente grafico\n"
           "  versao               mostra a versao\n",
           saida);
 }
@@ -50,8 +48,6 @@ int main(int argc, char **argv) {
         uso(stderr);
         return 2;
     }
-    if (strcmp(argv[1], "ide") == 0)
-        return sef_ide_executar();
     if (strcmp(argv[1], "versao") == 0 || strcmp(argv[1], "--version") == 0) {
         puts("Sefirah Lisp 0.0.1 (bootstrap C17)");
         return 0;

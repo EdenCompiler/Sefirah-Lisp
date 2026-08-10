@@ -20,6 +20,13 @@ set(CMAKE_C_EXTENSIONS OFF)
 option(SEFIRAH_AVISOS_COMO_ERROS "Trata avisos do compilador como erros" OFF)
 option(SEFIRAH_CONSTRUIR_TESTES "Constroi os testes automatizados" ON)
 
+if(WIN32 AND CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
+    find_program(SEFIRAH_WINE_EXECUTAVEL wine)
+    if(SEFIRAH_WINE_EXECUTAVEL)
+        set(CMAKE_CROSSCOMPILING_EMULATOR "${SEFIRAH_WINE_EXECUTAVEL}")
+    endif()
+endif()
+
 add_library(sefirah_compilador
     fonte/compilador/aarch64.c
     fonte/compilador/ir.c
@@ -81,10 +88,13 @@ else()
     target_link_libraries(sefirah_plataforma PRIVATE ${X11_LIBRARIES})
 endif()
 
-add_executable(sefirah fonte/cli/principal.c fonte/cli/ide.c)
-target_link_libraries(sefirah PRIVATE sefirah_nucleo sefirah_plataforma)
+add_executable(sefirah fonte/cli/principal.c)
+target_link_libraries(sefirah PRIVATE sefirah_nucleo)
 
-foreach(alvo sefirah_compilador sefirah_nucleo sefirah_graficos sefirah_plataforma sefirah)
+add_executable(sefirah_ide fonte/ide/principal.c fonte/ide/ide.c)
+target_link_libraries(sefirah_ide PRIVATE sefirah_nucleo sefirah_plataforma)
+
+foreach(alvo sefirah_compilador sefirah_nucleo sefirah_graficos sefirah_plataforma sefirah sefirah_ide)
     if(MSVC)
         target_compile_options(${alvo} PRIVATE /W4 /utf-8)
         if(SEFIRAH_AVISOS_COMO_ERROS)
@@ -117,6 +127,9 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     target_link_libraries(teste_compilador PRIVATE sefirah_compilador)
     add_test(NAME compilador COMMAND teste_compilador)
 
+    add_test(NAME cli_sem_ide COMMAND sefirah --help)
+    set_tests_properties(cli_sem_ide PROPERTIES PASS_REGULAR_EXPRESSION "compilar-elf")
+
     add_executable(exemplo_gerar_objeto_externo exemplos/integracao-c/gerar_objeto_externo.c)
     target_link_libraries(exemplo_gerar_objeto_externo PRIVATE sefirah_compilador)
     if(MSVC)
@@ -132,7 +145,7 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     endif()
 endif()
 
-install(TARGETS sefirah sefirah_nucleo sefirah_compilador sefirah_graficos sefirah_plataforma
+install(TARGETS sefirah sefirah_ide sefirah_nucleo sefirah_compilador sefirah_graficos sefirah_plataforma
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

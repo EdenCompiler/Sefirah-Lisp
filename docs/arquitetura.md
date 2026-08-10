@@ -30,7 +30,8 @@ sefirah_compilador
        ▲
        │
 sefirah_nucleo ───────────────┐
-                              ├── sefirah (CLI e IDE)
+                              ├── sefirah (CLI)
+                              └── sefirah_ide (IDE)
 sefirah_graficos ◄── sefirah_plataforma
        ▲                      │
        └──────────────────────┘
@@ -42,7 +43,8 @@ sefirah_graficos ◄── sefirah_plataforma
 | `compilador` | IR, ABIs e formatos de objeto | packages, GUI e IDE |
 | `graficos` | pixels, formas e texto bitmap | X11, Win32 e Cocoa |
 | `plataforma` | janela, apresentação e eventos nativos | avaliação Lisp |
-| `cli` | APIs públicas de runtime, GUI e plataforma | detalhes internos do heap |
+| `cli` | APIs públicas de runtime e comandos textuais | GUI, plataforma e detalhes internos do heap |
+| `ide` | runtime, GUI e plataforma | comandos, parsing e políticas da CLI |
 
 Cada build compila exatamente um backend de janela. O backend macOS permanece
 C puro e confina as chamadas tipadas ao runtime Objective-C dentro do adaptador
