@@ -26,6 +26,11 @@ typedef enum SefMovimentoInspetorIde {
     SEF_INSPETOR_PROXIMO
 } SefMovimentoInspetorIde;
 
+typedef enum SefMovimentoDefinicaoIde {
+    SEF_DEFINICAO_ANTERIOR,
+    SEF_DEFINICAO_PROXIMA
+} SefMovimentoDefinicaoIde;
+
 SefSessaoIde *sef_sessao_ide_criar(SefErro *erro);
 void sef_sessao_ide_destruir(SefSessaoIde *sessao);
 
@@ -33,6 +38,7 @@ const char *sef_sessao_ide_editor(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_ouvinte(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_transcricao(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_inspetor(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_navegador(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao);
 size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao);
@@ -53,8 +59,13 @@ bool sef_sessao_ide_ouvinte_mover_historico(SefSessaoIde *sessao,
 
 bool sef_sessao_ide_executar_editor(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_executar_forma_no_cursor(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_executar_alteracoes(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao,
+                                      SefMovimentoDefinicaoIde movimento, SefErro *erro);
 bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde movimento,
                                    SefErro *erro);
+bool sef_sessao_ide_imagem_salvar(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_imagem_restaurar(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 

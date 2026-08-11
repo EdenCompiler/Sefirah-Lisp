@@ -1,6 +1,9 @@
 #include "apoio.h"
 
 #include <ctype.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static bool delimitador(unsigned char caractere) {
@@ -142,3 +145,174 @@ bool sef_ide_forma_no_cursor(const char *codigo, size_t cursor, size_t *inicio, 
     *fim = fim_anterior;
     return true;
 }
+
+static uint64_t assinar_trecho(const char *codigo, size_t inicio, size_t fim) {
+    uint64_t assinatura = UINT64_C(1469598103934665603);
+    for (size_t i = inicio; i < fim; i++) {
+        assinatura ^= (unsigned char)codigo[i];
+        assinatura *= UINT64_C(1099511628211);
+    }
+    assinatura ^= (uint64_t)(fim - inicio);
+    return assinatura;
+}
+
+static bool atomos_iguais_ascii(const char *codigo, size_t inicio, size_t fim,
+                                const char *esperado) {
+    size_t tamanho = fim - inicio;
+    if (strlen(esperado) != tamanho)
+        return false;
+    for (size_t i = 0; i < tamanho; i++) {
+        unsigned char caractere = (unsigned char)codigo[inicio + i];
+        if ((unsigned char)toupper(caractere) != (unsigned char)esperado[i])
+            return false;
+    }
+    return true;
+}
+
+static bool ler_atomo(const char *codigo, size_t limite, size_t *posicao, size_t *inicio,
+                      size_t *fim) {
+    ignorar_espaco(codigo, limite, posicao);
+    if (*posicao >= limite || codigo[*posicao] == '(' || codigo[*posicao] == ')' ||
+        codigo[*posicao] == '"')
+        return false;
+    *inicio = *posicao;
+    bool entre_barras = false;
+    bool escape = false;
+    while (*posicao < limite) {
+        unsigned char caractere = (unsigned char)codigo[*posicao];
+        if (escape) {
+            escape = false;
+            (*posicao)++;
+        } else if (caractere == '\\') {
+            escape = true;
+            (*posicao)++;
+        } else if (caractere == '|') {
+            entre_barras = !entre_barras;
+            (*posicao)++;
+        } else if (!entre_barras && delimitador(caractere)) {
+            break;
+        } else {
+            (*posicao)++;
+        }
+    }
+    *fim = *posicao;
+    return *fim > *inicio && !entre_barras && !escape;
+}
+
+static void copiar_atomo(char *destino, size_t capacidade, const char *codigo, size_t inicio,
+                         size_t fim) {
+    if (capacidade == 0)
+        return;
+    size_t tamanho = fim - inicio;
+    if (tamanho >= capacidade)
+        tamanho = capacidade - 1;
+    memcpy(destino, codigo + inicio, tamanho);
+    destino[tamanho] = '\0';
+}
+
+static void classificar_forma(const char *codigo, SefFormaEstruturalIde *forma) {
+    size_t posicao = forma->inicio;
+    ignorar_espaco(codigo, forma->fim, &posicao);
+    if (posicao >= forma->fim || codigo[posicao] != '(')
+        return;
+    posicao++;
+    size_t inicio_operador = 0;
+    size_t fim_operador = 0;
+    size_t inicio_nome = 0;
+    size_t fim_nome = 0;
+    if (!ler_atomo(codigo, forma->fim, &posicao, &inicio_operador, &fim_operador) ||
+        !ler_atomo(codigo, forma->fim, &posicao, &inicio_nome, &fim_nome))
+        return;
+
+    const char *categoria = NULL;
+    if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFUN"))
+        categoria = "FUNCAO";
+    else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFMACRO"))
+        categoria = "MACRO";
+    else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFVAR"))
+        categoria = "VARIAVEL";
+    else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFPARAMETER"))
+        categoria = "PARAMETRO";
+    else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFCONSTANT"))
+        categoria = "CONSTANTE";
+    else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFPACKAGE"))
+        categoria = "PACOTE";
+    else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFINE"))
+        categoria = "VALOR";
+    if (categoria == NULL)
+        return;
+
+    forma->definicao = true;
+    forma->inicio_nome = inicio_nome;
+    snprintf(forma->categoria, sizeof(forma->categoria), "%s", categoria);
+    copiar_atomo(forma->nome, sizeof(forma->nome), codigo, inicio_nome, fim_nome);
+}
+
+bool sef_ide_catalogar_formas(const char *codigo, SefFormaEstruturalIde **formas,
+                              size_t *quantidade, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (codigo == NULL || formas == NULL || quantidade == NULL) {
+        sef_erro_definir(erro, 0, 0, "argumento ausente ao catalogar formas da IDE");
+        return false;
+    }
+    *formas = NULL;
+    *quantidade = 0;
+    size_t capacidade = 0;
+    size_t tamanho = strlen(codigo);
+    size_t posicao = 0;
+    size_t linha = 1;
+    while (posicao < tamanho) {
+        size_t antes_espaco = posicao;
+        ignorar_espaco(codigo, tamanho, &posicao);
+        for (size_t i = antes_espaco; i < posicao; i++)
+            if (codigo[i] == '\n')
+                linha++;
+        if (posicao >= tamanho)
+            break;
+        size_t inicio = posicao;
+        size_t linha_forma = linha;
+        if (!analisar_forma(codigo, tamanho, &posicao)) {
+            free(*formas);
+            *formas = NULL;
+            *quantidade = 0;
+            sef_erro_definir(erro, linha_forma, 1, "forma Lisp incompleta no catalogo da IDE");
+            return false;
+        }
+        if (*quantidade == capacidade) {
+            size_t nova_capacidade = capacidade == 0 ? 16 : capacidade * 2;
+            if (nova_capacidade < capacidade ||
+                nova_capacidade > SIZE_MAX / sizeof(**formas)) {
+                free(*formas);
+                *formas = NULL;
+                *quantidade = 0;
+                sef_erro_definir(erro, 0, 0, "catalogo estrutural da IDE excedeu o limite");
+                return false;
+            }
+            SefFormaEstruturalIde *novas =
+                realloc(*formas, nova_capacidade * sizeof(**formas));
+            if (novas == NULL) {
+                free(*formas);
+                *formas = NULL;
+                *quantidade = 0;
+                sef_erro_definir(erro, 0, 0, "memoria insuficiente para catalogo da IDE");
+                return false;
+            }
+            *formas = novas;
+            capacidade = nova_capacidade;
+        }
+        SefFormaEstruturalIde *forma = &(*formas)[(*quantidade)++];
+        memset(forma, 0, sizeof(*forma));
+        forma->inicio = inicio;
+        forma->fim = posicao;
+        forma->linha = linha_forma;
+        forma->inicio_nome = inicio;
+        forma->assinatura = assinar_trecho(codigo, inicio, posicao);
+        classificar_forma(codigo, forma);
+        for (size_t i = inicio; i < posicao; i++)
+            if (codigo[i] == '\n')
+                linha++;
+    }
+    return true;
+}
+
+void sef_ide_catalogo_liberar(SefFormaEstruturalIde *formas) { free(formas); }

@@ -45,11 +45,13 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
         DestroyWindow(janela);
         return 0;
     } else if (mensagem == WM_KEYDOWN && estado != NULL && estado->ao_evento != NULL &&
-               (wparam == VK_F5 || wparam == VK_F6 ||
+               (wparam == VK_F5 || wparam == VK_F6 || wparam == VK_F7 || wparam == VK_F8 ||
+                wparam == VK_F9 || wparam == VK_F10 ||
                 ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
                  (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'Z' ||
                   wparam == 'Y')))) {
         SefEventoJanela evento = {0};
+        evento.modificador_shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         if (wparam == 'S')
             evento.tipo = SEF_EVENTO_SALVAR;
         else if (wparam == 'O')
@@ -60,6 +62,14 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
             evento.tipo = SEF_EVENTO_REFAZER;
         else if (wparam == VK_F6)
             evento.tipo = SEF_EVENTO_EXECUTAR_FORMA;
+        else if (wparam == VK_F7)
+            evento.tipo = SEF_EVENTO_EXECUTAR_ALTERACOES;
+        else if (wparam == VK_F8)
+            evento.tipo = SEF_EVENTO_NAVEGAR_DEFINICAO;
+        else if (wparam == VK_F9)
+            evento.tipo = SEF_EVENTO_SALVAR_IMAGEM;
+        else if (wparam == VK_F10)
+            evento.tipo = SEF_EVENTO_RESTAURAR_IMAGEM;
         else
             evento.tipo = SEF_EVENTO_EXECUTAR;
         if (estado->ao_evento(&evento, estado->dados))

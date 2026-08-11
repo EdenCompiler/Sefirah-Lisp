@@ -27,6 +27,26 @@ int main(void) {
               "transcricao recebeu o resultado do editor");
     verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 42") != NULL,
               "inspetor acompanhou o valor avaliado");
+    verificar(sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_PROXIMA, &erro) &&
+                  strstr(sef_sessao_ide_navegador(sessao), "DEFINICOES: 1") != NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "FUNCAO     resposta") != NULL &&
+                  sef_sessao_ide_cursor_editor(sessao) == strlen("(defun "),
+              "navegador catalogou e visitou uma definicao estrutural");
+    verificar(sef_sessao_ide_editor_definir(
+                  sessao,
+                  "; (defun falsa ())\n(defun primeira () 1)\n(defmacro segunda (x) x)",
+                  &erro) &&
+                  sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_PROXIMA, &erro) &&
+                  strstr(sef_sessao_ide_navegador(sessao), "DEFINICOES: 2") != NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "L2  FUNCAO     primeira") != NULL &&
+                  sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_PROXIMA, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Definicao: segunda") != NULL &&
+                  sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_ANTERIOR, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Definicao: primeira") != NULL,
+              "navegador ignorou comentarios e percorreu definicoes nos dois sentidos");
+    verificar(sef_sessao_ide_editor_definir(
+                  sessao, "(defun resposta (x)\n  (+ x 2))\n(resposta 40)\n", &erro),
+              "editor voltou ao fim depois da navegacao estrutural");
 
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(let ((x 40))", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro),
@@ -113,6 +133,57 @@ int main(void) {
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro) &&
                   strstr(sef_sessao_ide_inspetor(sessao), "VALOR: |Nome com espaço|") != NULL,
               "avaliacao estrutural aceitou simbolo escapado com espacos");
+
+    verificar(sef_sessao_ide_editor_definir(
+                  sessao, "(define valor-incremental 40)\n(+ valor-incremental 2)", &erro) &&
+                  sef_sessao_ide_executar_editor(sessao, &erro) &&
+                  sef_sessao_ide_executar_alteracoes(sessao, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Nenhuma forma alterada") != NULL,
+              "avaliacao incremental ignorou formas ja instaladas no mundo");
+    verificar(sef_sessao_ide_editor_definir(
+                  sessao, "(define valor-incremental 41)\n(+ valor-incremental 2)", &erro) &&
+                  sef_sessao_ide_executar_alteracoes(sessao, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao), "1 forma(s)") != NULL &&
+                  sef_sessao_ide_ouvinte_inserir(sessao, "valor-incremental", &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_transcricao(sessao), "\n41\n") != NULL,
+              "avaliacao incremental reinstalou somente a forma modificada");
+    verificar(sef_sessao_ide_editor_definir(
+                  sessao, "(define contador-incremental 0)\n"
+                           "(set 'contador-incremental (+ contador-incremental 1))",
+                  &erro) &&
+                  sef_sessao_ide_executar_editor(sessao, &erro) &&
+                  sef_sessao_ide_editor_definir(
+                      sessao, "(define contador-incremental 0)\n"
+                               "(set 'contador-incremental (+ contador-incremental 1))\n"
+                               "(set 'contador-incremental (+ contador-incremental 1))",
+                      &erro) &&
+                  sef_sessao_ide_executar_alteracoes(sessao, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao), "1 forma(s)") != NULL &&
+                  sef_sessao_ide_ouvinte_inserir(sessao, "contador-incremental", &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_transcricao(sessao), "\n2\n") != NULL,
+              "avaliacao incremental distinguiu ocorrencias de formas identicas");
+
+    verificar(sef_sessao_ide_editor_definir(sessao, "(define estado-do-mundo 40)", &erro) &&
+                  sef_sessao_ide_salvar(sessao, "teste-mundo.lisp", &erro) &&
+                  sef_sessao_ide_executar_editor(sessao, &erro) &&
+                  sef_sessao_ide_imagem_salvar(sessao, &erro) &&
+                  sef_sessao_ide_ouvinte_inserir(sessao, "(set 'estado-do-mundo 99)", &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  sef_sessao_ide_imagem_restaurar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "MUNDO RESTAURADO") != NULL &&
+                  sef_sessao_ide_ouvinte_inserir(sessao, "estado-do-mundo", &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_transcricao(sessao), "\n40\n") != NULL,
+              "IDE salvou e restaurou um snapshot do mundo Lisp");
+    remove("teste-mundo.imagem");
+    verificar(!sef_sessao_ide_imagem_restaurar(sessao, &erro) && erro.ocorreu &&
+                  sef_sessao_ide_ouvinte_inserir(sessao, "(+ estado-do-mundo 2)", &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_transcricao(sessao), "\n42\n") != NULL,
+              "falha ao restaurar preservou o mundo Lisp ativo");
+    remove("teste-mundo.lisp");
 
     sef_sessao_ide_destruir(sessao);
     if (falhas == 0)

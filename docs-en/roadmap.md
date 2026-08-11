@@ -139,11 +139,13 @@ not mean the entire milestone is complete.
 - [x] UTF-8-aware cursor movement and insertion in the text editor.
 - [x] Top-level form evaluation at the cursor and navigable listener events.
 - [x] Bounded linear undo/redo and a GC-rooted multiple-value inspector.
+- [x] Named-definition browser and incremental evaluation of changed top-level forms.
+- [x] Save and restore the live Lisp world from the IDE.
 - [ ] Selection and structural editing.
 - [ ] General object inspector and code browser.
 - [ ] Debugger, profiler, and condition/restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
-- [ ] Git integration, autosave, and session restoration.
+- [ ] Git integration, autosave, and full desktop-session restoration.
 - [ ] IDE recompiles the compiler and itself.
 
 ### Distribution

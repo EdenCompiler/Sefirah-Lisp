@@ -58,11 +58,20 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                 else if (ao_evento != NULL) {
                     SefEventoJanela evento_sefirah = {0};
                     bool controle = (evento.xkey.state & ControlMask) != 0;
+                    evento_sefirah.modificador_shift = (evento.xkey.state & ShiftMask) != 0;
                     if (tecla == XK_F5 ||
                         (controle && (tecla == XK_Return || tecla == XK_KP_Enter))) {
                         evento_sefirah.tipo = SEF_EVENTO_EXECUTAR;
                     } else if (tecla == XK_F6) {
                         evento_sefirah.tipo = SEF_EVENTO_EXECUTAR_FORMA;
+                    } else if (tecla == XK_F7) {
+                        evento_sefirah.tipo = SEF_EVENTO_EXECUTAR_ALTERACOES;
+                    } else if (tecla == XK_F8) {
+                        evento_sefirah.tipo = SEF_EVENTO_NAVEGAR_DEFINICAO;
+                    } else if (tecla == XK_F9) {
+                        evento_sefirah.tipo = SEF_EVENTO_SALVAR_IMAGEM;
+                    } else if (tecla == XK_F10) {
+                        evento_sefirah.tipo = SEF_EVENTO_RESTAURAR_IMAGEM;
                     } else if (controle && (tecla == XK_z || tecla == XK_Z)) {
                         evento_sefirah.tipo = SEF_EVENTO_DESFAZER;
                     } else if (controle && (tecla == XK_y || tecla == XK_Y)) {
@@ -89,7 +98,6 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                         evento_sefirah.tipo = SEF_EVENTO_APAGAR;
                     } else if (tecla == XK_Tab || tecla == XK_ISO_Left_Tab) {
                         evento_sefirah.tipo = SEF_EVENTO_TAB;
-                        evento_sefirah.modificador_shift = (evento.xkey.state & ShiftMask) != 0;
                     } else if (tamanho > 0) {
                         evento_sefirah.tipo = SEF_EVENTO_TEXTO;
                         memcpy(evento_sefirah.texto_utf8, texto, (size_t)tamanho);

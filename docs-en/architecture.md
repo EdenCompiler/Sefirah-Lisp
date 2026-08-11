@@ -81,16 +81,19 @@ and graphical listener, preventing their multiline behavior from diverging.
 ## IDE session
 
 `sefirah_ide_nucleo` owns the editable buffer, listener input, transcript,
-inspector, current path, and runtime. It can execute, load, and save without a
-window, which makes behavior testable on CI. `sefirah_ide` only lays out the
-panels, draws the state, and translates X11/Win32/Cocoa events into session
-actions.
+inspector, definition browser, incremental-installation history, current path,
+and runtime. It can execute, load, save, snapshot, and restore without a window,
+which makes behavior testable on CI. `sefirah_ide` only lays out the panels,
+draws the state, and translates X11/Win32/Cocoa events into session actions.
 
 Inside the session engine, `historico.c` owns the bounded editor timeline and
-listener event history, while `estrutura.c` locates a complete top-level Lisp
-form around the cursor. The inspector retains returned objects through public
-GC roots; presentation code sees only formatted session state and never reaches
-into runtime internals.
+listener event history, while `estrutura.c` locates complete top-level Lisp
+forms, fingerprints them for incremental evaluation, and catalogs named
+definitions without evaluating source. The inspector retains returned objects
+through public GC roots. World restoration opens the replacement image before
+releasing those roots and the old runtime, so a damaged or absent snapshot does
+not destroy the active world. Presentation code sees only formatted session
+state and never reaches into runtime internals.
 
 ## Compiler flow
 

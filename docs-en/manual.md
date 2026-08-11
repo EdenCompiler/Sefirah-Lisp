@@ -397,7 +397,8 @@ and prints every returned value. `:ajuda` lists commands and `:sair` exits.
 The graphical IDE is split into a platform-independent session engine and a
 window presentation. It provides an editable `.lisp` buffer, multiline
 listener, persistent transcript, result inspector, whole-buffer evaluation,
-structural form evaluation, linear undo/redo, and file load/save:
+structural and incremental evaluation, definition navigation, live-world
+snapshots, linear undo/redo, and file load/save:
 
 ```bash
 sefirah_ide
@@ -408,11 +409,23 @@ Tab or a pointer click switches between editor and listener. Enter inserts a
 line in the editor and submits a complete form in the listener. F5 or
 Ctrl+Enter runs the whole buffer; F6 finds and runs only the complete top-level
 form at the cursor. Ctrl+Z and Ctrl+Y traverse the editor's bounded linear
-timeline. Ctrl+S saves and Ctrl+O reloads the current path. Arrow, Home, and End
+timeline. F7 evaluates only top-level forms whose contents changed since their
+last successful evaluation. F8 visits the next named definition and Shift+F8
+the previous one; the browser recognizes functions, macros, variables,
+parameters, constants, packages, and `DEFINE` forms while ignoring comments and
+strings. Ctrl+S saves and Ctrl+O reloads the current path. Arrow, Home, and End
 move the UTF-8-aware editor cursor. In the listener, Up and Down recover up to
 128 submitted events, including multiline forms.
 
-The inspector roots every value from the latest evaluation in the garbage
+F9 writes the current Lisp world to an `.imagem` file beside the current source;
+F10 replaces the active runtime with that snapshot while preserving the editor,
+listener history, and transcript. A failed restore leaves the active world
+untouched. Process-local resources such as open streams and shared libraries
+retain the image-format restrictions described above. This is a world snapshot,
+not yet a complete desktop-session restoration facility.
+
+The right-hand tools contain the definition browser and inspector. The inspector
+roots every value from the latest evaluation in the garbage
 collector, shows its type and readable representation, and exposes the whole
 multiple-value result as a live object shelf. Click the inspector to select the
 next object. The session engine, histories, structural scanner, and inspector
@@ -421,9 +434,10 @@ the shortcuts.
 
 These facilities deliberately recover a small, practical part of the Lisp
 machine workflow: Interlisp's Programmer's Assistant kept replayable events and
-its editors operated on Lisp structure, while Genera connected its Listener and
-Inspector to the same live world. Sefirah keeps those ideas behind a portable
-session API instead of coupling them to a window backend. See the
+its editors operated on Lisp structure, while Genera connected source
+navigation, its Listener, Inspector, and saved worlds to the same live system.
+Sefirah keeps those ideas behind a portable session API instead of coupling
+them to a window backend. See the
 [Interlisp timeline](https://interlisp.org/history/timeline/) and the
 [Genera User's Guide](https://www.bitsavers.org/pdf/symbolics/software/genera_8/Genera_User_s_Guide.pdf)
 for the historical systems that motivate this direction.

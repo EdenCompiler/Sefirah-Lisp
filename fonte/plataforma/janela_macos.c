@@ -138,6 +138,7 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
     unsigned long modificadores = ENVIAR0(unsigned long, evento_nativo, "modifierFlags");
     bool comando = (modificadores & (MODIFICADOR_COMMAND_MAC | MODIFICADOR_CONTROL_MAC)) != 0;
     SefEventoJanela evento = {0};
+    evento.modificador_shift = (modificadores & MODIFICADOR_SHIFT_MAC) != 0;
     bool reconhecido = true;
 
     if (codigo == 53) {
@@ -148,13 +149,20 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
         evento.tipo = SEF_EVENTO_EXECUTAR;
     } else if (codigo == 97) {
         evento.tipo = SEF_EVENTO_EXECUTAR_FORMA;
+    } else if (codigo == 98) {
+        evento.tipo = SEF_EVENTO_EXECUTAR_ALTERACOES;
+    } else if (codigo == 100) {
+        evento.tipo = SEF_EVENTO_NAVEGAR_DEFINICAO;
+    } else if (codigo == 101) {
+        evento.tipo = SEF_EVENTO_SALVAR_IMAGEM;
+    } else if (codigo == 109) {
+        evento.tipo = SEF_EVENTO_RESTAURAR_IMAGEM;
     } else if (codigo == 36 || codigo == 76) {
         evento.tipo = SEF_EVENTO_ENTER;
     } else if (codigo == 51) {
         evento.tipo = SEF_EVENTO_APAGAR;
     } else if (codigo == 48) {
         evento.tipo = SEF_EVENTO_TAB;
-        evento.modificador_shift = (modificadores & MODIFICADOR_SHIFT_MAC) != 0;
     } else if (codigo == 123) {
         evento.tipo = SEF_EVENTO_CURSOR_ESQUERDA;
     } else if (codigo == 124) {

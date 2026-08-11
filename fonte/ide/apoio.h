@@ -4,6 +4,7 @@
 #include "sefirah/runtime.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stddef.h>
 
 typedef struct SefHistoricoTextoIde SefHistoricoTextoIde;
@@ -28,5 +29,20 @@ bool sef_historico_editor_refazer(SefHistoricoEditorIde *historico, const char *
                                   size_t *cursor);
 
 bool sef_ide_forma_no_cursor(const char *codigo, size_t cursor, size_t *inicio, size_t *fim);
+
+typedef struct SefFormaEstruturalIde {
+    size_t inicio;
+    size_t fim;
+    size_t linha;
+    size_t inicio_nome;
+    uint64_t assinatura;
+    bool definicao;
+    char categoria[20];
+    char nome[96];
+} SefFormaEstruturalIde;
+
+bool sef_ide_catalogar_formas(const char *codigo, SefFormaEstruturalIde **formas,
+                              size_t *quantidade, SefErro *erro);
+void sef_ide_catalogo_liberar(SefFormaEstruturalIde *formas);
 
 #endif
