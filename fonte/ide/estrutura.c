@@ -244,6 +244,7 @@ static void classificar_forma(const char *codigo, SefFormaEstruturalIde *forma) 
 
     forma->definicao = true;
     forma->inicio_nome = inicio_nome;
+    forma->fim_nome = fim_nome;
     snprintf(forma->categoria, sizeof(forma->categoria), "%s", categoria);
     copiar_atomo(forma->nome, sizeof(forma->nome), codigo, inicio_nome, fim_nome);
 }
@@ -316,3 +317,172 @@ bool sef_ide_catalogar_formas(const char *codigo, SefFormaEstruturalIde **formas
 }
 
 void sef_ide_catalogo_liberar(SefFormaEstruturalIde *formas) { free(formas); }
+
+static bool proximo_atomo(const char *codigo, size_t tamanho, size_t *posicao, size_t *inicio,
+                          size_t *fim) {
+    while (*posicao < tamanho) {
+        ignorar_espaco(codigo, tamanho, posicao);
+        if (*posicao >= tamanho)
+            return false;
+        unsigned char caractere = (unsigned char)codigo[*posicao];
+        if (caractere == '(' || caractere == ')' || caractere == '\'' || caractere == '`') {
+            (*posicao)++;
+            continue;
+        }
+        if (caractere == ',') {
+            (*posicao)++;
+            if (*posicao < tamanho && codigo[*posicao] == '@')
+                (*posicao)++;
+            continue;
+        }
+        if (caractere == '"') {
+            bool escape = false;
+            (*posicao)++;
+            while (*posicao < tamanho) {
+                unsigned char atual = (unsigned char)codigo[(*posicao)++];
+                if (escape)
+                    escape = false;
+                else if (atual == '\\')
+                    escape = true;
+                else if (atual == '"')
+                    break;
+            }
+            continue;
+        }
+        if (caractere == '#' && *posicao + 1 < tamanho &&
+            (codigo[*posicao + 1] == '(' || codigo[*posicao + 1] == '\'')) {
+            *posicao += 2;
+            continue;
+        }
+        if (caractere == '#' && *posicao + 1 < tamanho && codigo[*posicao + 1] == '\\') {
+            *posicao += 2;
+            if (*posicao < tamanho && delimitador((unsigned char)codigo[*posicao]))
+                (*posicao)++;
+            else
+                while (*posicao < tamanho && !delimitador((unsigned char)codigo[*posicao]))
+                    (*posicao)++;
+            continue;
+        }
+        if (ler_atomo(codigo, tamanho, posicao, inicio, fim))
+            return true;
+        (*posicao)++;
+    }
+    return false;
+}
+
+bool sef_ide_atomo_no_cursor(const char *codigo, size_t cursor, size_t *inicio, size_t *fim) {
+    if (codigo == NULL || inicio == NULL || fim == NULL)
+        return false;
+    size_t tamanho = strlen(codigo);
+    if (cursor > tamanho)
+        cursor = tamanho;
+    size_t posicao = 0;
+    while (proximo_atomo(codigo, tamanho, &posicao, inicio, fim))
+        if (cursor >= *inicio && cursor <= *fim)
+            return true;
+    return false;
+}
+
+static bool atomo_possui_escape(const char *codigo, size_t inicio, size_t fim) {
+    for (size_t i = inicio; i < fim; i++)
+        if (codigo[i] == '|' || codigo[i] == '\\')
+            return true;
+    return false;
+}
+
+bool sef_ide_atomos_iguais(const char *codigo, size_t primeiro_inicio, size_t primeiro_fim,
+                           size_t segundo_inicio, size_t segundo_fim) {
+    if (codigo == NULL || primeiro_fim < primeiro_inicio || segundo_fim < segundo_inicio)
+        return false;
+    size_t primeiro_tamanho = primeiro_fim - primeiro_inicio;
+    size_t segundo_tamanho = segundo_fim - segundo_inicio;
+    if (primeiro_tamanho != segundo_tamanho)
+        return false;
+    bool exato = atomo_possui_escape(codigo, primeiro_inicio, primeiro_fim) ||
+                 atomo_possui_escape(codigo, segundo_inicio, segundo_fim);
+    for (size_t i = 0; i < primeiro_tamanho; i++) {
+        unsigned char primeiro = (unsigned char)codigo[primeiro_inicio + i];
+        unsigned char segundo = (unsigned char)codigo[segundo_inicio + i];
+        if (exato ? primeiro != segundo : toupper(primeiro) != toupper(segundo))
+            return false;
+    }
+    return true;
+}
+
+static bool nome_de_definicao(const SefFormaEstruturalIde *formas, size_t quantidade,
+                              size_t inicio, size_t fim) {
+    for (size_t i = 0; i < quantidade; i++)
+        if (formas[i].definicao && formas[i].inicio_nome == inicio && formas[i].fim_nome == fim)
+            return true;
+    return false;
+}
+
+static size_t forma_que_contem(const SefFormaEstruturalIde *formas, size_t quantidade,
+                               size_t posicao) {
+    for (size_t i = 0; i < quantidade; i++)
+        if (posicao >= formas[i].inicio && posicao < formas[i].fim)
+            return i;
+    return SIZE_MAX;
+}
+
+bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_t nome_fim,
+                                   const SefFormaEstruturalIde *formas, size_t quantidade_formas,
+                                   SefReferenciaEstruturalIde **referencias,
+                                   size_t *quantidade_referencias, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (codigo == NULL || referencias == NULL || quantidade_referencias == NULL ||
+        (quantidade_formas > 0 && formas == NULL) || nome_fim <= nome_inicio) {
+        sef_erro_definir(erro, 0, 0, "consulta estrutural de referencias invalida");
+        return false;
+    }
+    *referencias = NULL;
+    *quantidade_referencias = 0;
+    size_t capacidade = 0;
+    size_t tamanho = strlen(codigo);
+    if (nome_fim > tamanho) {
+        sef_erro_definir(erro, 0, 0, "simbolo consultado esta fora do buffer");
+        return false;
+    }
+    size_t posicao = 0;
+    size_t contado_ate = 0;
+    size_t linha = 1;
+    size_t inicio = 0;
+    size_t fim = 0;
+    while (proximo_atomo(codigo, tamanho, &posicao, &inicio, &fim)) {
+        for (size_t i = contado_ate; i < inicio; i++)
+            if (codigo[i] == '\n')
+                linha++;
+        contado_ate = inicio;
+        if (!sef_ide_atomos_iguais(codigo, nome_inicio, nome_fim, inicio, fim) ||
+            nome_de_definicao(formas, quantidade_formas, inicio, fim))
+            continue;
+        if (*quantidade_referencias == capacidade) {
+            size_t nova_capacidade = capacidade == 0 ? 16 : capacidade * 2;
+            if (nova_capacidade < capacidade ||
+                nova_capacidade > SIZE_MAX / sizeof(**referencias)) {
+                free(*referencias);
+                *referencias = NULL;
+                *quantidade_referencias = 0;
+                sef_erro_definir(erro, 0, 0, "catalogo de referencias excedeu o limite");
+                return false;
+            }
+            SefReferenciaEstruturalIde *novas =
+                realloc(*referencias, nova_capacidade * sizeof(**referencias));
+            if (novas == NULL) {
+                free(*referencias);
+                *referencias = NULL;
+                *quantidade_referencias = 0;
+                sef_erro_definir(erro, 0, 0, "memoria insuficiente para referencias da IDE");
+                return false;
+            }
+            *referencias = novas;
+            capacidade = nova_capacidade;
+        }
+        (*referencias)[(*quantidade_referencias)++] =
+            (SefReferenciaEstruturalIde){inicio, fim, linha,
+                                         forma_que_contem(formas, quantidade_formas, inicio)};
+    }
+    return true;
+}
+
+void sef_ide_referencias_liberar(SefReferenciaEstruturalIde *referencias) { free(referencias); }

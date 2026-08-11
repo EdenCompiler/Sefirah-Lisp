@@ -31,6 +31,11 @@ typedef enum SefMovimentoDefinicaoIde {
     SEF_DEFINICAO_PROXIMA
 } SefMovimentoDefinicaoIde;
 
+typedef enum SefMovimentoReferenciaIde {
+    SEF_REFERENCIA_ANTERIOR,
+    SEF_REFERENCIA_PROXIMA
+} SefMovimentoReferenciaIde;
+
 SefSessaoIde *sef_sessao_ide_criar(SefErro *erro);
 void sef_sessao_ide_destruir(SefSessaoIde *sessao);
 
@@ -62,6 +67,9 @@ bool sef_sessao_ide_executar_forma_no_cursor(SefSessaoIde *sessao, SefErro *erro
 bool sef_sessao_ide_executar_alteracoes(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao,
                                       SefMovimentoDefinicaoIde movimento, SefErro *erro);
+bool sef_sessao_ide_ir_para_definicao(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao,
+                                      SefMovimentoReferenciaIde movimento, SefErro *erro);
 bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde movimento,
                                    SefErro *erro);
 bool sef_sessao_ide_imagem_salvar(SefSessaoIde *sessao, SefErro *erro);

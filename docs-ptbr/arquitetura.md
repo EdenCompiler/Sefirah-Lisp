@@ -93,12 +93,14 @@ painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sess
 Dentro do motor de sessão, `historico.c` mantém a linha do tempo limitada do
 editor e o histórico de eventos do ouvinte, enquanto `estrutura.c` localiza
 formas Lisp completas de nível superior, calcula suas assinaturas para avaliação
-incremental e cataloga definições nomeadas sem avaliar o fonte. O inspetor retém
-os objetos devolvidos por meio de raízes públicas do GC. A restauração abre a
-imagem substituta antes de liberar essas raízes e o runtime antigo; assim, um
-snapshot ausente ou danificado não destrói o mundo ativo. O código de
-apresentação enxerga somente o estado formatado da sessão e nunca acessa os
-detalhes internos do runtime.
+incremental e cataloga definições nomeadas sem avaliar o fonte. Sua passagem
+léxica também resolve o átomo no cursor e cataloga referências, excluindo
+comentários, strings, literais de caractere e ocorrências que nomeiam a própria
+definição. O inspetor retém os objetos devolvidos por meio de raízes públicas do
+GC. A restauração abre a imagem substituta antes de liberar essas raízes e o
+runtime antigo; assim, um snapshot ausente ou danificado não destrói o mundo
+ativo. O código de apresentação enxerga somente o estado formatado da sessão e
+nunca acessa os detalhes internos do runtime.
 
 ## Fluxo do compilador
 

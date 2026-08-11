@@ -35,14 +35,30 @@ typedef struct SefFormaEstruturalIde {
     size_t fim;
     size_t linha;
     size_t inicio_nome;
+    size_t fim_nome;
     uint64_t assinatura;
     bool definicao;
     char categoria[20];
     char nome[96];
 } SefFormaEstruturalIde;
 
+typedef struct SefReferenciaEstruturalIde {
+    size_t inicio;
+    size_t fim;
+    size_t linha;
+    size_t indice_forma;
+} SefReferenciaEstruturalIde;
+
 bool sef_ide_catalogar_formas(const char *codigo, SefFormaEstruturalIde **formas,
                               size_t *quantidade, SefErro *erro);
 void sef_ide_catalogo_liberar(SefFormaEstruturalIde *formas);
+bool sef_ide_atomo_no_cursor(const char *codigo, size_t cursor, size_t *inicio, size_t *fim);
+bool sef_ide_atomos_iguais(const char *codigo, size_t primeiro_inicio, size_t primeiro_fim,
+                           size_t segundo_inicio, size_t segundo_fim);
+bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_t nome_fim,
+                                   const SefFormaEstruturalIde *formas, size_t quantidade_formas,
+                                   SefReferenciaEstruturalIde **referencias,
+                                   size_t *quantidade_referencias, SefErro *erro);
+void sef_ide_referencias_liberar(SefReferenciaEstruturalIde *referencias);
 
 #endif

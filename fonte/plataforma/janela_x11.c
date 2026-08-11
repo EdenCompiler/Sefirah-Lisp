@@ -72,6 +72,10 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                         evento_sefirah.tipo = SEF_EVENTO_SALVAR_IMAGEM;
                     } else if (tecla == XK_F10) {
                         evento_sefirah.tipo = SEF_EVENTO_RESTAURAR_IMAGEM;
+                    } else if (tecla == XK_F11) {
+                        evento_sefirah.tipo = SEF_EVENTO_IR_PARA_DEFINICAO;
+                    } else if (tecla == XK_F12) {
+                        evento_sefirah.tipo = SEF_EVENTO_NAVEGAR_REFERENCIA;
                     } else if (controle && (tecla == XK_z || tecla == XK_Z)) {
                         evento_sefirah.tipo = SEF_EVENTO_DESFAZER;
                     } else if (controle && (tecla == XK_y || tecla == XK_Y)) {

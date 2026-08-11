@@ -427,9 +427,12 @@ salva e Ctrl+O recarrega o caminho atual. F7 avalia somente as formas de topo
 cujo conteúdo mudou desde a última avaliação bem-sucedida. F8 visita a próxima
 definição nomeada e Shift+F8 visita a anterior; o navegador reconhece funções,
 macros, variáveis, parâmetros, constantes, packages e formas `DEFINE`, ignorando
-comentários e strings. Setas, Home e End movem o cursor do editor com consciência
-de UTF-8. No ouvinte, Cima e Baixo recuperam até 128 eventos enviados, inclusive
-formas multilinha.
+comentários e strings. F11 salta do símbolo no cursor para sua definição
+nomeada. F12 visita a próxima referência estrutural e Shift+F12 visita a
+anterior, com retorno circular nas duas extremidades; ocorrências em strings e
+comentários são excluídas. Setas, Home e End movem o cursor do editor com
+consciência de UTF-8. No ouvinte, Cima e Baixo recuperam até 128 eventos
+enviados, inclusive formas multilinha.
 
 F9 grava o mundo Lisp atual em um arquivo `.imagem` ao lado do fonte atual; F10
 substitui o runtime ativo por esse snapshot, preservando editor, histórico do
@@ -438,8 +441,10 @@ Recursos locais do processo, como streams abertas e bibliotecas compartilhadas,
 mantêm as restrições do formato de imagem descritas acima. Trata-se de um
 snapshot do mundo, ainda não da restauração completa da sessão de desktop.
 
-As ferramentas à direita reúnem navegador de definições e inspetor. O inspetor
-enraíza no coletor de lixo todos os valores da última avaliação,
+As ferramentas à direita reúnem navegador de fontes e inspetor. O navegador
+mostra o catálogo de definições ou as referências/callers do símbolo
+selecionado, marca a ocorrência atual e move o cursor do editor diretamente até
+ela. O inspetor enraíza no coletor de lixo todos os valores da última avaliação,
 mostra seu tipo e representação legível e expõe o resultado de valores
 múltiplos como uma prateleira viva de objetos. Um clique no inspetor seleciona
 o próximo objeto. O motor da sessão, os históricos, o analisador estrutural e o

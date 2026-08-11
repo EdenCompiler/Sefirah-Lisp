@@ -422,9 +422,12 @@ timeline. F7 evaluates only top-level forms whose contents changed since their
 last successful evaluation. F8 visits the next named definition and Shift+F8
 the previous one; the browser recognizes functions, macros, variables,
 parameters, constants, packages, and `DEFINE` forms while ignoring comments and
-strings. Ctrl+S saves and Ctrl+O reloads the current path. Arrow, Home, and End
-move the UTF-8-aware editor cursor. In the listener, Up and Down recover up to
-128 submitted events, including multiline forms.
+strings. F11 jumps from the symbol at the cursor to its named definition. F12
+visits the next structural reference and Shift+F12 the previous one, wrapping
+at either end; references inside strings and comments are excluded. Ctrl+S
+saves and Ctrl+O reloads the current path. Arrow, Home, and End move the
+UTF-8-aware editor cursor. In the listener, Up and Down recover up to 128
+submitted events, including multiline forms.
 
 F9 writes the current Lisp world to an `.imagem` file beside the current source;
 F10 replaces the active runtime with that snapshot while preserving the editor,
@@ -433,7 +436,9 @@ untouched. Process-local resources such as open streams and shared libraries
 retain the image-format restrictions described above. This is a world snapshot,
 not yet a complete desktop-session restoration facility.
 
-The right-hand tools contain the definition browser and inspector. The inspector
+The right-hand tools contain the source browser and inspector. The browser can
+show the definition catalog or the references/callers for the selected symbol,
+mark the current match, and move the editor cursor directly to it. The inspector
 roots every value from the latest evaluation in the garbage
 collector, shows its type and readable representation, and exposes the whole
 multiple-value result as a live object shelf. Click the inspector to select the

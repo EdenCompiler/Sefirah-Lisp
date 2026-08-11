@@ -285,6 +285,37 @@ static bool atualizar_navegador(SefSessaoIde *sessao, const SefFormaEstruturalId
     return true;
 }
 
+static bool atualizar_navegador_referencias(
+    SefSessaoIde *sessao, const SefFormaEstruturalIde *formas, size_t quantidade_formas,
+    const SefReferenciaEstruturalIde *referencias, size_t quantidade_referencias,
+    size_t selecionada, size_t nome_inicio, size_t nome_fim, SefErro *erro) {
+    size_t tamanho_nome = nome_fim - nome_inicio;
+    if (!texto_formatar(&sessao->navegador, erro,
+                        "REFERENCIAS: %zu\nSIMBOLO: %.*s\nMUNDO: %s\n",
+                        quantidade_referencias, (int)tamanho_nome,
+                        sessao->editor.dados + nome_inicio, sessao->caminho_imagem.dados))
+        return false;
+    if (quantidade_referencias == 0)
+        return texto_acrescentar(&sessao->navegador, "\n(nenhuma referencia no buffer)", erro);
+    for (size_t i = 0; i < quantidade_referencias; i++) {
+        const SefReferenciaEstruturalIde *referencia = &referencias[i];
+        const char *categoria = "TOPO";
+        const char *nome = "forma anonima";
+        if (referencia->indice_forma < quantidade_formas &&
+            formas[referencia->indice_forma].definicao) {
+            categoria = formas[referencia->indice_forma].categoria;
+            nome = formas[referencia->indice_forma].nome;
+        }
+        char linha[220];
+        int tamanho = snprintf(linha, sizeof(linha), "\n%c L%zu  %-10s %s",
+                               i == selecionada ? '>' : ' ', referencia->linha, categoria, nome);
+        if (tamanho <= 0 || (size_t)tamanho >= sizeof(linha) ||
+            !texto_acrescentar(&sessao->navegador, linha, erro))
+            return false;
+    }
+    return true;
+}
+
 static size_t quantidade_da_assinatura(const SefSessaoIde *sessao, uint64_t assinatura) {
     size_t quantidade = 0;
     for (size_t i = 0; i < sessao->quantidade_formas_executadas; i++)
@@ -796,6 +827,104 @@ bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao,
                      texto_formatar(&sessao->estado, erro, "Definicao: %s (%s, linha %zu)",
                                     formas[escolhida].nome, formas[escolhida].categoria,
                                     formas[escolhida].linha);
+    sef_ide_catalogo_liberar(formas);
+    return atualizou;
+}
+
+bool sef_sessao_ide_ir_para_definicao(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    size_t nome_inicio = 0;
+    size_t nome_fim = 0;
+    if (!sef_ide_atomo_no_cursor(sessao->editor.dados, sessao->cursor_editor, &nome_inicio,
+                                &nome_fim))
+        return texto_definir(&sessao->estado, "Nenhum simbolo no cursor", erro);
+    SefFormaEstruturalIde *formas = NULL;
+    size_t quantidade = 0;
+    if (!sef_ide_catalogar_formas(sessao->editor.dados, &formas, &quantidade, erro))
+        return false;
+    size_t escolhida = SIZE_MAX;
+    for (size_t i = 0; i < quantidade; i++) {
+        if (formas[i].definicao &&
+            sef_ide_atomos_iguais(sessao->editor.dados, nome_inicio, nome_fim,
+                                  formas[i].inicio_nome, formas[i].fim_nome)) {
+            escolhida = i;
+            break;
+        }
+    }
+    if (escolhida == SIZE_MAX) {
+        bool atualizou = atualizar_navegador(sessao, formas, quantidade, SIZE_MAX, erro);
+        sef_ide_catalogo_liberar(formas);
+        if (!atualizou)
+            return false;
+        return texto_formatar(&sessao->estado, erro, "Definicao nao encontrada: %.*s",
+                              (int)(nome_fim - nome_inicio),
+                              sessao->editor.dados + nome_inicio);
+    }
+    sessao->cursor_editor = formas[escolhida].inicio_nome;
+    bool atualizou = atualizar_navegador(sessao, formas, quantidade, escolhida, erro) &&
+                     texto_formatar(&sessao->estado, erro,
+                                    "Definicao localizada: %s (%s, linha %zu)",
+                                    formas[escolhida].nome, formas[escolhida].categoria,
+                                    formas[escolhida].linha);
+    sef_ide_catalogo_liberar(formas);
+    return atualizou;
+}
+
+bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao,
+                                      SefMovimentoReferenciaIde movimento, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    size_t nome_inicio = 0;
+    size_t nome_fim = 0;
+    if (!sef_ide_atomo_no_cursor(sessao->editor.dados, sessao->cursor_editor, &nome_inicio,
+                                &nome_fim))
+        return texto_definir(&sessao->estado, "Nenhum simbolo no cursor", erro);
+    SefFormaEstruturalIde *formas = NULL;
+    size_t quantidade_formas = 0;
+    if (!sef_ide_catalogar_formas(sessao->editor.dados, &formas, &quantidade_formas, erro))
+        return false;
+    SefReferenciaEstruturalIde *referencias = NULL;
+    size_t quantidade_referencias = 0;
+    if (!sef_ide_catalogar_referencias(sessao->editor.dados, nome_inicio, nome_fim, formas,
+                                      quantidade_formas, &referencias,
+                                      &quantidade_referencias, erro)) {
+        sef_ide_catalogo_liberar(formas);
+        return false;
+    }
+    size_t escolhida = SIZE_MAX;
+    for (size_t i = 0; i < quantidade_referencias; i++) {
+        if (movimento == SEF_REFERENCIA_PROXIMA && escolhida == SIZE_MAX &&
+            referencias[i].inicio > sessao->cursor_editor)
+            escolhida = i;
+        if (movimento == SEF_REFERENCIA_ANTERIOR &&
+            referencias[i].inicio < sessao->cursor_editor)
+            escolhida = i;
+    }
+    if (escolhida == SIZE_MAX && quantidade_referencias > 0)
+        escolhida = movimento == SEF_REFERENCIA_PROXIMA ? 0 : quantidade_referencias - 1;
+    bool atualizou = atualizar_navegador_referencias(
+        sessao, formas, quantidade_formas, referencias, quantidade_referencias, escolhida,
+        nome_inicio, nome_fim, erro);
+    if (atualizou && escolhida == SIZE_MAX)
+        atualizou = texto_formatar(&sessao->estado, erro, "Nenhuma referencia para %.*s",
+                                   (int)(nome_fim - nome_inicio),
+                                   sessao->editor.dados + nome_inicio);
+    if (atualizou && escolhida != SIZE_MAX) {
+        sessao->cursor_editor = referencias[escolhida].inicio;
+        atualizou = texto_formatar(&sessao->estado, erro, "Referencia %zu/%zu: %.*s (linha %zu)",
+                                   escolhida + 1, quantidade_referencias,
+                                   (int)(nome_fim - nome_inicio),
+                                   sessao->editor.dados + nome_inicio,
+                                   referencias[escolhida].linha);
+    }
+    sef_ide_referencias_liberar(referencias);
     sef_ide_catalogo_liberar(formas);
     return atualizou;
 }

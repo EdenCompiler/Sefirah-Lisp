@@ -46,7 +46,7 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
         return 0;
     } else if (mensagem == WM_KEYDOWN && estado != NULL && estado->ao_evento != NULL &&
                (wparam == VK_F5 || wparam == VK_F6 || wparam == VK_F7 || wparam == VK_F8 ||
-                wparam == VK_F9 || wparam == VK_F10 ||
+                wparam == VK_F9 || wparam == VK_F10 || wparam == VK_F11 || wparam == VK_F12 ||
                 ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
                  (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'Z' ||
                   wparam == 'Y')))) {
@@ -70,6 +70,10 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
             evento.tipo = SEF_EVENTO_SALVAR_IMAGEM;
         else if (wparam == VK_F10)
             evento.tipo = SEF_EVENTO_RESTAURAR_IMAGEM;
+        else if (wparam == VK_F11)
+            evento.tipo = SEF_EVENTO_IR_PARA_DEFINICAO;
+        else if (wparam == VK_F12)
+            evento.tipo = SEF_EVENTO_NAVEGAR_REFERENCIA;
         else
             evento.tipo = SEF_EVENTO_EXECUTAR;
         if (estado->ao_evento(&evento, estado->dados))

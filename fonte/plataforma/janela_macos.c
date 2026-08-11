@@ -157,6 +157,10 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
         evento.tipo = SEF_EVENTO_SALVAR_IMAGEM;
     } else if (codigo == 109) {
         evento.tipo = SEF_EVENTO_RESTAURAR_IMAGEM;
+    } else if (codigo == 103) {
+        evento.tipo = SEF_EVENTO_IR_PARA_DEFINICAO;
+    } else if (codigo == 111) {
+        evento.tipo = SEF_EVENTO_NAVEGAR_REFERENCIA;
     } else if (codigo == 36 || codigo == 76) {
         evento.tipo = SEF_EVENTO_ENTER;
     } else if (codigo == 51) {

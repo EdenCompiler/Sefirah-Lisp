@@ -89,11 +89,13 @@ draws the state, and translates X11/Win32/Cocoa events into session actions.
 Inside the session engine, `historico.c` owns the bounded editor timeline and
 listener event history, while `estrutura.c` locates complete top-level Lisp
 forms, fingerprints them for incremental evaluation, and catalogs named
-definitions without evaluating source. The inspector retains returned objects
-through public GC roots. World restoration opens the replacement image before
-releasing those roots and the old runtime, so a damaged or absent snapshot does
-not destroy the active world. Presentation code sees only formatted session
-state and never reaches into runtime internals.
+definitions without evaluating source. Its lexical pass also resolves the atom
+at the cursor and catalogs references while excluding comments, strings,
+character literals, and definition-name occurrences. The inspector retains
+returned objects through public GC roots. World restoration opens the
+replacement image before releasing those roots and the old runtime, so a
+damaged or absent snapshot does not destroy the active world. Presentation code
+sees only formatted session state and never reaches into runtime internals.
 
 ## Compiler flow
 

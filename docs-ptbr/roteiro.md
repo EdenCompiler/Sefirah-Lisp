@@ -143,6 +143,7 @@ não significa que o marco inteiro esteja concluído.
 - [x] Avaliação da forma de nível superior no cursor e eventos navegáveis do ouvinte.
 - [x] Desfazer/refazer linear limitado e inspetor de valores múltiplos enraizado no GC.
 - [x] Navegador de definições nomeadas e avaliação incremental das formas de topo alteradas.
+- [x] Definição do símbolo no cursor e navegação estrutural de callers/referências.
 - [x] Gravação e restauração do mundo Lisp pela IDE.
 - [ ] Seleção e edição estrutural.
 - [ ] Inspetor geral de objetos e navegador de código.

@@ -165,7 +165,7 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                     estado->foco == FOCO_EDITOR);
     desenhar_painel(superficie, estado->inspetor.limites, "INSPETOR  [CLIQUE AVANCA]", false);
     desenhar_painel(superficie, estado->navegador.limites,
-                    "NAVEGADOR  [F8 PROX.] [SHIFT+F8 ANT.]", false);
+                    "NAVEGADOR [F11 DEF.] [F12 REFS.]", false);
     desenhar_painel(superficie, estado->ouvinte.limites, "OUVINTE  [ENTER ENVIA] [CIMA HIST.]",
                     estado->foco == FOCO_OUVINTE);
     desenhar_editor(superficie, estado->editor.limites, estado->sessao);
@@ -244,6 +244,16 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         sef_sessao_ide_navegar_definicao(
             estado->sessao,
             evento->modificador_shift ? SEF_DEFINICAO_ANTERIOR : SEF_DEFINICAO_PROXIMA, &erro);
+        break;
+    case SEF_EVENTO_IR_PARA_DEFINICAO:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_ir_para_definicao(estado->sessao, &erro);
+        break;
+    case SEF_EVENTO_NAVEGAR_REFERENCIA:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_navegar_referencia(
+            estado->sessao,
+            evento->modificador_shift ? SEF_REFERENCIA_ANTERIOR : SEF_REFERENCIA_PROXIMA, &erro);
         break;
     case SEF_EVENTO_SALVAR_IMAGEM:
         sef_sessao_ide_imagem_salvar(estado->sessao, &erro);

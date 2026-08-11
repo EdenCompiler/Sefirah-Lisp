@@ -44,6 +44,32 @@ int main(void) {
                   sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_ANTERIOR, &erro) &&
                   strstr(sef_sessao_ide_estado(sessao), "Definicao: primeira") != NULL,
               "navegador ignorou comentarios e percorreu definicoes nos dois sentidos");
+    const char *codigo_referencias =
+        "(defun somar (a b) (+ a b))\n"
+        "(defun usar-soma (x) (list \"somar\" (somar x 1)))\n"
+        "; somar no comentario nao e referencia\n"
+        "(somar 40 2)";
+    const char *primeira_referencia = strstr(codigo_referencias, "(somar x");
+    const char *segunda_referencia = strstr(codigo_referencias, "(somar 40");
+    verificar(sef_sessao_ide_editor_definir(sessao, codigo_referencias, &erro) &&
+                  sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_PROXIMA, &erro) &&
+                  sef_sessao_ide_navegar_referencia(sessao, SEF_REFERENCIA_PROXIMA, &erro) &&
+                  primeira_referencia != NULL &&
+                  sef_sessao_ide_cursor_editor(sessao) ==
+                      (size_t)(primeira_referencia - codigo_referencias + 1) &&
+                  strstr(sef_sessao_ide_navegador(sessao), "REFERENCIAS: 2") != NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "FUNCAO     usar-soma") != NULL,
+              "consulta de callers ignorou texto/comentario e visitou a primeira referencia");
+    verificar(sef_sessao_ide_ir_para_definicao(sessao, &erro) &&
+                  sef_sessao_ide_cursor_editor(sessao) == strlen("(defun ") &&
+                  strstr(sef_sessao_ide_estado(sessao), "Definicao localizada: somar") != NULL,
+              "comando de Lisp Machine localizou a definicao do simbolo no cursor");
+    verificar(sef_sessao_ide_navegar_referencia(sessao, SEF_REFERENCIA_ANTERIOR, &erro) &&
+                  segunda_referencia != NULL &&
+                  sef_sessao_ide_cursor_editor(sessao) ==
+                      (size_t)(segunda_referencia - codigo_referencias + 1) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Referencia 2/2") != NULL,
+              "consulta de referencias percorreu callers no sentido anterior com retorno");
     verificar(sef_sessao_ide_editor_definir(
                   sessao, "(defun resposta (x)\n  (+ x 2))\n(resposta 40)\n", &erro),
               "editor voltou ao fim depois da navegacao estrutural");
