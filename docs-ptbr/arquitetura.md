@@ -114,7 +114,11 @@ formas Lisp completas de nível superior, calcula suas assinaturas para avaliaç
 incremental e cataloga definições nomeadas sem avaliar o fonte. Sua passagem
 léxica também resolve o átomo no cursor e cataloga referências, excluindo
 comentários, strings, literais de caractere e ocorrências que nomeiam a própria
-definição. O inspetor retém os objetos devolvidos e cada passo da navegação
+definição. A sessão possui um intervalo normalizado de seleção; sua extensão
+pelo cursor respeita limites de pontos de código UTF-8, e a seleção estrutural
+reutiliza o analisador de formas completas. Uma substituição de intervalo é
+registrada como um único estado do histórico do editor. O inspetor retém os
+objetos devolvidos e cada passo da navegação
 recursiva por meio de raízes públicas do GC. A API pública de introspecção de
 componentes apresenta arestas rotuladas dos objetos compostos sem expor à IDE a
 union privada dos objetos. A restauração abre a imagem substituta antes de

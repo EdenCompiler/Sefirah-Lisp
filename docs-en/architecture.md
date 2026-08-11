@@ -108,7 +108,10 @@ listener event history, while `estrutura.c` locates complete top-level Lisp
 forms, fingerprints them for incremental evaluation, and catalogs named
 definitions without evaluating source. Its lexical pass also resolves the atom
 at the cursor and catalogs references while excluding comments, strings,
-character literals, and definition-name occurrences. The inspector retains
+character literals, and definition-name occurrences. The session owns a
+normalized byte range for selection; cursor extension respects UTF-8 code-point
+boundaries, and structural selection reuses the complete-form scanner. A range
+replacement is recorded as one editor-history state. The inspector retains
 returned objects and every recursive navigation step through public GC roots.
 The public component-introspection API presents labeled edges for compound
 objects without exposing the private object union to the IDE. World restoration

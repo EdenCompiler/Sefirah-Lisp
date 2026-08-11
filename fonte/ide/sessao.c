@@ -43,6 +43,8 @@ struct SefSessaoIde {
     TextoIde caminho;
     TextoIde caminho_imagem;
     size_t cursor_editor;
+    size_t ancora_selecao_editor;
+    bool selecao_editor_ativa;
     SefHistoricoTextoIde *historico_ouvinte;
     SefHistoricoEditorIde *historico_editor;
     SefRaiz **objetos_inspecao;
@@ -110,18 +112,20 @@ static bool texto_acrescentar(TextoIde *texto, const char *dados, SefErro *erro)
     return texto_acrescentar_n(texto, dados, strlen(dados), erro);
 }
 
-static bool texto_inserir_n(TextoIde *texto, size_t posicao, const char *dados, size_t tamanho,
-                            SefErro *erro) {
-    if (posicao > texto->tamanho) {
-        sef_erro_definir(erro, 0, 0, "cursor fora do texto da IDE");
+static bool texto_substituir_n(TextoIde *texto, size_t inicio, size_t fim, const char *dados,
+                               size_t tamanho, SefErro *erro) {
+    if (inicio > fim || fim > texto->tamanho) {
+        sef_erro_definir(erro, 0, 0, "intervalo invalido no editor da IDE");
         return false;
     }
-    if (tamanho > SIZE_MAX - texto->tamanho - 1 ||
-        !texto_reservar(texto, texto->tamanho + tamanho + 1, erro))
+    size_t removido = fim - inicio;
+    if (tamanho > SIZE_MAX - (texto->tamanho - removido) - 1 ||
+        !texto_reservar(texto, texto->tamanho - removido + tamanho + 1, erro))
         return false;
-    memmove(texto->dados + posicao + tamanho, texto->dados + posicao, texto->tamanho - posicao + 1);
-    memcpy(texto->dados + posicao, dados, tamanho);
-    texto->tamanho += tamanho;
+    memmove(texto->dados + inicio + tamanho, texto->dados + fim, texto->tamanho - fim + 1);
+    if (tamanho > 0)
+        memcpy(texto->dados + inicio, dados, tamanho);
+    texto->tamanho = texto->tamanho - removido + tamanho;
     return true;
 }
 
@@ -648,6 +652,24 @@ size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao) {
     return sessao == NULL ? 0 : sessao->cursor_editor;
 }
 
+bool sef_sessao_ide_selecao_editor(const SefSessaoIde *sessao, size_t *inicio, size_t *fim) {
+    if (sessao == NULL || inicio == NULL || fim == NULL || !sessao->selecao_editor_ativa ||
+        sessao->ancora_selecao_editor == sessao->cursor_editor)
+        return false;
+    *inicio = sessao->ancora_selecao_editor < sessao->cursor_editor
+                  ? sessao->ancora_selecao_editor
+                  : sessao->cursor_editor;
+    *fim = sessao->ancora_selecao_editor > sessao->cursor_editor
+               ? sessao->ancora_selecao_editor
+               : sessao->cursor_editor;
+    return true;
+}
+
+static void selecao_editor_limpar(SefSessaoIde *sessao) {
+    sessao->selecao_editor_ativa = false;
+    sessao->ancora_selecao_editor = sessao->cursor_editor;
+}
+
 bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL || codigo == NULL) {
@@ -657,6 +679,7 @@ bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, Sef
     if (!texto_definir(&sessao->editor, codigo, erro))
         return false;
     sessao->cursor_editor = sessao->editor.tamanho;
+    selecao_editor_limpar(sessao);
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                           sessao->cursor_editor, erro);
 }
@@ -668,21 +691,33 @@ bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefE
         return false;
     }
     size_t tamanho = strlen(texto);
-    if (!texto_inserir_n(&sessao->editor, sessao->cursor_editor, texto, tamanho, erro))
+    size_t inicio = sessao->cursor_editor;
+    size_t fim = sessao->cursor_editor;
+    sef_sessao_ide_selecao_editor(sessao, &inicio, &fim);
+    if (!texto_substituir_n(&sessao->editor, inicio, fim, texto, tamanho, erro))
         return false;
-    sessao->cursor_editor += tamanho;
+    sessao->cursor_editor = inicio + tamanho;
+    selecao_editor_limpar(sessao);
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                           sessao->cursor_editor, erro);
 }
 
 void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
-    if (sessao == NULL || sessao->cursor_editor == 0)
+    if (sessao == NULL)
         return;
-    size_t inicio = utf8_anterior(&sessao->editor, sessao->cursor_editor);
-    memmove(sessao->editor.dados + inicio, sessao->editor.dados + sessao->cursor_editor,
-            sessao->editor.tamanho - sessao->cursor_editor + 1);
-    sessao->editor.tamanho -= sessao->cursor_editor - inicio;
+    size_t inicio = 0;
+    size_t fim = 0;
+    if (!sef_sessao_ide_selecao_editor(sessao, &inicio, &fim)) {
+        if (sessao->cursor_editor == 0)
+            return;
+        inicio = utf8_anterior(&sessao->editor, sessao->cursor_editor);
+        fim = sessao->cursor_editor;
+    }
+    memmove(sessao->editor.dados + inicio, sessao->editor.dados + fim,
+            sessao->editor.tamanho - fim + 1);
+    sessao->editor.tamanho -= fim - inicio;
     sessao->cursor_editor = inicio;
+    selecao_editor_limpar(sessao);
     SefErro descarte;
     sef_erro_limpar(&descarte);
     sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
@@ -719,9 +754,15 @@ static size_t posicao_na_coluna(const TextoIde *texto, size_t inicio, size_t fim
     return posicao;
 }
 
-void sef_sessao_ide_editor_mover_cursor(SefSessaoIde *sessao, SefMovimentoCursorIde movimento) {
+static void mover_cursor_editor(SefSessaoIde *sessao, SefMovimentoCursorIde movimento,
+                                bool selecionar) {
     if (sessao == NULL)
         return;
+    size_t cursor_anterior = sessao->cursor_editor;
+    if (selecionar && !sessao->selecao_editor_ativa)
+        sessao->ancora_selecao_editor = cursor_anterior;
+    else if (!selecionar)
+        selecao_editor_limpar(sessao);
     TextoIde *editor = &sessao->editor;
     size_t inicio = inicio_linha(editor, sessao->cursor_editor);
     size_t fim = fim_linha(editor, sessao->cursor_editor);
@@ -757,6 +798,38 @@ void sef_sessao_ide_editor_mover_cursor(SefSessaoIde *sessao, SefMovimentoCursor
         }
         break;
     }
+    if (selecionar)
+        sessao->selecao_editor_ativa = sessao->ancora_selecao_editor != sessao->cursor_editor;
+    if (!sessao->selecao_editor_ativa)
+        sessao->ancora_selecao_editor = sessao->cursor_editor;
+}
+
+void sef_sessao_ide_editor_mover_cursor(SefSessaoIde *sessao,
+                                        SefMovimentoCursorIde movimento) {
+    mover_cursor_editor(sessao, movimento, false);
+}
+
+void sef_sessao_ide_editor_mover_cursor_selecionando(SefSessaoIde *sessao,
+                                                      SefMovimentoCursorIde movimento) {
+    mover_cursor_editor(sessao, movimento, true);
+}
+
+bool sef_sessao_ide_editor_selecionar_forma(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    size_t inicio = 0;
+    size_t fim = 0;
+    if (!sef_ide_forma_no_cursor(sessao->editor.dados, sessao->cursor_editor, &inicio, &fim)) {
+        sef_erro_definir(erro, 0, 0, "nenhuma forma Lisp completa no cursor");
+        return false;
+    }
+    sessao->ancora_selecao_editor = inicio;
+    sessao->cursor_editor = fim;
+    sessao->selecao_editor_ativa = inicio != fim;
+    return texto_formatar(&sessao->estado, erro, "Forma selecionada: bytes %zu..%zu", inicio, fim);
 }
 
 bool sef_sessao_ide_editor_nova_linha(SefSessaoIde *sessao, SefErro *erro) {
@@ -780,6 +853,7 @@ static bool restaurar_editor(SefSessaoIde *sessao, bool desfazer, SefErro *erro)
     if (!texto_definir(&sessao->editor, texto, erro))
         return false;
     sessao->cursor_editor = cursor;
+    selecao_editor_limpar(sessao);
     return texto_definir(&sessao->estado, desfazer ? "Edicao desfeita" : "Edicao refeita", erro);
 }
 
@@ -979,6 +1053,7 @@ bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao, SefMovimentoDefinica
         return texto_definir(&sessao->estado, "Nenhuma definicao no buffer", erro);
     }
     sessao->cursor_editor = formas[escolhida].inicio_nome;
+    selecao_editor_limpar(sessao);
     bool atualizou = atualizar_navegador(sessao, formas, quantidade, escolhida, erro) &&
                      texto_formatar(&sessao->estado, erro, "Definicao: %s (%s, linha %zu)",
                                     formas[escolhida].nome, formas[escolhida].categoria,
@@ -1020,6 +1095,7 @@ bool sef_sessao_ide_ir_para_definicao(SefSessaoIde *sessao, SefErro *erro) {
                               (int)(nome_fim - nome_inicio), sessao->editor.dados + nome_inicio);
     }
     sessao->cursor_editor = formas[escolhida].inicio_nome;
+    selecao_editor_limpar(sessao);
     bool atualizou =
         atualizar_navegador(sessao, formas, quantidade, escolhida, erro) &&
         texto_formatar(&sessao->estado, erro, "Definicao localizada: %s (%s, linha %zu)",
@@ -1072,6 +1148,7 @@ bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao, SefMovimentoReferen
                            (int)(nome_fim - nome_inicio), sessao->editor.dados + nome_inicio);
     if (atualizou && escolhida != SIZE_MAX) {
         sessao->cursor_editor = referencias[escolhida].inicio;
+        selecao_editor_limpar(sessao);
         atualizou =
             texto_formatar(&sessao->estado, erro, "Referencia %zu/%zu: %.*s (linha %zu)",
                            escolhida + 1, quantidade_referencias, (int)(nome_fim - nome_inicio),
@@ -1305,8 +1382,10 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
                  texto_definir(&sessao->caminho, caminho, erro) &&
                  atualizar_caminho_imagem(sessao, erro) &&
                  texto_formatar(&sessao->estado, erro, "Aberto: %s", caminho);
-    if (abriu)
+    if (abriu) {
         sessao->cursor_editor = lidos;
+        selecao_editor_limpar(sessao);
+    }
     if (abriu) {
         sessao->quantidade_formas_executadas = 0;
         abriu = sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,

@@ -459,8 +459,9 @@ sefirah_ide path/to/program.lisp
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector
 component or debugger condition, or submits a complete form in the listener.
-F5 or Ctrl+Enter runs the whole buffer; F6 finds and runs only the complete top-level
-form at the cursor. Ctrl+Z and Ctrl+Y traverse the editor's bounded linear
+F5 or Ctrl+Enter runs the whole buffer; F6 finds and runs only the complete
+top-level form at the cursor, while Shift+F6 selects that form for structural
+replacement or deletion. Ctrl+Z and Ctrl+Y traverse the editor's bounded linear
 timeline. F7 evaluates only top-level forms whose contents changed since their
 last successful evaluation. F8 visits the next named definition and Shift+F8
 the previous one; the browser recognizes functions, macros, variables,
@@ -469,8 +470,10 @@ strings. F11 jumps from the symbol at the cursor to its named definition. F12
 visits the next structural reference and Shift+F12 the previous one, wrapping
 at either end; references inside strings and comments are excluded. Ctrl+S
 saves and Ctrl+O reloads the current path. Arrow, Home, and End move the
-UTF-8-aware editor cursor. In the listener, Up and Down recover up to 128
-submitted events, including multiline forms.
+UTF-8-aware editor cursor; holding Shift extends a range by code point. Typing
+or Backspace replaces or removes the selected range as one undoable edit. In
+the listener, Up and Down recover up to 128 submitted events, including
+multiline forms.
 
 F9 writes the current Lisp world to an `.imagem` file beside the current source;
 F10 replaces the active runtime with that snapshot while preserving the editor,

@@ -65,6 +65,14 @@ static void alternar_foco(EstadoIde *estado, bool anterior) {
         estado->foco = estado->foco == FOCO_OUVINTE ? FOCO_EDITOR : (FocoIde)(estado->foco + 1);
 }
 
+static void mover_cursor_editor(EstadoIde *estado, const SefEventoJanela *evento,
+                                SefMovimentoCursorIde movimento) {
+    if (evento->modificador_shift)
+        sef_sessao_ide_editor_mover_cursor_selecionando(estado->sessao, movimento);
+    else
+        sef_sessao_ide_editor_mover_cursor(estado->sessao, movimento);
+}
+
 static void desenhar_painel(SefSuperficie *superficie, SefRetangulo limites, const char *titulo,
                             bool ativo) {
     const SefCor tinta = SEF_COR(43, 54, 45);
@@ -146,17 +154,33 @@ static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
     size_t cursor = sef_sessao_ide_cursor_editor(sessao);
     if (cursor > tamanho)
         cursor = tamanho;
-    char *com_cursor = malloc(tamanho + 2);
+    size_t inicio_selecao = 0;
+    size_t fim_selecao = 0;
+    bool selecionado =
+        sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao);
+    char *com_cursor = malloc(tamanho + (selecionado ? 4u : 2u));
     if (com_cursor == NULL) {
         desenhar_texto_limitado(superficie, limites, codigo, true);
         return;
     }
-    memcpy(com_cursor, codigo, cursor);
-    com_cursor[cursor] = '|';
-    memcpy(com_cursor + cursor + 1, codigo + cursor, tamanho - cursor + 1);
+    size_t escrito = 0;
+    size_t cursor_visual = 0;
+    for (size_t i = 0; i <= tamanho; i++) {
+        if (selecionado && i == inicio_selecao)
+            com_cursor[escrito++] = '[';
+        if (i == cursor) {
+            com_cursor[escrito++] = '|';
+            cursor_visual = escrito;
+        }
+        if (selecionado && i == fim_selecao)
+            com_cursor[escrito++] = ']';
+        if (i < tamanho)
+            com_cursor[escrito++] = codigo[i];
+    }
+    com_cursor[escrito] = '\0';
     size_t linhas = limites.altura > 44 ? (size_t)(limites.altura - 44) / 18u : 1;
     size_t linhas_anteriores = cursor == tamanho ? linhas : linhas / 2u + 1u;
-    const char *inicio = inicio_antes_da_posicao(com_cursor, cursor + 1, linhas_anteriores);
+    const char *inicio = inicio_antes_da_posicao(com_cursor, cursor_visual, linhas_anteriores);
     desenhar_texto_limitado(superficie, limites, inicio, false);
     free(com_cursor);
 }
@@ -172,7 +196,8 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                              (SefRetangulo){0, 30, superficie->largura, superficie->altura - 66},
                              &estado->tema);
 
-    desenhar_painel(superficie, estado->editor.limites, "EDITOR [F5 TUDO] [F6 FORMA] [F7 MUDANCAS]",
+    desenhar_painel(superficie, estado->editor.limites,
+                    "EDITOR [F5 TUDO] [F6 FORMA] [SHIFT+F6 SELEC.]",
                     estado->foco == FOCO_EDITOR);
     desenhar_painel(superficie, estado->inspetor.limites, "INSPETOR [ENTER ABRE] [BACK VOLTA]",
                     estado->foco == FOCO_INSPETOR);
@@ -257,7 +282,10 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         sef_sessao_ide_executar_editor(estado->sessao, &erro);
         break;
     case SEF_EVENTO_EXECUTAR_FORMA:
-        sef_sessao_ide_executar_forma_no_cursor(estado->sessao, &erro);
+        if (evento->modificador_shift)
+            sef_sessao_ide_editor_selecionar_forma(estado->sessao, &erro);
+        else
+            sef_sessao_ide_executar_forma_no_cursor(estado->sessao, &erro);
         break;
     case SEF_EVENTO_EXECUTAR_ALTERACOES:
         sef_sessao_ide_executar_alteracoes(estado->sessao, &erro);
@@ -310,19 +338,19 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_CURSOR_ESQUERDA:
         if (estado->foco == FOCO_EDITOR)
-            sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_ESQUERDA);
+            mover_cursor_editor(estado, evento, SEF_CURSOR_ESQUERDA);
         else if (estado->foco == FOCO_INSPETOR)
             sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_ANTERIOR, &erro);
         break;
     case SEF_EVENTO_CURSOR_DIREITA:
         if (estado->foco == FOCO_EDITOR)
-            sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_DIREITA);
+            mover_cursor_editor(estado, evento, SEF_CURSOR_DIREITA);
         else if (estado->foco == FOCO_INSPETOR)
             sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_PROXIMO, &erro);
         break;
     case SEF_EVENTO_CURSOR_CIMA:
         if (estado->foco == FOCO_EDITOR)
-            sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_CIMA);
+            mover_cursor_editor(estado, evento, SEF_CURSOR_CIMA);
         else if (estado->foco == FOCO_OUVINTE)
             sef_sessao_ide_ouvinte_mover_historico(estado->sessao, SEF_HISTORICO_ANTERIOR, &erro);
         else if (estado->foco == FOCO_DEPURADOR)
@@ -333,7 +361,7 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_CURSOR_BAIXO:
         if (estado->foco == FOCO_EDITOR)
-            sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_BAIXO);
+            mover_cursor_editor(estado, evento, SEF_CURSOR_BAIXO);
         else if (estado->foco == FOCO_OUVINTE)
             sef_sessao_ide_ouvinte_mover_historico(estado->sessao, SEF_HISTORICO_PROXIMO, &erro);
         else if (estado->foco == FOCO_DEPURADOR)
@@ -344,11 +372,11 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_CURSOR_INICIO:
         if (estado->foco == FOCO_EDITOR)
-            sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_INICIO_LINHA);
+            mover_cursor_editor(estado, evento, SEF_CURSOR_INICIO_LINHA);
         break;
     case SEF_EVENTO_CURSOR_FIM:
         if (estado->foco == FOCO_EDITOR)
-            sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_FIM_LINHA);
+            mover_cursor_editor(estado, evento, SEF_CURSOR_FIM_LINHA);
         break;
     case SEF_EVENTO_PONTEIRO_PRESSIONAR:
         if (ponto_dentro(estado->editor.limites, evento->x, evento->y))

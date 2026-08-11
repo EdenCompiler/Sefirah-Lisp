@@ -206,14 +206,16 @@ top-level forms, symbol-at-point definition lookup, structural caller/reference
 navigation, restorable world snapshots, and `.lisp` file load/save. Tab or a
 pointer click changes focus among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
+Shift+F6 selects that complete form for structural replacement or deletion;
 F7 runs only forms changed since their last successful installation; F8 and
 Shift+F8 navigate named definitions; F9/F10 save and restore the live Lisp
 world beside the current source as `.imagem`; Shift+F9/Shift+F10 navigate the
 bounded history of unhandled conditions; F11 jumps to the definition of
 the symbol at the cursor; and F12/Shift+F12 cycle its references. Ctrl+Z/Ctrl+Y
 undo and redo; Ctrl+S saves; and Ctrl+O reloads the current path. Arrow, Home,
-and End move the editor cursor. In the listener, Up and Down browse submitted
-events. In the inspector, Up/Down select an object component, Enter opens it,
+and End move the editor cursor; holding Shift extends a UTF-8-safe selection,
+and typing or Backspace replaces or removes it as one undoable edit. In the
+listener, Up and Down browse submitted events. In the inspector, Up/Down select an object component, Enter opens it,
 Backspace returns to its parent, and Left/Right switch between returned roots.
 The complete navigation path remains rooted in the garbage collector. Clicking
 the definition browser advances to the next definition. In the debugger,
@@ -505,14 +507,17 @@ das formas de topo alteradas, localização da definição do símbolo no cursor
 navegação estrutural de callers/referências, snapshots restauráveis do mundo e
 abertura/gravação de `.lisp`. Tab ou clique alterna o foco entre editor,
 inspetor, depurador e ouvinte; F5 ou Ctrl+Enter
-executa o buffer; F6 executa a forma completa no cursor; F7 executa somente as
+executa o buffer; F6 executa a forma completa no cursor; Shift+F6 seleciona a
+forma completa para substituição ou remoção estrutural; F7 executa somente as
 formas alteradas desde a última instalação bem-sucedida; F8 e Shift+F8 navegam
 pelas definições nomeadas; F9/F10 salvam e restauram o mundo Lisp ao lado do
 fonte como `.imagem`; Shift+F9/Shift+F10 navegam pelo histórico limitado de
 condições não tratadas; F11 vai à definição do símbolo no cursor; e
 F12/Shift+F12 percorrem suas referências. Ctrl+Z/Ctrl+Y desfazem e refazem;
 Ctrl+S salva; e Ctrl+O recarrega o caminho atual. Setas, Home e End movem o
-cursor do editor. No ouvinte, Cima e Baixo percorrem os eventos enviados. No
+cursor do editor; com Shift, estendem uma seleção segura para UTF-8, e digitar
+ou usar Backspace a substitui ou remove como uma única edição reversível. No
+ouvinte, Cima e Baixo percorrem os eventos enviados. No
 inspetor, Cima/Baixo selecionam um componente, Enter o abre, Backspace volta ao
 pai e Esquerda/Direita alternam entre as raízes devolvidas. O caminho completo
 permanece enraizado no coletor de lixo. Clicar no navegador avança para a

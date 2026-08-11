@@ -465,7 +465,8 @@ sefirah_ide caminho/para/programa.lisp
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
 envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
-F6 encontra e executa somente a forma completa de nível superior no cursor.
+F6 encontra e executa somente a forma completa de nível superior no cursor,
+enquanto Shift+F6 seleciona essa forma para substituição ou remoção estrutural.
 Ctrl+Z e Ctrl+Y percorrem a linha do tempo linear e limitada do editor. Ctrl+S
 salva e Ctrl+O recarrega o caminho atual. F7 avalia somente as formas de topo
 cujo conteúdo mudou desde a última avaliação bem-sucedida. F8 visita a próxima
@@ -475,8 +476,10 @@ comentários e strings. F11 salta do símbolo no cursor para sua definição
 nomeada. F12 visita a próxima referência estrutural e Shift+F12 visita a
 anterior, com retorno circular nas duas extremidades; ocorrências em strings e
 comentários são excluídas. Setas, Home e End movem o cursor do editor com
-consciência de UTF-8. No ouvinte, Cima e Baixo recuperam até 128 eventos
-enviados, inclusive formas multilinha.
+consciência de UTF-8; com Shift, estendem um intervalo por ponto de código.
+Digitar ou usar Backspace substitui ou remove a seleção como uma única edição
+reversível. No ouvinte, Cima e Baixo recuperam até 128 eventos enviados,
+inclusive formas multilinha.
 
 F9 grava o mundo Lisp atual em um arquivo `.imagem` ao lado do fonte atual; F10
 substitui o runtime ativo por esse snapshot, preservando editor, histórico do

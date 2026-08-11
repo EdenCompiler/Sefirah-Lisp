@@ -153,7 +153,8 @@ not mean the entire milestone is complete.
 - [x] Save and restore the live Lisp world from the IDE.
 - [x] Recursive, GC-rooted inspector for compound object graphs.
 - [x] Bounded, GC-rooted unhandled-condition history connected to the inspector.
-- [ ] Selection and structural editing.
+- [x] UTF-8 range selection and top-level structural selection with atomic
+  replacement/removal in undo history.
 - [ ] Multi-file and runtime-aware code browser.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.

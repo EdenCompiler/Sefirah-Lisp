@@ -155,7 +155,8 @@ não significa que o marco inteiro esteja concluído.
 - [x] Gravação e restauração do mundo Lisp pela IDE.
 - [x] Inspetor recursivo e enraizado no GC para grafos de objetos compostos.
 - [x] Histórico limitado e enraizado no GC de condições não tratadas ligado ao inspetor.
-- [ ] Seleção e edição estrutural.
+- [x] Seleção de intervalo UTF-8 e seleção estrutural de forma de topo com
+  substituição/remoção atômica no histórico de undo.
 - [ ] Navegador de código multifonte e consciente do runtime.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.

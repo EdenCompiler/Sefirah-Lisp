@@ -200,6 +200,43 @@ int main(void) {
                   strcmp(sef_sessao_ide_editor(sessao), "abcY") == 0,
               "nova edicao descartou o ramo antigo de refazer");
 
+    const char *codigo_estrutural = "(defun selecionada () 42)\n(+ 1 2)";
+    size_t inicio_selecao = 0;
+    size_t fim_selecao = 0;
+    verificar(sef_sessao_ide_editor_definir(sessao, codigo_estrutural, &erro),
+              "editor preparou selecao estrutural");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_CIMA);
+    verificar(sef_sessao_ide_editor_selecionar_forma(sessao, &erro) &&
+                  sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  inicio_selecao == 0 &&
+                  fim_selecao == strlen("(defun selecionada () 42)"),
+              "Shift+F6 selecionou a forma Lisp completa no cursor");
+    verificar(sef_sessao_ide_editor_inserir(sessao, "(defun substituida () 43)", &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao),
+                         "(defun substituida () 43)\n(+ 1 2)") == 0 &&
+                  !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  sef_sessao_ide_editor_desfazer(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), codigo_estrutural) == 0,
+              "digitacao substituiu a forma selecionada como uma unica edicao reversivel");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_CIMA);
+    verificar(sef_sessao_ide_editor_selecionar_forma(sessao, &erro),
+              "forma voltou a ser selecionada para apagar");
+    sef_sessao_ide_editor_apagar(sessao);
+    verificar(strcmp(sef_sessao_ide_editor(sessao), "\n(+ 1 2)") == 0 &&
+                  sef_sessao_ide_editor_desfazer(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), codigo_estrutural) == 0,
+              "Backspace apagou a selecao estrutural e undo a restaurou");
+
+    verificar(sef_sessao_ide_editor_definir(sessao, "ação", &erro),
+              "editor preparou selecao UTF-8");
+    sef_sessao_ide_editor_mover_cursor_selecionando(sessao, SEF_CURSOR_ESQUERDA);
+    sef_sessao_ide_editor_mover_cursor_selecionando(sessao, SEF_CURSOR_ESQUERDA);
+    verificar(sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  fim_selecao - inicio_selecao == strlen("ão") &&
+                  sef_sessao_ide_editor_inserir(sessao, "X", &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), "açX") == 0,
+              "Shift+setas selecionou pontos de codigo UTF-8 sem cortar bytes");
+
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),
               "editor avaliou somente a forma completa no cursor");

@@ -58,11 +58,15 @@ const char *sef_sessao_ide_depurador(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao);
 size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao);
+bool sef_sessao_ide_selecao_editor(const SefSessaoIde *sessao, size_t *inicio, size_t *fim);
 
 bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, SefErro *erro);
 bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro);
 void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao);
 void sef_sessao_ide_editor_mover_cursor(SefSessaoIde *sessao, SefMovimentoCursorIde movimento);
+void sef_sessao_ide_editor_mover_cursor_selecionando(SefSessaoIde *sessao,
+                                                      SefMovimentoCursorIde movimento);
+bool sef_sessao_ide_editor_selecionar_forma(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_nova_linha(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro);
