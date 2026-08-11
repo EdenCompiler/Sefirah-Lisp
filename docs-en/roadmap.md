@@ -26,11 +26,11 @@ not mean the entire milestone is complete.
 - [x] Functions, macros, recursion, and essential primitives.
 - [x] Mark-and-sweep collector at evaluation boundaries.
 - [x] CPU rasterizer, bitmap font, and custom visual composition.
-- [x] X11 and Win32 windows; macOS bridge written in pure C.
-- [x] Graphical listener connected to the runtime on X11 and Win32.
+- [x] X11, Win32, and Cocoa raster windows with native event bridges.
+- [x] Graphical listener connected to the runtime on Linux, Windows, and macOS.
 - [x] Multiline textual REPL with complete-form detection and multiple-value
   printing.
-- [x] CI declared for Linux, Windows, and macOS.
+- [x] Green build-and-test CI matrix for Linux, Windows, and macOS.
 - [x] Versioned image with atomic saving and heap restoration.
 - [x] Explicit root handles for safe C, IDE, and FFI integration.
 - [x] Quasiquote, unquote, and splice for readable macros.
@@ -113,9 +113,10 @@ not mean the entire milestone is complete.
 ### Platform and accessibility
 
 - [x] Initial X11 and Win32 windows and events.
-- [x] Cocoa/CoreGraphics bridge written in C.
+- [x] Cocoa/CoreGraphics bridge written in C with keyboard, shortcuts, pointer,
+  and redraw propagation.
 - [ ] Wayland.
-- [ ] Unicode input, IME, and macOS keyboard bridge.
+- [ ] Complete IME composition and advanced text-input protocols.
 - [ ] Semantic tree and assistive-technology integration.
 - [ ] Clipboard, drag and drop, dialogs, printing, and notifications.
 

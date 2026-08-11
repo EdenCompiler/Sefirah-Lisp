@@ -405,7 +405,7 @@ Tab ou clique alterna entre editor e ouvinte. Enter insere linha no editor e
 envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o editor, Ctrl+S
 salva e Ctrl+O recarrega o caminho atual. Setas, Home e End movem o cursor do
 editor com consciência de UTF-8. O motor da sessão possui testes automatizados
-sem janela.
+sem janela. No macOS, Command pode substituir Ctrl nesses atalhos.
 
 ## GUI própria
 
@@ -414,8 +414,9 @@ layouts em linha/coluna com pesos; `SefTemaGui`; hit-testing; navegação de foc
 e despacho de ações. `SefInteracaoGui` converte Tab, Enter e ponteiro em foco e
 acionamento.
 
-X11 e Win32 entregam teclado, atalhos e ponteiro à IDE. A ponte macOS apresenta
-a composição rasterizada, mas ainda não encaminha entrada de teclado.
+X11, Win32 e Cocoa entregam teclado, atalhos e ponteiro à IDE. O adaptador Cocoa
+é escrito em C sobre o runtime Objective-C e redesenha a superfície raster
+própria depois de cada evento que altera o estado.
 
 ## Leitor e impressão
 

@@ -26,11 +26,11 @@ não significa que o marco inteiro esteja concluído.
 - [x] Funções, macros, recursão e primitivas essenciais.
 - [x] Coletor mark-and-sweep nos limites de avaliação.
 - [x] Rasterizador CPU, fonte bitmap e composição visual própria.
-- [x] Janela X11 e Win32; ponte macOS escrita em C puro.
-- [x] Ouvinte gráfico ligado ao runtime em X11 e Win32.
+- [x] Janelas raster X11, Win32 e Cocoa com pontes de eventos nativas.
+- [x] Ouvinte gráfico ligado ao runtime em Linux, Windows e macOS.
 - [x] REPL textual multilinha com detecção de forma completa e impressão de
   valores múltiplos.
-- [x] CI declarada para Linux, Windows e macOS.
+- [x] Matriz CI verde de build e testes para Linux, Windows e macOS.
 - [x] Imagem versionada com gravação atômica e restauração do heap.
 - [x] Handles de raiz explícitos para integração segura com C, IDE e FFI.
 - [x] Quasiquote, unquote e splice para macros legíveis.
@@ -116,9 +116,10 @@ não significa que o marco inteiro esteja concluído.
 ### Plataforma e acessibilidade
 
 - [x] Janela e eventos iniciais em X11 e Win32.
-- [x] Ponte Cocoa/CoreGraphics escrita em C.
+- [x] Ponte Cocoa/CoreGraphics escrita em C com teclado, atalhos, ponteiro e
+  propagação de redesenho.
 - [ ] Wayland.
-- [ ] Entrada Unicode, IME e ponte de teclado macOS.
+- [ ] Composição IME completa e protocolos avançados de entrada textual.
 - [ ] Árvore semântica e integração com tecnologias assistivas.
 - [ ] Clipboard, drag-and-drop, diálogos, impressão e notificações.
 

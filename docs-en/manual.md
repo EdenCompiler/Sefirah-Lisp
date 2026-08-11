@@ -399,7 +399,8 @@ Tab or a pointer click switches between editor and listener. Enter inserts a
 line in the editor and submits a complete form in the listener. F5 or
 Ctrl+Enter runs the editor, Ctrl+S saves, and Ctrl+O reloads the current path.
 Arrow, Home, and End keys move the UTF-8-aware editor cursor. The session
-engine is covered by headless automated tests.
+engine is covered by headless automated tests. On macOS, Command can replace
+Ctrl for these shortcuts.
 
 ## Custom GUI
 
@@ -408,9 +409,9 @@ weighted row/column layouts; `SefTemaGui`; hit testing; focus navigation; and
 action dispatch. `SefInteracaoGui` turns Tab, Enter, and pointer input into
 focus and activation.
 
-X11 and Win32 deliver keyboard, shortcuts, and pointer events to the IDE. The
-macOS bridge presents the rasterized composition but does not forward keyboard
-input yet.
+X11, Win32, and Cocoa deliver keyboard, shortcuts, and pointer events to the
+IDE. The Cocoa adapter is written in C over the Objective-C runtime and redraws
+the custom raster surface after each state-changing event.
 
 ## Reader and printing
 

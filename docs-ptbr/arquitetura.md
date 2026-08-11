@@ -87,7 +87,7 @@ no comportamento multilinha.
 `sefirah_ide_nucleo` possui o buffer editável, entrada do ouvinte, transcrição,
 inspetor, caminho atual e runtime. Ele executa, abre e grava sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
-painéis, desenha o estado e converte eventos X11/Win32 em ações da sessão.
+painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.
 
 ## Fluxo do compilador
 

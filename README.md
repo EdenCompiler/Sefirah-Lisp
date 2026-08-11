@@ -37,8 +37,8 @@ the roadmap.
 | FFI | Explicit shared libraries and C i64 calls with one or two inputs |
 | Graphics | Custom RGB surface, CPU rasterization, and bitmap font |
 | GUI | Component tree, layout, themes, focus, hit testing, and actions |
-| Platform | X11, Win32, and Cocoa/CoreGraphics bridge; macOS integration remains partial |
-| IDE | Editable `.lisp` buffer, multiline listener, evaluation, result inspector, transcript, and file load/save on X11/Win32 |
+| Platform | X11, Win32, and Cocoa/CoreGraphics raster windows with keyboard, shortcuts, and pointer events |
+| IDE | Editable `.lisp` buffer, multiline listener, evaluation, result inspector, transcript, and file load/save on Linux, Windows, and macOS |
 
 ## Highlights
 
@@ -67,7 +67,7 @@ the roadmap.
 - persistent images with atomic saving and an explicit external-resource
   policy;
 - a GUI drawn by Sefirah itself rather than native widgets;
-- declared CI for Linux, Windows, and macOS.
+- green build-and-test CI for Linux, Windows, and macOS.
 
 ## Building
 
@@ -192,7 +192,7 @@ and action dispatch exposed by `sefirah/gui.h`. The IDE provides an editable
 buffer, persistent transcript, multiline listener, live result inspector, and
 `.lisp` file load/save. Tab or a pointer click changes focus, F5 or Ctrl+Enter
 runs the editor, Ctrl+S saves, Ctrl+O reloads the current path, and the arrow,
-Home, and End keys move the editor cursor.
+Home, and End keys move the editor cursor. On macOS, Command can replace Ctrl.
 
 ## Architecture
 
@@ -254,7 +254,7 @@ X11/Win32/Cocoa, and the compiler keeps its IR independent of object writers.
 - the GC is not generational and lacks native-code stack maps;
 - the GUI lacks vector fonts, HiDPI, IME, accessibility, and complete desktop
   integration;
-- macOS keyboard input, Wayland, and distribution packages remain pending;
+- Wayland, complete IME composition, and distribution packages remain pending;
 - structural editing, arbitrary file dialogs, debugger, profiler, and
   transactional history are not complete.
 
@@ -305,8 +305,8 @@ nativa permanecem no roteiro.
 | FFI | Bibliotecas compartilhadas explícitas e chamadas C i64 com uma ou duas entradas |
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
 | GUI | Árvore de componentes, layout, temas, foco, hit-testing e ações |
-| Plataforma | X11, Win32 e ponte Cocoa/CoreGraphics; integração macOS ainda parcial |
-| IDE | Buffer `.lisp` editável, ouvinte multilinha, avaliação, inspetor de resultados, transcrição e abertura/gravação em X11/Win32 |
+| Plataforma | Janelas raster X11, Win32 e Cocoa/CoreGraphics com teclado, atalhos e eventos de ponteiro |
+| IDE | Buffer `.lisp` editável, ouvinte multilinha, avaliação, inspetor de resultados, transcrição e abertura/gravação em Linux, Windows e macOS |
 
 ## Destaques
 
@@ -337,7 +337,7 @@ nativa permanecem no roteiro.
 - imagem persistente com gravação atômica e política explícita para recursos
   externos;
 - GUI desenhada pelo próprio Sefirah, sem depender de widgets nativos;
-- CI declarada para Linux, Windows e macOS.
+- CI verde de build e testes para Linux, Windows e macOS.
 
 ## Compilação
 
@@ -462,7 +462,8 @@ foco e despacho de ações expostos por `sefirah/gui.h`. A IDE oferece buffer
 editável, transcrição persistente, ouvinte multilinha, inspetor vivo de
 resultados e abertura/gravação de `.lisp`. Tab ou clique muda o foco, F5 ou
 Ctrl+Enter executa o editor, Ctrl+S salva, Ctrl+O recarrega o caminho atual e
-as setas, Home e End movem o cursor do editor.
+as setas, Home e End movem o cursor do editor. No macOS, Command pode substituir
+Ctrl.
 
 ## Arquitetura
 
@@ -524,7 +525,7 @@ compilador mantém a IR independente dos gravadores de objetos.
 - o GC não é geracional e não possui mapas de pilha do código nativo;
 - a GUI ainda não possui fontes vetoriais, HiDPI, IME, acessibilidade ou
   integração desktop completa;
-- teclado no macOS, Wayland e pacotes de distribuição continuam pendentes;
+- Wayland, composição IME completa e pacotes de distribuição continuam pendentes;
 - edição estrutural, diálogos de arquivo arbitrário, debugger, profiler e
   histórico transacional ainda não estão completos.
 

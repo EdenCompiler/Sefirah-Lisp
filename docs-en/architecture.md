@@ -83,7 +83,8 @@ and graphical listener, preventing their multiline behavior from diverging.
 `sefirah_ide_nucleo` owns the editable buffer, listener input, transcript,
 inspector, current path, and runtime. It can execute, load, and save without a
 window, which makes behavior testable on CI. `sefirah_ide` only lays out the
-panels, draws the state, and translates X11/Win32 events into session actions.
+panels, draws the state, and translates X11/Win32/Cocoa events into session
+actions.
 
 ## Compiler flow
 
