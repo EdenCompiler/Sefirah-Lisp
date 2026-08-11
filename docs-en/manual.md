@@ -367,16 +367,20 @@ preserve their multiple values.
     (+ value 1))) ; => 43
 
 (restart-case
-    (list (find-restart 'retry)
-          (compute-restarts))
-  (retry () :retried)) ; => (RETRY (RETRY))
+    (let ((restart (find-restart 'retry)))
+      (list (type-of restart)
+            (restart-name restart)
+            (eq restart (first (compute-restarts)))))
+  (retry () :retried)) ; => (RESTART RETRY T)
 ```
 
-This is deliberately an initial protocol. Restart names are the temporary
-restart representation returned by `FIND-RESTART` and `COMPUTE-RESTARTS`;
-first-class restart objects, condition association, the full standard
-condition hierarchy and type specifiers, and the `:REPORT`, `:TEST`, and
-`:INTERACTIVE` clause options remain pending. `ABORT`, `CONTINUE`,
+`FIND-RESTART` and `COMPUTE-RESTARTS` return first-class `RESTART` objects in
+dynamic precedence order, including anonymous and same-named choices.
+`INVOKE-RESTART` accepts either an active object or a non-`NIL` name. An object
+may outlive its dynamic extent for persistence and inspection, but invoking it
+after it becomes inactive signals an error. Condition association, the full
+standard condition hierarchy and type specifiers, and the `:REPORT`, `:TEST`,
+and `:INTERACTIVE` clause options remain pending. `ABORT`, `CONTINUE`,
 `MUFFLE-WARNING`, `STORE-VALUE`, and `USE-VALUE` invoke an active restart of
 the corresponding name; their optional condition filtering is not available
 yet.
@@ -410,13 +414,14 @@ are returned. The initial condition system currently signals a general
 
 ## Persistent image
 
-The v9 `.imagem` binary format preserves the heap graph, including vectors,
+The v10 `.imagem` binary format preserves the heap graph, including vectors,
 characters, hash tables, symbols, packages, environments, functions, macros,
-conditions, and restorable resources. Saving uses a temporary file and atomic
-replacement. C primitives are restored by name, never by address. The v9
-reader accepts v6, v7, and v8 images; loading performs targeted migrations that
-restore newly available primitives, exported special-form symbols, and
-canonical `NIL` package membership, while saving upgrades the result to v9.
+conditions, restart objects, and restorable resources. Saving uses a temporary
+file and atomic replacement. C primitives are restored by name, never by
+address. The v10 reader accepts v6 through v9 images; loading performs targeted
+migrations that restore newly available primitives, exported special-form
+symbols, and canonical `NIL` package membership, while saving upgrades the
+result to v10.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
@@ -482,10 +487,12 @@ object in the general inspector. Internal evaluator and reader failures are
 represented by synthesized `ERROR` conditions, while syntax and external I/O
 diagnostics remain labeled entries without a Lisp object.
 
-Dynamic restarts belong to the evaluation stack and correctly cease to exist
-when evaluation unwinds. The panel therefore does not pretend that a completed
-failure still has invokable restarts. Interactive restart selection requires a
-suspendable evaluator/debugger continuation and remains pending.
+Restart objects may survive for inspection, but their executable records
+belong to the evaluation stack and correctly become inactive when evaluation
+unwinds. The inspector exposes their `NAME` and live `ACTIVE` state. The panel
+therefore does not pretend that a completed failure still has invokable
+restarts. Interactive restart selection requires a suspendable
+evaluator/debugger continuation and remains pending.
 
 The browser can
 show the definition catalog or the references/callers for the selected symbol,
@@ -494,7 +501,8 @@ roots every value from the latest evaluation in the garbage
 collector, shows its type and readable representation, and exposes the whole
 multiple-value result as a live object shelf. It recursively exposes labeled
 components of pairs, vectors, functions, lexical environments, conditions,
-symbols, packages, and hash tables. Up/Down select a component, Enter opens it,
+restarts, symbols, packages, and hash tables. Up/Down select a component, Enter
+opens it,
 Backspace returns to its parent, and Left/Right switch roots; every path node is
 held by an explicit GC root. The session engine, histories, structural scanner,
 debugger history, and inspector are covered by headless automated tests. On
@@ -540,7 +548,8 @@ compiled functions, conditions, hash tables, and shared libraries.
 - Unicode operations without normalization, grapheme clusters, or case
   folding;
 - division always produces `FLOAT`;
-- conditions without the complete hierarchy or first-class restart objects;
+- conditions without the complete hierarchy, condition-associated restarts,
+  or suspendable restart selection;
 - compilation limited to the i64 subset;
 - FFI without general floats, pointers, structs, and callbacks;
 - GUI without vector fonts, HiDPI, IME, and accessibility;

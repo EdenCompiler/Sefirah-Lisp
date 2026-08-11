@@ -79,12 +79,14 @@ consume the primary value, while multiple-value forms and non-local transfers
 preserve the complete set. The same complete-form scanner drives the CLI REPL
 and graphical listener, preventing their multiline behavior from diverging.
 
-Dynamic named restarts reuse the non-local control stack. Each control frame
-records the restart-stack boundary that was active when it was installed.
-Transfers discard inner restart records before jumping, while cleanup frames
-run first; the selected clause data is rooted in runtime transfer state until
-its lexical environment is rebuilt. This prevents a restart from retaining a
-dead `setjmp` destination after `RETURN-FROM`, `THROW`, or normal return.
+Dynamic restarts reuse the non-local control stack. Each active record points
+to a first-class heap `RESTART` object and keeps executable clause data only
+for its dynamic extent. Control frames record the restart-stack boundary that
+was active when installed. Transfers discard inner records before jumping,
+while cleanup frames run first; selected clause data is rooted in runtime
+transfer state until its lexical environment is rebuilt. A restart object may
+survive for inspection or image persistence without retaining a dead `setjmp`
+destination after `RETURN-FROM`, `THROW`, or normal return.
 
 Dynamic handlers use a parallel runtime stack. Bindings from one
 `HANDLER-BIND` retain a shared outer boundary, so selecting one handler masks
@@ -174,12 +176,12 @@ reference. The final owner calls `dlclose` or `FreeLibrary`.
 
 ## Persistent image
 
-The v9 binary format preserves the object graph, including symbols, packages,
+The v10 binary format preserves the object graph, including symbols, packages,
 vectors, characters, hash tables, environments, functions, macros, conditions,
-and restorable streams. Saving uses a temporary file followed by atomic
-replacement. The loader recognizes v6, v7, v8, and v9; loading and saving an
-older image emits the current format. After graph validation, a targeted
-migration restores canonical `COMMON-LISP:NIL` membership, removes legacy
+restart objects, and restorable streams. Saving uses a temporary file followed
+by atomic replacement. The loader recognizes v6 through v10; loading and
+saving an older image emits the current format. After graph validation, a
+targeted migration restores canonical `COMMON-LISP:NIL` membership, removes legacy
 local `NIL` conflicts from packages that use `COMMON-LISP`, and reinstalls the
 missing members of the current primitive set by name together with exported
 special-form symbols. Existing Lisp function definitions are preserved. This

@@ -114,6 +114,9 @@ static void marcar(SefValor valor) {
         marcar(valor->como.condicao.classe);
         marcar(valor->como.condicao.mensagem);
         break;
+    case SEF_TIPO_REINICIO:
+        marcar(valor->como.reinicio.nome);
+        break;
     case SEF_TIPO_PACOTE:
         for (size_t i = 0; i < valor->como.pacote.quantidade_simbolos; i++)
             marcar(valor->como.pacote.simbolos[i]);
@@ -207,7 +210,7 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria) {
         marcar(quadro->nome_ou_etiqueta);
     for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
          reinicio = reinicio->anterior) {
-        marcar(reinicio->nome);
+        marcar(reinicio->objeto);
         marcar(reinicio->parametros);
         marcar(reinicio->corpo);
         marcar(reinicio->ambiente);

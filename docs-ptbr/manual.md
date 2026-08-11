@@ -372,19 +372,23 @@ reiniciado preservam seus valores múltiplos.
     (+ valor 1))) ; => 43
 
 (restart-case
-    (list (find-restart 'repetir)
-          (compute-restarts))
-  (repetir () :repetido)) ; => (REPETIR (REPETIR))
+    (let ((reinicio (find-restart 'repetir)))
+      (list (type-of reinicio)
+            (restart-name reinicio)
+            (eq reinicio (first (compute-restarts)))))
+  (repetir () :repetido)) ; => (RESTART REPETIR T)
 ```
 
-Este é propositalmente um protocolo inicial. Os nomes de restart são a
-representação temporária devolvida por `FIND-RESTART` e `COMPUTE-RESTARTS`;
-objetos restart de primeira classe, associação a condições, a hierarquia e os
-especificadores de tipo padrão completos e as opções de cláusula `:REPORT`,
-`:TEST` e `:INTERACTIVE` continuam pendentes. `ABORT`, `CONTINUE`,
-`MUFFLE-WARNING`, `STORE-VALUE` e `USE-VALUE` invocam um restart ativo com o
-nome correspondente; a filtragem pela condição opcional ainda não está
-disponível.
+`FIND-RESTART` e `COMPUTE-RESTARTS` devolvem objetos `RESTART` de primeira
+classe na ordem de precedência dinâmica, inclusive escolhas anônimas ou com o
+mesmo nome. `INVOKE-RESTART` aceita um objeto ativo ou um nome não-`NIL`. Um
+objeto pode sobreviver ao seu escopo dinâmico para persistência e inspeção, mas
+invocá-lo depois que se torna inativo sinaliza erro. Associação a condições, a
+hierarquia e os especificadores de tipo padrão completos e as opções de
+cláusula `:REPORT`, `:TEST` e `:INTERACTIVE` continuam pendentes. `ABORT`,
+`CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE` e `USE-VALUE` invocam um restart
+ativo com o nome correspondente; a filtragem pela condição opcional ainda não
+está disponível.
 
 ## Streams e arquivos
 
@@ -415,14 +419,14 @@ sinaliza um `ERROR` geral, em vez da condição mais específica `END-OF-FILE`.
 
 ## Imagem persistente
 
-O formato binário v9 `.imagem` preserva o grafo do heap, incluindo vetores,
+O formato binário v10 `.imagem` preserva o grafo do heap, incluindo vetores,
 caracteres, tabelas hash, símbolos, packages, ambientes, funções, macros,
-condições e recursos restauráveis. A gravação usa arquivo temporário e
-substituição atômica. Primitivas C são restauradas pelo nome, nunca pelo
-endereço. O leitor v9 aceita imagens v6, v7 e v8; a abertura realiza migrações
-direcionadas que restauram primitivas novas e a associação canônica de `NIL` ao
-package, além dos símbolos exportados de formas especiais novas, enquanto uma
-nova gravação atualiza o resultado para v9.
+condições, objetos restart e recursos restauráveis. A gravação usa arquivo
+temporário e substituição atômica. Primitivas C são restauradas pelo nome,
+nunca pelo endereço. O leitor v10 aceita imagens de v6 a v9; a abertura realiza
+migrações direcionadas que restauram primitivas novas e a associação canônica
+de `NIL` ao package, além dos símbolos exportados de formas especiais novas,
+enquanto uma nova gravação atualiza o resultado para v10.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
@@ -489,10 +493,12 @@ selecionado no inspetor geral. Falhas internas do avaliador e leitor recebem
 condições `ERROR` sintetizadas, enquanto diagnósticos de sintaxe e I/O externo
 permanecem entradas rotuladas sem objeto Lisp.
 
-Restarts dinâmicos pertencem à pilha da avaliação e deixam corretamente de
-existir quando ela é desenrolada. O painel não finge, portanto, que uma falha já
-encerrada ainda possui restarts invocáveis. A seleção interativa de restart
-exige continuação suspensível do avaliador/depurador e permanece pendente.
+Objetos restart podem sobreviver para inspeção, mas seus registros executáveis
+pertencem à pilha da avaliação e tornam-se corretamente inativos quando ela é
+desenrolada. O inspetor expõe seu `NOME` e estado `ATIVO` corrente. O painel não
+finge, portanto, que uma falha já encerrada ainda possui restarts invocáveis. A
+seleção interativa de restart exige continuação suspensível do
+avaliador/depurador e permanece pendente.
 
 O navegador
 mostra o catálogo de definições ou as referências/callers do símbolo
@@ -500,8 +506,9 @@ selecionado, marca a ocorrência atual e move o cursor do editor diretamente at�
 ela. O inspetor enraíza no coletor de lixo todos os valores da última avaliação,
 mostra seu tipo e representação legível e expõe o resultado de valores
 múltiplos como uma prateleira viva de objetos. Ele expõe recursivamente os
-componentes rotulados de pares, vetores, funções, ambientes lexicais, condições,
-símbolos, packages e hash tables. Cima/Baixo selecionam um componente, Enter o
+componentes rotulados de pares, vetores, funções, ambientes lexicais,
+condições, restarts, símbolos, packages e hash tables. Cima/Baixo selecionam um
+componente, Enter o
 abre, Backspace volta ao pai e Esquerda/Direita alternam as raízes; cada nó do
 caminho possui uma raiz explícita no GC. O motor da sessão, os históricos, o
 analisador estrutural, o histórico do depurador e o inspetor possuem testes
@@ -547,7 +554,8 @@ funções compiladas, condições e bibliotecas compartilhadas.
 - arrays limitados a vetores simples unidimensionais;
 - operações Unicode sem normalização, grapheme clusters ou case folding;
 - divisão sempre produz `FLOAT`;
-- condições sem a hierarquia completa ou objetos restart de primeira classe;
+- condições sem a hierarquia completa, restarts associados a condições ou
+  seleção suspensível de restart;
 - compilação limitada ao subconjunto i64;
 - FFI sem floats, ponteiros, structs e callbacks gerais;
 - GUI sem fontes vetoriais, HiDPI, IME e acessibilidade;

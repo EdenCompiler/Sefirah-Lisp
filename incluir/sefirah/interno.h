@@ -24,7 +24,8 @@ typedef enum SefTipo {
     SEF_TIPO_BIBLIOTECA,
     SEF_TIPO_VETOR,
     SEF_TIPO_CARACTERE,
-    SEF_TIPO_TABELA_HASH
+    SEF_TIPO_TABELA_HASH,
+    SEF_TIPO_REINICIO
 } SefTipo;
 
 typedef struct SefRecursoBiblioteca SefRecursoBiblioteca;
@@ -81,7 +82,7 @@ typedef struct SefQuadroControle {
 } SefQuadroControle;
 
 struct SefReinicioDinamico {
-    SefValor nome;
+    SefValor objeto;
     SefValor parametros;
     SefValor corpo;
     SefValor ambiente;
@@ -175,6 +176,9 @@ struct SefObjeto {
             SefEntradaHash *entradas;
             size_t capacidade, quantidade, ocupadas;
         } tabela_hash;
+        struct {
+            SefValor nome;
+        } reinicio;
     } como;
 };
 
@@ -261,6 +265,7 @@ SefValor sef_funcao_nova(SefRuntime *runtime, SefValor parametros, SefValor corp
 SefValor sef_ambiente_novo(SefRuntime *runtime, SefValor pai, SefErro *erro);
 SefValor sef_condicao_nova(SefRuntime *runtime, SefValor classe, const char *mensagem,
                            SefErro *erro);
+SefValor sef_reinicio_novo(SefRuntime *runtime, SefValor nome, SefErro *erro);
 SefValor sef_stream_novo(SefRuntime *runtime, FILE *arquivo, const char *caminho,
                          bool possui_arquivo, unsigned char padrao, SefErro *erro);
 SefValor sef_biblioteca_nova(SefRuntime *runtime, const char *caminho, SefErro *erro);

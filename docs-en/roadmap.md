@@ -54,6 +54,8 @@ not mean the entire milestone is complete.
 - [x] Dynamic `HANDLER-BIND`/`SIGNAL` protocol integrated with active restarts.
 - [x] Initial named restart protocol with dynamic discovery, invocation,
   multiple values, and `UNWIND-PROTECT` cleanup.
+- [x] First-class restart objects with identity, anonymous discovery,
+  inspection, inactive-state safety, GC, and image persistence.
 - [x] Named helpers `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`, and
   `USE-VALUE`.
 
@@ -97,7 +99,7 @@ not mean the entire milestone is complete.
 - [x] Initial Common Lisp multiple values with binding, collection, calls,
   non-local propagation, `GETHASH` presence, package status, and `READ-LINE`
   newline flags.
-- [x] Backward-compatible v6/v7/v8 image loading and v9 emission.
+- [x] Backward-compatible v6 through v9 image loading and v10 emission.
 - [x] Targeted image migration for canonical `NIL` and newly added primitives.
 - [x] Initial explicit ANSI conformance report with known deviations.
 - [ ] Complete ANSI Common Lisp symbol and semantic coverage.

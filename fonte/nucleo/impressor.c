@@ -259,6 +259,13 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
     case SEF_TIPO_TABELA_HASH:
         snprintf(numero, sizeof(numero), "#<HASH-TABLE %zu>", valor->como.tabela_hash.quantidade);
         return anexar(texto, numero, erro);
+    case SEF_TIPO_REINICIO:
+        if (valor->como.reinicio.nome == runtime->nulo)
+            return anexar(texto, "#<RESTART ANONIMO>", erro);
+        return anexar(texto, "#<RESTART ", erro) &&
+               imprimir_valor(texto, runtime, valor->como.reinicio.nome, false,
+                              profundidade + 1, erro) &&
+               anexar(texto, ">", erro);
     }
     return anexar(texto, "#<DESCONHECIDO>", erro);
 }

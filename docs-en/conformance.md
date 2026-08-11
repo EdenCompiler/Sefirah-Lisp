@@ -25,7 +25,7 @@ implementation.
 | Numbers | ◐ | Fixed-width integers and host doubles exist; bignums, ratios, complex numbers, exact overflow behavior, and the full numeric library are missing. |
 | Packages | ◐ | Heap packages, `DEFPACKAGE`, use lists, export, exact symbol-name lookup, lookup status, qualified symbols, and image persistence work; import, shadowing, nicknames, and uninterning are missing. |
 | Streams | ◐ | Standard/file streams and basic text I/O work. Composite streams, element types, pathname semantics, and the complete stream designator protocol are missing. |
-| Conditions | ◐ | Condition objects, `ERROR`, `SIGNAL`, dynamically scoped `HANDLER-BIND`, `HANDLER-CASE`, `IGNORE-ERRORS`, an initial named `RESTART-CASE`/invocation/discovery protocol, and five standard named-restart helpers work; first-class restart objects, standard hierarchy coverage, and debugger integration are missing. |
+| Conditions | ◐ | Condition objects, `ERROR`, `SIGNAL`, dynamically scoped `HANDLER-BIND`, `HANDLER-CASE`, `IGNORE-ERRORS`, first-class restart objects, dynamic discovery/invocation, and five standard named-restart helpers work; condition association, standard hierarchy coverage, and suspendable debugger integration are missing. |
 | CLOS and MOP | — | Classes, generic functions, method combination, and the metaobject protocol are not implemented. |
 | Compilation | ◐ | `COMPILE` handles the documented i64 subset through Sefirah's own IR and native backends; general Lisp compilation and ANSI compilation environments are missing. |
 
@@ -52,8 +52,9 @@ implementation.
   not exposed yet.
 - Keyword symbols are external, self-evaluating, bound to themselves, and
   protected from assignment, but symbol property lists remain pending.
-- `FIND-RESTART` and `COMPUTE-RESTARTS` currently return restart-name symbols,
-  not first-class restart objects. Condition association and the `:REPORT`,
+- `FIND-RESTART` and `COMPUTE-RESTARTS` return first-class `RESTART` objects;
+  name and object designators preserve identity and inactive objects remain
+  inspectable but cannot be invoked. Condition association and the `:REPORT`,
   `:TEST`, and `:INTERACTIVE` `RESTART-CASE` options are not implemented yet.
 - `SIGNAL` and `ERROR` currently accept a condition object or a single string.
   The full condition-designator argument protocol and standard condition type
@@ -72,5 +73,8 @@ compared against the Common Lisp HyperSpec entries for
 [`CONSTANTP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm),
 [`HANDLER-BIND`](https://www.lispworks.com/documentation/HyperSpec/Body/m_handle.htm),
 [`SIGNAL`](https://www.lispworks.com/documentation/HyperSpec/Body/f_signal.htm),
+[`COMPUTE-RESTARTS`](https://www.lispworks.com/documentation/HyperSpec/Body/f_comp_1.htm),
+[`INVOKE-RESTART`](https://www.lispworks.com/documentation/HyperSpec/Body/f_invo_1.htm),
+[`RESTART-NAME`](https://www.lispworks.com/documentation/HyperSpec/Body/f_rst_na.htm),
 and
 [`RESTART-CASE`](https://www.lispworks.com/documentation/HyperSpec/Body/m_rst_ca.htm).

@@ -444,6 +444,21 @@ int main(int argc, char **argv) {
     verificar_texto(runtime, "(type-of \"sefirah\")", "STRING");
     verificar_texto(runtime, "(> (sefirah::object-count) 0)", "T");
     verificar_texto(runtime,
+                    "(define tabela-v9 (make-hash-table)) "
+                    "(setf (gethash 'legado tabela-v9) 42) "
+                    "(gethash 'legado tabela-v9)",
+                    "42");
+    verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v9.imagem", &erro),
+              "imagem sem objetos v10 foi salva no formato atual");
+    converter_assinatura("teste-sefirah-v9.imagem", 9);
+    SefRuntime *runtime_v9 = sef_runtime_imagem_abrir("teste-sefirah-v9.imagem", &erro);
+    verificar(runtime_v9 != NULL, "leitor atual aceitou imagem v9 com tabela hash");
+    if (runtime_v9 != NULL) {
+        verificar_texto(runtime_v9, "(gethash 'legado tabela-v9)", "42");
+        sef_runtime_destruir(runtime_v9);
+    }
+    remove("teste-sefirah-v9.imagem");
+    verificar_texto(runtime,
                     "(define celula-separada 41) "
                     "(defun celula-separada () 42) "
                     "(list celula-separada (celula-separada))",
@@ -484,7 +499,18 @@ int main(int argc, char **argv) {
                     "(list (find-restart 'a) (compute-restarts) "
                     "(restart-name (find-restart 'a))) "
                     "(a () :a) (b () :b))",
-                    "(A (A B) A)");
+                    "(#<RESTART A> (#<RESTART A> #<RESTART B>) A)");
+    verificar_texto(runtime,
+                    "(restart-case "
+                    "(let ((r (find-restart 'identidade))) "
+                    "(list (type-of r) (eq r (first (compute-restarts))) "
+                    "(eq r (find-restart r)) (restart-name r))) "
+                    "(identidade () :falhou))",
+                    "(RESTART T T IDENTIDADE)");
+    verificar_texto(runtime,
+                    "(restart-case (invoke-restart (first (compute-restarts))) "
+                    "(nil () 42))",
+                    "42");
     verificar_texto(runtime,
                     "(multiple-value-list "
                     "(restart-case (values 40 41) (substituir () 0)))",
@@ -516,6 +542,49 @@ int main(int argc, char **argv) {
                     "(restart-case (return-from fim 42) (temporario () 0))) "
                     "(find-restart 'temporario))",
                     "(42 NIL)");
+    verificar_texto(runtime,
+                    "(define reinicio-salvo "
+                    "(restart-case (find-restart 'temporario) (temporario () nil))) "
+                    "(define reinicio-anonimo-salvo "
+                    "(restart-case (first (compute-restarts)) (nil () nil))) "
+                    "(list (type-of reinicio-salvo) (restart-name reinicio-salvo) "
+                    "(find-restart reinicio-salvo) (restart-name reinicio-anonimo-salvo))",
+                    "(RESTART TEMPORARIO NIL NIL)");
+    SefValor reinicio_sdk = avaliar(runtime, "reinicio-salvo");
+    verificar(reinicio_sdk != NULL && strcmp(sef_valor_nome_tipo(reinicio_sdk), "RESTART") == 0 &&
+                  sef_valor_quantidade_componentes(runtime, reinicio_sdk) == 2 &&
+                  sef_valor_componente(runtime, reinicio_sdk, 0, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "NOME") == 0 &&
+                  strcmp(sef_valor_nome_tipo(componente_sdk), "SYMBOL") == 0 &&
+                  sef_valor_componente(runtime, reinicio_sdk, 1, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "ATIVO") == 0 &&
+                  sef_valor_e_nulo(runtime, componente_sdk),
+              "SDK inspecionou nome e atividade do objeto RESTART");
+    verificar_texto(runtime,
+                    "(handler-case (invoke-restart reinicio-salvo) "
+                    "(error (condicao) :reinicio-inativo))",
+                    ":REINICIO-INATIVO");
+    verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v10.imagem", &erro),
+              "imagem v10 persistiu objeto RESTART inativo");
+    SefRuntime *runtime_v10 =
+        sef_runtime_imagem_abrir("teste-sefirah-v10.imagem", &erro);
+    verificar(runtime_v10 != NULL, "leitor abriu imagem v10 com objeto RESTART");
+    if (runtime_v10 != NULL) {
+        verificar_texto(runtime_v10,
+                        "(list (type-of reinicio-salvo) (restart-name reinicio-salvo) "
+                        "(find-restart reinicio-salvo) "
+                        "(type-of reinicio-anonimo-salvo) "
+                        "(restart-name reinicio-anonimo-salvo))",
+                        "(RESTART TEMPORARIO NIL RESTART NIL)");
+        verificar_texto(runtime_v10,
+                        "(restart-case (invoke-restart (find-restart 'restaurado) 42) "
+                        "(restaurado (valor) valor))",
+                        "42");
+        sef_runtime_destruir(runtime_v10);
+    }
+    remove("teste-sefirah-v10.imagem");
     verificar_texto(runtime,
                     "(handler-case (invoke-restart 'ausente) "
                     "(error (condicao) :reinicio-ausente))",

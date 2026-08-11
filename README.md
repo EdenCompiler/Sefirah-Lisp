@@ -33,7 +33,7 @@ the roadmap.
 | Subsystem | Current state |
 | --- | --- |
 | Language | Common Lisp subset with functions, macros, multiple values, Unicode characters, vectors, hash tables, packages, dynamic condition handlers, named restarts, and non-local control |
-| Runtime | Object heap, mark-and-sweep GC, explicit roots, streams, and v9 binary images |
+| Runtime | Object heap, mark-and-sweep GC, explicit roots, streams, and v10 binary images |
 | Compiler | i64 SSA IR, reference interpreter, W^X x86-64/AArch64 JIT, and relocatable objects |
 | FFI | Explicit shared libraries and C i64 calls with one or two inputs |
 | Graphics | Custom RGB surface, CPU rasterization, and bitmap font |
@@ -50,8 +50,8 @@ the roadmap.
 - public language symbols use English to converge with ANSI Common Lisp;
 - separate value/function cells, macros, quasiquote, packages, and non-local
   control with cleanup;
-- initial named restarts with dynamic discovery, invocation, multiple values,
-  and cleanup through `UNWIND-PROTECT`;
+- first-class restart objects with dynamic discovery, invocation by name or
+  identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
   choosing an active restart in the signaler's context;
 - simple `#(...)` vectors, one-dimensional arrays, `AREF`/`SVREF`, and basic
@@ -183,11 +183,11 @@ after the object and all compiled functions release it.
 ./construir/sefirah imagem abrir desenvolvimento.imagem
 ```
 
-The v9 image preserves the portable Lisp graph, including vectors, characters,
-and hash tables, but not JIT bytes or process handles. The reader still accepts
-v6, v7, and v8. On load, targeted migrations restore canonical `NIL` package
-membership and primitives added after an older world was saved. File streams
-and shared libraries must be closed before saving.
+The v10 image preserves the portable Lisp graph, including vectors, characters,
+hash tables, and first-class restart objects, but not JIT bytes or process
+handles. The reader still accepts v6 through v9. On load, targeted migrations
+restore canonical `NIL` package membership and primitives added after an older
+world was saved. File streams and shared libraries must be closed before saving.
 
 ### GUI and IDE
 
@@ -218,7 +218,8 @@ Backspace returns to its parent, and Left/Right switch between returned roots.
 The complete navigation path remains rooted in the garbage collector. Clicking
 the definition browser advances to the next definition. In the debugger,
 Up/Down select a condition and Enter opens its Lisp object in the recursive
-inspector. On macOS, Command can replace Ctrl.
+inspector; restart objects expose their name and current active state there. On
+macOS, Command can replace Ctrl.
 
 ## Architecture
 
@@ -329,7 +330,7 @@ nativa permanecem no roteiro.
 | Subsistema | Estado atual |
 | --- | --- |
 | Linguagem | Subconjunto Common Lisp com funções, macros, valores múltiplos, caracteres Unicode, vetores, tabelas hash, packages, handlers dinâmicos de condições, restarts nomeados e controle não local |
-| Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v9 |
+| Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v10 |
 | Compilador | IR SSA i64, interpretador de referência, JIT W^X x86-64/AArch64 e objetos relocáveis |
 | FFI | Bibliotecas compartilhadas explícitas e chamadas C i64 com uma ou duas entradas |
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
@@ -348,8 +349,8 @@ nativa permanecem no roteiro.
   Lisp;
 - células separadas de valor e função, macros, quasiquote, packages e controle
   não local com limpeza;
-- restarts nomeados iniciais com descoberta dinâmica, invocação, valores
-  múltiplos e limpeza por `UNWIND-PROTECT`;
+- objetos restart de primeira classe com descoberta dinâmica, invocação por
+  nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela
   escolha de um restart ativo no contexto do sinalizador;
 - vetores simples `#(...)`, arrays unidimensionais, `AREF`/`SVREF` e mutação
@@ -480,12 +481,12 @@ descarregado quando o objeto e todas as funções compiladas o liberam.
 ./construir/sefirah imagem abrir desenvolvimento.imagem
 ```
 
-A imagem v9 preserva o grafo Lisp portável, inclusive vetores, caracteres e
-tabelas hash, mas não bytes JIT nem handles do processo. O leitor continua
-aceitando v6, v7 e v8. Ao abrir, migrações direcionadas restauram a associação
-canônica de `NIL` ao package e primitivas adicionadas depois da gravação de um
-mundo antigo. Streams de arquivo e bibliotecas compartilhadas precisam estar
-fechados antes da gravação.
+A imagem v10 preserva o grafo Lisp portável, inclusive vetores, caracteres,
+tabelas hash e objetos restart de primeira classe, mas não bytes JIT nem
+handles do processo. O leitor continua aceitando de v6 a v9. Ao abrir,
+migrações direcionadas restauram a associação canônica de `NIL` ao package e
+primitivas adicionadas depois da gravação de um mundo antigo. Streams de
+arquivo e bibliotecas compartilhadas precisam estar fechados antes da gravação.
 
 ### GUI e IDE
 
@@ -516,8 +517,8 @@ inspetor, Cima/Baixo selecionam um componente, Enter o abre, Backspace volta ao
 pai e Esquerda/Direita alternam entre as raízes devolvidas. O caminho completo
 permanece enraizado no coletor de lixo. Clicar no navegador avança para a
 próxima definição. No depurador, Cima/Baixo selecionam uma condição e Enter
-abre seu objeto Lisp no inspetor recursivo. No macOS, Command pode substituir
-Ctrl.
+abre seu objeto Lisp no inspetor recursivo; objetos restart expõem ali o nome e
+o estado ativo corrente. No macOS, Command pode substituir Ctrl.
 
 ## Arquitetura
 

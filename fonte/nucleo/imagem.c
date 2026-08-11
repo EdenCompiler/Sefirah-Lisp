@@ -19,6 +19,7 @@ static const unsigned char assinatura_v6[8] = {'S', 'E', 'F', 'I', 'M', 'G', 6, 
 static const unsigned char assinatura_v7[8] = {'S', 'E', 'F', 'I', 'M', 'G', 7, 0};
 static const unsigned char assinatura_v8[8] = {'S', 'E', 'F', 'I', 'M', 'G', 8, 0};
 static const unsigned char assinatura_v9[8] = {'S', 'E', 'F', 'I', 'M', 'G', 9, 0};
+static const unsigned char assinatura_v10[8] = {'S', 'E', 'F', 'I', 'M', 'G', 10, 0};
 
 typedef struct RegistroImagem {
     SefTipo tipo;
@@ -301,6 +302,8 @@ static bool escrever_objeto(FILE *arquivo, SefValor objeto, SefValor *objetos, u
                 return false;
         }
         return true;
+    case SEF_TIPO_REINICIO:
+        return escrever_referencia(arquivo, objetos, quantidade, objeto->como.reinicio.nome, erro);
     }
     return false;
 }
@@ -344,7 +347,7 @@ bool sef_runtime_imagem_salvar(SefRuntime *runtime, const char *caminho, SefErro
     }
 
     bool sucesso =
-        escrever_bytes(arquivo, assinatura_v9, sizeof(assinatura_v9), erro) &&
+        escrever_bytes(arquivo, assinatura_v10, sizeof(assinatura_v10), erro) &&
         escrever_u32(arquivo, quantidade, erro) &&
         escrever_u32(arquivo, id_de(objetos, quantidade, runtime->nulo), erro) &&
         escrever_u32(arquivo, id_de(objetos, quantidade, runtime->verdadeiro), erro) &&
@@ -408,7 +411,8 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
                          SefErro *erro) {
     uint8_t tipo;
     uint64_t bits;
-    SefTipo maior_tipo = versao >= 9   ? SEF_TIPO_TABELA_HASH
+    SefTipo maior_tipo = versao >= 10  ? SEF_TIPO_REINICIO
+                         : versao >= 9 ? SEF_TIPO_TABELA_HASH
                          : versao >= 8 ? SEF_TIPO_CARACTERE
                          : versao >= 7 ? SEF_TIPO_VETOR
                                        : SEF_TIPO_BIBLIOTECA;
@@ -569,6 +573,8 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
                 return false;
         }
         return true;
+    case SEF_TIPO_REINICIO:
+        return ler_u32(arquivo, &registro->referencias[0], erro);
     }
     return false;
 }
@@ -617,7 +623,7 @@ static bool validar_registro(const RegistroImagem *registro, uint32_t quantidade
         referencias = 3;
     else if (registro->tipo == SEF_TIPO_AMBIENTE)
         referencias = 1;
-    else if (registro->tipo == SEF_TIPO_SIMBOLO)
+    else if (registro->tipo == SEF_TIPO_SIMBOLO || registro->tipo == SEF_TIPO_REINICIO)
         referencias = 1;
     for (uint32_t i = 0; i < referencias; i++) {
         if (!id_valido(registro->referencias[i], quantidade)) {
@@ -692,6 +698,8 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
         versao = 8;
     else if (cabecalho_lido && memcmp(recebida, assinatura_v9, sizeof(assinatura_v9)) == 0)
         versao = 9;
+    else if (cabecalho_lido && memcmp(recebida, assinatura_v10, sizeof(assinatura_v10)) == 0)
+        versao = 10;
     bool sucesso = cabecalho_lido && versao != 0 && ler_u32(arquivo, &quantidade, erro) &&
                    ler_u32(arquivo, &id_nulo, erro) && ler_u32(arquivo, &id_verdadeiro, erro) &&
                    ler_u32(arquivo, &id_global, erro) && ler_u32(arquivo, &total_simbolos, erro);
@@ -933,6 +941,14 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                     sucesso = false;
                     break;
                 }
+            }
+            break;
+        case SEF_TIPO_REINICIO:
+            objeto->como.reinicio.nome = objetos[registro->referencias[0]];
+            if (objeto->como.reinicio.nome != objetos[id_nulo] &&
+                objeto->como.reinicio.nome->tipo != SEF_TIPO_SIMBOLO) {
+                sef_erro_definir(erro, 0, 0, "reinicio corrompido na imagem");
+                sucesso = false;
             }
             break;
         }

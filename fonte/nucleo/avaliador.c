@@ -965,7 +965,16 @@ static SefValor especial_restart_case(SefRuntime *runtime, SefValor argumentos, 
             sef_erro_definir(erro, 0, 0, "memoria insuficiente para registrar reinicio");
             return NULL;
         }
-        reinicio->nome = nome;
+        reinicio->objeto = sef_reinicio_novo(runtime, nome, erro);
+        if (reinicio->objeto == NULL) {
+            free(reinicio);
+            while (primeiro_reinicio != NULL) {
+                SefReinicioDinamico *proximo = primeiro_reinicio->anterior;
+                free(primeiro_reinicio);
+                primeiro_reinicio = proximo;
+            }
+            return NULL;
+        }
         reinicio->parametros = parametros;
         reinicio->corpo = corpo;
         reinicio->ambiente = ambiente;
@@ -1022,13 +1031,17 @@ static SefValor especial_restart_case(SefRuntime *runtime, SefValor argumentos, 
 
 SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor argumentos,
                               SefErro *erro) {
-    if (!sef_valor_e_simbolo_logico(runtime, designador)) {
-        sef_erro_definir(erro, 0, 0, "designador de reinicio deve ser simbolo ou NIL");
+    bool por_nome = designador != runtime->nulo && designador->tipo == SEF_TIPO_SIMBOLO;
+    bool por_objeto = designador != NULL && designador->tipo == SEF_TIPO_REINICIO;
+    if (!por_nome && !por_objeto) {
+        sef_erro_definir(erro, 0, 0,
+                         "designador de reinicio deve ser simbolo nao-NIL ou objeto RESTART");
         return NULL;
     }
     for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
          reinicio = reinicio->anterior) {
-        if (reinicio->nome != designador)
+        SefValor nome = reinicio->objeto->como.reinicio.nome;
+        if ((por_nome && nome != designador) || (por_objeto && reinicio->objeto != designador))
             continue;
         if (!iniciar_transferencia(runtime, reinicio->destino, argumentos, erro))
             return NULL;
@@ -1529,6 +1542,7 @@ static SefValor avaliar_forma(SefRuntime *runtime, SefValor forma, SefValor ambi
     case SEF_TIPO_VETOR:
     case SEF_TIPO_CARACTERE:
     case SEF_TIPO_TABELA_HASH:
+    case SEF_TIPO_REINICIO:
         return forma;
     case SEF_TIPO_SIMBOLO: {
         if (forma == runtime->verdadeiro || forma->como.simbolo.pacote == runtime->pacote_keyword)

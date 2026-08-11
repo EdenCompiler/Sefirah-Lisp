@@ -82,13 +82,16 @@ transferências não locais preservam o conjunto completo. O mesmo analisador de
 forma completa atende ao REPL da CLI e ao ouvinte gráfico, evitando divergência
 no comportamento multilinha.
 
-Restarts nomeados dinâmicos reutilizam a pilha de controle não local. Cada
-quadro registra o limite da pilha de restarts ativo quando foi instalado. As
+Restarts dinâmicos reutilizam a pilha de controle não local. Cada registro
+ativo aponta para um objeto `RESTART` de primeira classe no heap e mantém os
+dados executáveis da cláusula somente durante seu escopo dinâmico. Cada quadro
+registra o limite da pilha de restarts ativo quando foi instalado. As
 transferências descartam registros internos antes do salto, enquanto quadros
 de limpeza executam primeiro; os dados da cláusula escolhida permanecem
 enraizados no estado de transferência até seu ambiente léxico ser reconstruído.
-Assim, um restart não retém um destino `setjmp` morto depois de `RETURN-FROM`,
-`THROW` ou retorno normal.
+Um objeto restart pode sobreviver para inspeção ou persistência em imagem sem
+reter um destino `setjmp` morto depois de `RETURN-FROM`, `THROW` ou retorno
+normal.
 
 Handlers dinâmicos usam uma pilha paralela no runtime. Os bindings de um mesmo
 `HANDLER-BIND` compartilham um limite externo; selecionar um handler mascara o
@@ -182,12 +185,13 @@ própria referência. O último proprietário executa `dlclose` ou `FreeLibrary`
 
 ## Imagem persistente
 
-O formato binário v9 preserva o grafo de objetos, símbolos, packages, vetores,
-caracteres, tabelas hash, ambientes, funções, macros, condições e streams
-restauráveis. A gravação usa um arquivo temporário e substituição atômica. O
-carregador reconhece v6, v7, v8 e v9; uma imagem antiga carregada e salva
-novamente é emitida no formato corrente. Depois de validar o grafo, uma
-migração direcionada restaura a associação canônica de `COMMON-LISP:NIL`,
+O formato binário v10 preserva o grafo de objetos, símbolos, packages, vetores,
+caracteres, tabelas hash, ambientes, funções, macros, condições, objetos
+restart e streams restauráveis. A gravação usa um arquivo temporário e
+substituição atômica. O carregador reconhece de v6 a v10; uma imagem antiga
+carregada e salva novamente é emitida no formato corrente. Depois de validar o
+grafo, uma migração direcionada restaura a associação canônica de
+`COMMON-LISP:NIL`,
 remove conflitos locais legados de `NIL` nos packages que usam `COMMON-LISP` e
 reinstala por nome os membros ausentes do conjunto atual de primitivas junto
 aos símbolos exportados de formas especiais. Definições Lisp de função já

@@ -56,6 +56,8 @@ não significa que o marco inteiro esteja concluído.
 - [x] Protocolo dinâmico de `HANDLER-BIND`/`SIGNAL` integrado aos restarts ativos.
 - [x] Protocolo inicial de restarts nomeados com descoberta dinâmica,
   invocação, valores múltiplos e limpeza por `UNWIND-PROTECT`.
+- [x] Objetos restart de primeira classe com identidade, descoberta anônima,
+  inspeção, segurança quando inativos, GC e persistência em imagem.
 - [x] Auxiliares nomeados `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`
   e `USE-VALUE`.
 
@@ -100,7 +102,7 @@ não significa que o marco inteiro esteja concluído.
 - [x] Valores múltiplos iniciais de Common Lisp com binding, coleta, chamadas,
   propagação não local, presença de `GETHASH`, estado de package e indicador de
   quebra de linha de `READ-LINE`.
-- [x] Leitura retrocompatível de imagens v6/v7/v8 e emissão do formato v9.
+- [x] Leitura retrocompatível de imagens de v6 a v9 e emissão do formato v10.
 - [x] Migração direcionada de imagem para `NIL` canônico e primitivas novas.
 - [x] Relatório inicial explícito de conformidade ANSI e desvios conhecidos.
 - [ ] Cobertura completa dos símbolos e da semântica ANSI Common Lisp.

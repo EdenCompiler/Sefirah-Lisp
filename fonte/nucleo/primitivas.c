@@ -1380,9 +1380,11 @@ static bool reinicio_condicao_suportada(SefRuntime *runtime, SefValor argumentos
 }
 
 static SefReinicioDinamico *reinicio_encontrar(SefRuntime *runtime, SefValor designador) {
+    bool por_objeto = designador != NULL && designador->tipo == SEF_TIPO_REINICIO;
     for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
          reinicio = reinicio->anterior) {
-        if (reinicio->nome == designador)
+        if ((por_objeto && reinicio->objeto == designador) ||
+            (!por_objeto && reinicio->objeto->como.reinicio.nome == designador))
             return reinicio;
     }
     return NULL;
@@ -1399,12 +1401,15 @@ static SefValor primitiva_find_restart(SefRuntime *runtime, SefValor argumentos,
         !reinicio_condicao_suportada(runtime, argumentos, "FIND-RESTART", erro))
         return NULL;
     SefValor designador = car(argumentos);
-    if (!sef_valor_e_simbolo_logico(runtime, designador)) {
-        sef_erro_definir(erro, 0, 0, "FIND-RESTART exige um simbolo ou NIL");
+    bool nome = designador != runtime->nulo && designador->tipo == SEF_TIPO_SIMBOLO;
+    bool objeto = designador != NULL && designador->tipo == SEF_TIPO_REINICIO;
+    if (!nome && !objeto) {
+        sef_erro_definir(erro, 0, 0,
+                         "FIND-RESTART exige simbolo nao-NIL ou objeto RESTART");
         return NULL;
     }
     SefReinicioDinamico *reinicio = reinicio_encontrar(runtime, designador);
-    return reinicio == NULL ? runtime->nulo : reinicio->nome;
+    return reinicio == NULL ? runtime->nulo : reinicio->objeto;
 }
 
 static SefValor primitiva_compute_restarts(SefRuntime *runtime, SefValor argumentos,
@@ -1418,7 +1423,7 @@ static SefValor primitiva_compute_restarts(SefRuntime *runtime, SefValor argumen
     SefValor invertida = runtime->nulo;
     for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
          reinicio = reinicio->anterior) {
-        invertida = sef_par_novo(runtime, reinicio->nome, invertida, erro);
+        invertida = sef_par_novo(runtime, reinicio->objeto, invertida, erro);
         if (invertida == NULL)
             return NULL;
     }
@@ -1429,12 +1434,11 @@ static SefValor primitiva_restart_name(SefRuntime *runtime, SefValor argumentos,
     if (!quantidade(runtime, argumentos, 1, 1, "RESTART-NAME", erro))
         return NULL;
     SefValor reinicio = car(argumentos);
-    if (!sef_valor_e_simbolo_logico(runtime, reinicio)) {
-        sef_erro_definir(erro, 0, 0,
-                         "RESTART-NAME exige o simbolo que representa um reinicio inicial");
+    if (reinicio == NULL || reinicio->tipo != SEF_TIPO_REINICIO) {
+        sef_erro_definir(erro, 0, 0, "RESTART-NAME exige um objeto RESTART");
         return NULL;
     }
-    return reinicio;
+    return reinicio->como.reinicio.nome;
 }
 
 static SefValor reinicio_padrao_invocar(SefRuntime *runtime, const char *nome,

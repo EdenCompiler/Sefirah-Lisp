@@ -670,6 +670,17 @@ SefValor sef_condicao_nova(SefRuntime *runtime, SefValor classe, const char *men
     return condicao;
 }
 
+SefValor sef_reinicio_novo(SefRuntime *runtime, SefValor nome, SefErro *erro) {
+    if (!sef_valor_e_simbolo_logico(runtime, nome)) {
+        sef_erro_definir(erro, 0, 0, "nome de reinicio deve ser simbolo ou NIL");
+        return NULL;
+    }
+    SefValor reinicio = sef_objeto_novo(runtime, SEF_TIPO_REINICIO, erro);
+    if (reinicio != NULL)
+        reinicio->como.reinicio.nome = nome;
+    return reinicio;
+}
+
 SefValor sef_stream_novo(SefRuntime *runtime, FILE *arquivo, const char *caminho,
                          bool possui_arquivo, unsigned char padrao, SefErro *erro) {
     SefValor stream = sef_objeto_novo(runtime, SEF_TIPO_STREAM, erro);
@@ -765,7 +776,8 @@ const char *sef_valor_nome_tipo(SefValor valor) {
                                   "SEFIRAH::SHARED-LIBRARY",
                                   "VECTOR",
                                   "CHARACTER",
-                                  "HASH-TABLE"};
+                                  "HASH-TABLE",
+                                  "RESTART"};
     if (valor == NULL)
         return "INVALID";
     if (valor->tipo == SEF_TIPO_FUNCAO && valor->como.funcao.compilada_i64 != NULL)
@@ -866,6 +878,8 @@ size_t sef_valor_quantidade_componentes(const SefRuntime *runtime, SefValor valo
         return valor->como.vetor.tamanho;
     case SEF_TIPO_TABELA_HASH:
         return 2 * valor->como.tabela_hash.quantidade;
+    case SEF_TIPO_REINICIO:
+        return 2;
     default:
         return 0;
     }
@@ -969,6 +983,20 @@ bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indi
         return definir_rotulo(rotulo, capacidade_rotulo, "[%zu]", indice);
     case SEF_TIPO_TABELA_HASH:
         return componente_hash(valor, indice, componente, rotulo, capacidade_rotulo);
+    case SEF_TIPO_REINICIO:
+        if (indice == 0) {
+            *componente = valor->como.reinicio.nome;
+            return definir_rotulo(rotulo, capacidade_rotulo, "NOME");
+        }
+        *componente = runtime->nulo;
+        for (SefReinicioDinamico *ativo = runtime->reinicios; ativo != NULL;
+             ativo = ativo->anterior) {
+            if (ativo->objeto == valor) {
+                *componente = runtime->verdadeiro;
+                break;
+            }
+        }
+        return definir_rotulo(rotulo, capacidade_rotulo, "ATIVO");
     default:
         return false;
     }
