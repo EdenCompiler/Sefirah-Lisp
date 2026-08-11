@@ -95,6 +95,7 @@ não significa que o marco inteiro esteja concluído.
   propagação não local, presença de `GETHASH`, estado de package e indicador de
   quebra de linha de `READ-LINE`.
 - [x] Leitura retrocompatível de imagens v6/v7/v8 e emissão do formato v9.
+- [x] Migração direcionada de imagem para `NIL` canônico e primitivas novas.
 - [x] Relatório inicial explícito de conformidade ANSI e desvios conhecidos.
 - [ ] Cobertura completa dos símbolos e da semântica ANSI Common Lisp.
 - [ ] CLOS e MOP documentada.

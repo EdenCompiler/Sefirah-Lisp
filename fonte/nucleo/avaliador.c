@@ -62,6 +62,19 @@ static bool contar_exato(SefRuntime *runtime, SefValor argumentos, size_t espera
     return false;
 }
 
+static bool exigir_nome_variavel(SefRuntime *runtime, SefValor nome, const char *contexto,
+                                 SefErro *erro) {
+    if (!sef_valor_e_simbolo_logico(runtime, nome)) {
+        sef_erro_definir(erro, 0, 0, "%s exige um simbolo", contexto);
+        return false;
+    }
+    if (sef_simbolo_e_constante(runtime, nome)) {
+        sef_erro_definir(erro, 0, 0, "%s nao pode vincular um simbolo constante", contexto);
+        return false;
+    }
+    return true;
+}
+
 static SefValor especial_quote(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!contar_exato(runtime, argumentos, 1, "QUOTE", erro))
         return NULL;
@@ -224,8 +237,7 @@ static SefValor especial_define(SefRuntime *runtime, SefValor argumentos, SefVal
     if (!contar_exato(runtime, argumentos, 2, "DEFINE", erro))
         return NULL;
     SefValor nome = primeiro(argumentos);
-    if (nome->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "DEFINE exige um simbolo como primeiro argumento");
+    if (!exigir_nome_variavel(runtime, nome, "DEFINE", erro)) {
         return NULL;
     }
     SefValor valor = sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro);
@@ -246,8 +258,7 @@ static SefValor especial_variavel_global(SefRuntime *runtime, SefValor argumento
         return NULL;
     }
     SefValor nome = primeiro(argumentos);
-    if (nome->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "nome de variavel global deve ser simbolo");
+    if (!exigir_nome_variavel(runtime, nome, "definicao de variavel global", erro)) {
         return NULL;
     }
     SefValor existente;
@@ -276,8 +287,7 @@ static SefValor especial_setq(SefRuntime *runtime, SefValor argumentos, SefValor
     while (argumentos != runtime->nulo) {
         SefValor nome = primeiro(argumentos);
         argumentos = resto(argumentos);
-        if (nome->tipo != SEF_TIPO_SIMBOLO) {
-            sef_erro_definir(erro, 0, 0, "SETQ exige um simbolo");
+        if (!exigir_nome_variavel(runtime, nome, "SETQ", erro)) {
             return NULL;
         }
         resultado = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
@@ -295,6 +305,8 @@ static SefValor especial_setq(SefRuntime *runtime, SefValor argumentos, SefValor
 static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor forma_valor,
                                SefValor ambiente, SefErro *erro) {
     if (lugar->tipo == SEF_TIPO_SIMBOLO) {
+        if (!exigir_nome_variavel(runtime, lugar, "SETF", erro))
+            return NULL;
         SefValor valor = sef_avaliar(runtime, forma_valor, ambiente, erro);
         if (valor == NULL)
             return NULL;
@@ -469,7 +481,7 @@ static SefValor especial_let(SefRuntime *runtime, SefValor argumentos, SefValor 
             sef_erro_definir(erro, 0, 0, "vinculo LET invalido");
             return NULL;
         }
-        if (nome->tipo != SEF_TIPO_SIMBOLO ||
+        if (!exigir_nome_variavel(runtime, nome, "LET", erro) ||
             !sef_ambiente_definir(runtime, novo, nome, valor, erro))
             return NULL;
         descricoes = resto(descricoes);
@@ -505,8 +517,7 @@ static SefValor especial_multiple_value_bind(SefRuntime *runtime, SefValor argum
     size_t indice = 0;
     while (variaveis != runtime->nulo) {
         SefValor nome = primeiro(variaveis);
-        if (nome->tipo != SEF_TIPO_SIMBOLO) {
-            sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-BIND aceita somente nomes de variaveis");
+        if (!exigir_nome_variavel(runtime, nome, "MULTIPLE-VALUE-BIND", erro)) {
             sef_valores_salvos_liberar(&salvos);
             return NULL;
         }
@@ -1108,15 +1119,16 @@ static bool vincular_parametros(SefRuntime *runtime, SefValor ambiente, SefValor
         SefValor parametro = primeiro(parametros);
         parametros = resto(parametros);
         if (sef_simbolo_tem_nome(parametro, "&REST")) {
-            if (parametros == runtime->nulo || primeiro(parametros)->tipo != SEF_TIPO_SIMBOLO ||
+            if (parametros == runtime->nulo ||
+                !exigir_nome_variavel(runtime, primeiro(parametros), "&REST", erro) ||
                 resto(parametros) != runtime->nulo) {
-                sef_erro_definir(erro, 0, 0, "uso invalido de &REST");
+                if (!erro->ocorreu)
+                    sef_erro_definir(erro, 0, 0, "uso invalido de &REST");
                 return false;
             }
             return sef_ambiente_definir(runtime, ambiente, primeiro(parametros), argumentos, erro);
         }
-        if (parametro->tipo != SEF_TIPO_SIMBOLO) {
-            sef_erro_definir(erro, 0, 0, "parametro deve ser simbolo");
+        if (!exigir_nome_variavel(runtime, parametro, "parametro", erro)) {
             return false;
         }
         if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {

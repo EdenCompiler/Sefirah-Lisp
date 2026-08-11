@@ -155,7 +155,12 @@ O formato binário v9 preserva o grafo de objetos, símbolos, packages, vetores,
 caracteres, tabelas hash, ambientes, funções, macros, condições e streams
 restauráveis. A gravação usa um arquivo temporário e substituição atômica. O
 carregador reconhece v6, v7, v8 e v9; uma imagem antiga carregada e salva
-novamente é emitida no formato corrente.
+novamente é emitida no formato corrente. Depois de validar o grafo, uma
+migração direcionada restaura a associação canônica de `COMMON-LISP:NIL`,
+remove conflitos locais legados de `NIL` nos packages que usam `COMMON-LISP` e
+reinstala por nome os membros ausentes do conjunto atual de primitivas.
+Definições Lisp de função já existentes são preservadas. Assim, um mundo antigo
+recebe novos built-ins sem serializar nem confiar em endereços C obsoletos.
 
 Recursos do processo seguem uma política explícita:
 

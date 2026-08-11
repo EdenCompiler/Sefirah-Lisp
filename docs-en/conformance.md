@@ -19,6 +19,7 @@ implementation.
 | --- | --- | --- |
 | Reader and printer | ◐ | Lists, dotted lists, strings, numbers, characters, vectors, escaped symbols, quote, function quote, and quasiquote work; readtables, radix syntax, and circular notation are missing. |
 | Evaluation and binding | ◐ | Lexical functions, macros, local functions, basic special variables, generalized places, and non-local control work; declarations and the full lambda-list protocol are missing. |
+| Symbols | ◐ | `NIL` has its external `COMMON-LISP` symbol identity, and the tested inquiry/value contracts include `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, and `SYMBOL-VALUE`; property lists, symbol creation/copying, gensyms, and unbinding remain missing. |
 | Multiple values | ✅ | The implemented multiple-value forms preserve values across calls, cleanup, and non-local transfer. `GETHASH`, `READ-LINE`, `INTERN`, and `FIND-SYMBOL` expose their tested secondary values. |
 | Lists and sequences | ◐ | Core list operations and an initial sequence protocol cover lists, vectors, and UTF-8 strings; keyword arguments and the complete sequence function family are missing. |
 | Numbers | ◐ | Fixed-width integers and host doubles exist; bignums, ratios, complex numbers, exact overflow behavior, and the full numeric library are missing. |
@@ -46,15 +47,21 @@ implementation.
   all ANSI stream designators are not supported.
 - Package-name designators currently fold ASCII case as a compatibility
   extension; complete ANSI package-name and nickname behavior is pending.
-- `NIL` is represented by the runtime null singleton and does not yet expose
-  every observable behavior of an ordinary symbol.
-- Keyword symbols are now installed as external symbols, but the complete
-  package mutation protocol remains pending.
+- `CONSTANTP` recognizes the required self-evaluating objects, constant symbols,
+  and `QUOTE` forms in the null environment; non-null environment objects are
+  not exposed yet.
+- Keyword symbols are external, self-evaluating, bound to themselves, and
+  protected from assignment, but symbol property lists remain pending.
 
-The implementation tests are in `testes/teste_nucleo.c`; the broader remaining
+The implementation tests are in `testes/teste_nucleo.c`, with targeted v6
+migration coverage in `testes/teste_imagem_legada.c`; the broader remaining
 work is tracked in the [1.0 roadmap](roadmap.md). The corrected contracts are
 compared against the Common Lisp HyperSpec entries for
 [`READ-LINE`](https://www.lispworks.com/documentation/HyperSpec/Body/f_rd_lin.htm),
 [`INTERN`](https://www.lispworks.com/documentation/HyperSpec/Body/f_intern.htm),
+[`FIND-SYMBOL`](https://www.lispworks.com/documentation/HyperSpec/Body/f_find_s.htm),
+[`SYMBOLP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symbol.htm),
+[`SYMBOL-NAME`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symb_2.htm),
+[`SYMBOL-PACKAGE`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symb_3.htm),
 and
-[`FIND-SYMBOL`](https://www.lispworks.com/documentation/HyperSpec/Body/f_find_s.htm).
+[`CONSTANTP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm).

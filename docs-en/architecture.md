@@ -148,7 +148,12 @@ The v9 binary format preserves the object graph, including symbols, packages,
 vectors, characters, hash tables, environments, functions, macros, conditions,
 and restorable streams. Saving uses a temporary file followed by atomic
 replacement. The loader recognizes v6, v7, v8, and v9; loading and saving an
-older image emits the current format.
+older image emits the current format. After graph validation, a targeted
+migration restores canonical `COMMON-LISP:NIL` membership, removes legacy
+local `NIL` conflicts from packages that use `COMMON-LISP`, and reinstalls the
+missing members of the current primitive set by name. Existing Lisp function
+definitions are preserved. This lets an older world acquire new built-ins
+without serializing or trusting stale C addresses.
 
 Process resources follow an explicit policy:
 

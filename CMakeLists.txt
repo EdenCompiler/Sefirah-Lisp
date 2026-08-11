@@ -144,6 +144,10 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     target_link_libraries(teste_ide PRIVATE sefirah_ide_nucleo)
     add_test(NAME ide COMMAND teste_ide)
 
+    add_executable(teste_imagem_legada testes/teste_imagem_legada.c)
+    target_link_libraries(teste_imagem_legada PRIVATE sefirah_nucleo)
+    add_test(NAME imagem_legada COMMAND teste_imagem_legada)
+
     add_test(NAME cli_sem_ide COMMAND sefirah --help)
     set_tests_properties(cli_sem_ide PROPERTIES PASS_REGULAR_EXPRESSION "compilar-elf")
 

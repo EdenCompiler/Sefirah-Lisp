@@ -246,6 +246,32 @@ static bool vetor_valores_crescer(SefValor **valores, size_t *capacidade, size_t
     return true;
 }
 
+bool sef_valor_e_simbolo_logico(const SefRuntime *runtime, SefValor valor) {
+    return runtime != NULL && valor != NULL &&
+           (valor == runtime->nulo || valor->tipo == SEF_TIPO_SIMBOLO);
+}
+
+bool sef_simbolo_e_constante(const SefRuntime *runtime, SefValor simbolo) {
+    return sef_valor_e_simbolo_logico(runtime, simbolo) &&
+           (simbolo == runtime->nulo || simbolo == runtime->verdadeiro ||
+            (simbolo->tipo == SEF_TIPO_SIMBOLO &&
+             simbolo->como.simbolo.pacote == runtime->pacote_keyword));
+}
+
+bool sef_simbolo_nome_logico(const SefRuntime *runtime, SefValor simbolo, const char **nome,
+                             size_t *tamanho) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo) || nome == NULL || tamanho == NULL)
+        return false;
+    if (simbolo == runtime->nulo) {
+        *nome = "NIL";
+        *tamanho = 3;
+    } else {
+        *nome = simbolo->como.simbolo.nome;
+        *tamanho = simbolo->como.simbolo.tamanho;
+    }
+    return true;
+}
+
 SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tamanho) {
     for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
         SefValor pacote = runtime->pacotes[i];
@@ -289,6 +315,21 @@ SefValor sef_pacote_novo(SefRuntime *runtime, const char *nome, SefErro *erro) {
     return pacote;
 }
 
+static bool nome_de_simbolo_armazenado(SefValor simbolo, const char **nome, size_t *tamanho) {
+    if (simbolo == NULL)
+        return false;
+    if (simbolo->tipo == SEF_TIPO_NULO) {
+        *nome = "NIL";
+        *tamanho = 3;
+        return true;
+    }
+    if (simbolo->tipo != SEF_TIPO_SIMBOLO)
+        return false;
+    *nome = simbolo->como.simbolo.nome;
+    *tamanho = simbolo->como.simbolo.tamanho;
+    return true;
+}
+
 static SefValor pacote_buscar_simbolo(SefValor pacote, const char *nome, size_t tamanho);
 
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro) {
@@ -304,18 +345,25 @@ bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefEr
     }
     for (size_t i = 0; i < usado->como.pacote.quantidade_exportados; i++) {
         SefValor candidato = usado->como.pacote.exportados[i];
-        SefValor existente = pacote_buscar_simbolo(pacote, candidato->como.simbolo.nome,
-                                                   candidato->como.simbolo.tamanho);
+        const char *nome_candidato = NULL;
+        size_t tamanho_candidato = 0;
+        if (!nome_de_simbolo_armazenado(candidato, &nome_candidato, &tamanho_candidato)) {
+            sef_erro_definir(erro, 0, 0, "pacote usado contem objeto que nao e simbolo");
+            return false;
+        }
+        SefValor existente =
+            pacote_buscar_simbolo(pacote, nome_candidato, tamanho_candidato);
         for (size_t j = 0; existente == NULL && j < pacote->como.pacote.quantidade_usados; j++) {
             SefValor origem = pacote->como.pacote.usados[j];
-            SefValor herdado = pacote_buscar_simbolo(origem, candidato->como.simbolo.nome,
-                                                     candidato->como.simbolo.tamanho);
+            SefValor herdado =
+                pacote_buscar_simbolo(origem, nome_candidato, tamanho_candidato);
             if (herdado != NULL && sef_pacote_simbolo_exportado(origem, herdado))
                 existente = herdado;
         }
         if (existente != NULL && existente != candidato) {
-            sef_erro_definir(erro, 0, 0, "conflito ao usar pacote: simbolo %s ja e acessivel",
-                             candidato->como.simbolo.nome);
+            sef_erro_definir(erro, 0, 0,
+                             "conflito ao usar pacote: simbolo %.*s ja e acessivel",
+                             (int)tamanho_candidato, nome_candidato);
             return false;
         }
     }
@@ -349,9 +397,12 @@ bool sef_pacote_simbolo_exportado(SefValor pacote, SefValor simbolo) {
 }
 
 bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro) {
-    (void)runtime;
-    if (pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE || simbolo == NULL ||
-        simbolo->tipo != SEF_TIPO_SIMBOLO || simbolo->como.simbolo.pacote != pacote) {
+    bool nulo_do_common_lisp = runtime != NULL && simbolo == runtime->nulo &&
+                               pacote == runtime->pacote_common_lisp;
+    bool simbolo_interno = simbolo != NULL && simbolo->tipo == SEF_TIPO_SIMBOLO &&
+                           simbolo->como.simbolo.pacote == pacote;
+    if (pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
+        (!nulo_do_common_lisp && !simbolo_interno)) {
         sef_erro_definir(erro, 0, 0, "EXPORT exige simbolo interno do pacote");
         return false;
     }
@@ -368,8 +419,10 @@ bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
 static SefValor pacote_buscar_simbolo(SefValor pacote, const char *nome, size_t tamanho) {
     for (size_t i = 0; i < pacote->como.pacote.quantidade_simbolos; i++) {
         SefValor simbolo = pacote->como.pacote.simbolos[i];
-        if (simbolo->como.simbolo.tamanho == tamanho &&
-            memcmp(simbolo->como.simbolo.nome, nome, tamanho) == 0)
+        const char *nome_simbolo = NULL;
+        size_t tamanho_simbolo = 0;
+        if (nome_de_simbolo_armazenado(simbolo, &nome_simbolo, &tamanho_simbolo) &&
+            tamanho_simbolo == tamanho && memcmp(nome_simbolo, nome, tamanho) == 0)
             return simbolo;
     }
     return NULL;
@@ -408,6 +461,8 @@ SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const cha
         sef_erro_definir(erro, 0, 0, "pacote invalido ao internar simbolo");
         return NULL;
     }
+    if (pacote == runtime->pacote_common_lisp && tamanho == 3 && memcmp(nome, "NIL", 3) == 0)
+        return runtime->nulo;
     char *copia = copiar_nome_exato(nome, tamanho);
     if (copia == NULL) {
         sef_erro_definir(erro, 0, 0, "memoria insuficiente ao internar simbolo");
@@ -445,6 +500,62 @@ SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const cha
     if (pacote == runtime->pacote_keyword && !sef_pacote_exportar(runtime, pacote, simbolo, erro))
         return NULL;
     return simbolo;
+}
+
+static void substituir_simbolo_em_vetor(SefValor *valores, size_t quantidade, SefValor antigo,
+                                        SefValor novo) {
+    for (size_t i = 0; i < quantidade; i++)
+        if (valores[i] == antigo)
+            valores[i] = novo;
+}
+
+static void remover_simbolo_de_vetor(SefValor *valores, size_t *quantidade, SefValor removido) {
+    size_t destino = 0;
+    for (size_t i = 0; i < *quantidade; i++)
+        if (valores[i] != removido)
+            valores[destino++] = valores[i];
+    *quantidade = destino;
+}
+
+bool sef_pacote_instalar_nulo(SefRuntime *runtime, SefErro *erro) {
+    if (runtime == NULL || runtime->nulo == NULL || runtime->nulo->tipo != SEF_TIPO_NULO ||
+        runtime->pacote_common_lisp == NULL ||
+        runtime->pacote_common_lisp->tipo != SEF_TIPO_PACOTE) {
+        sef_erro_definir(erro, 0, 0, "nao foi possivel instalar NIL em COMMON-LISP");
+        return false;
+    }
+    SefValor pacote = runtime->pacote_common_lisp;
+    SefValor legado = pacote_buscar_simbolo(pacote, "NIL", 3);
+    if (legado == NULL) {
+        if (!vetor_valores_crescer(&pacote->como.pacote.simbolos,
+                                   &pacote->como.pacote.capacidade_simbolos,
+                                   pacote->como.pacote.quantidade_simbolos + 1, erro))
+            return false;
+        pacote->como.pacote.simbolos[pacote->como.pacote.quantidade_simbolos++] = runtime->nulo;
+    } else if (legado != runtime->nulo) {
+        substituir_simbolo_em_vetor(pacote->como.pacote.simbolos,
+                                    pacote->como.pacote.quantidade_simbolos, legado,
+                                    runtime->nulo);
+        substituir_simbolo_em_vetor(pacote->como.pacote.exportados,
+                                    pacote->como.pacote.quantidade_exportados, legado,
+                                    runtime->nulo);
+    }
+    if (!sef_pacote_exportar(runtime, pacote, runtime->nulo, erro))
+        return false;
+
+    for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
+        SefValor usuario = runtime->pacotes[i];
+        if (usuario == pacote || !sef_pacote_usa(usuario, pacote))
+            continue;
+        SefValor conflito = pacote_buscar_simbolo(usuario, "NIL", 3);
+        if (conflito != NULL && conflito != runtime->nulo) {
+            remover_simbolo_de_vetor(usuario->como.pacote.simbolos,
+                                     &usuario->como.pacote.quantidade_simbolos, conflito);
+            remover_simbolo_de_vetor(usuario->como.pacote.exportados,
+                                     &usuario->como.pacote.quantidade_exportados, conflito);
+        }
+    }
+    return true;
 }
 
 SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho,

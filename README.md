@@ -55,6 +55,8 @@ the roadmap.
 - `EQL` hash tables with `GETHASH`, `SETF`, removal, GC, and persistence;
 - Common Lisp multiple values, including the secondary `GETHASH` presence
   flag and propagation through non-local control;
+- canonical `COMMON-LISP:NIL` symbol behavior, constant keyword values, and
+  tested symbol/package inquiries;
 - `COPY-SEQ`, `REVERSE`, `SUBSEQ`, and `FILL` shared by lists, vectors, and
   strings;
 - list composition, destructive operations, search, navigation, and
@@ -177,7 +179,9 @@ after the object and all compiled functions release it.
 
 The v9 image preserves the portable Lisp graph, including vectors, characters,
 and hash tables, but not JIT bytes or process handles. The reader still accepts
-v6, v7, and v8. File streams and shared libraries must be closed before saving.
+v6, v7, and v8. On load, targeted migrations restore canonical `NIL` package
+membership and primitives added after an older world was saved. File streams
+and shared libraries must be closed before saving.
 
 ### GUI and IDE
 
@@ -335,6 +339,8 @@ nativa permanecem no roteiro.
 - tabelas hash `EQL` com `GETHASH`, `SETF`, remoção, GC e persistência;
 - valores múltiplos de Common Lisp, inclusive o indicador secundário de
   presença de `GETHASH` e propagação por controle não local;
+- comportamento canônico do símbolo `COMMON-LISP:NIL`, valores keyword
+  constantes e consultas testadas de símbolos/packages;
 - `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL` compartilhados por listas, vetores e
   strings;
 - composição de listas, operações destrutivas, busca, navegação e mapeamento
@@ -456,8 +462,10 @@ descarregado quando o objeto e todas as funções compiladas o liberam.
 
 A imagem v9 preserva o grafo Lisp portável, inclusive vetores, caracteres e
 tabelas hash, mas não bytes JIT nem handles do processo. O leitor continua
-aceitando v6, v7 e v8. Streams de arquivo e bibliotecas compartilhadas precisam
-estar fechados antes da gravação.
+aceitando v6, v7 e v8. Ao abrir, migrações direcionadas restauram a associação
+canônica de `NIL` ao package e primitivas adicionadas depois da gravação de um
+mundo antigo. Streams de arquivo e bibliotecas compartilhadas precisam estar
+fechados antes da gravação.
 
 ### GUI e IDE
 

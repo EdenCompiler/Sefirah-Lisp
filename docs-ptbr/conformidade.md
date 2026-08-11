@@ -19,6 +19,7 @@ ao ANSI Common Lisp.
 | --- | --- | --- |
 | Leitor e impressor | ◐ | Listas, listas pontuadas, strings, números, caracteres, vetores, símbolos escapados, quote, function quote e quasiquote funcionam; faltam readtables, sintaxe de bases e notação circular. |
 | Avaliação e binding | ◐ | Funções lexicais, macros, funções locais, variáveis especiais iniciais, lugares generalizados e controle não local funcionam; faltam declarações e o protocolo completo de lambda lists. |
+| Símbolos | ◐ | `NIL` possui sua identidade de símbolo externo de `COMMON-LISP`, e os contratos testados de consulta/valor incluem `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP` e `SYMBOL-VALUE`; ainda faltam property lists, criação/cópia de símbolos, gensyms e operações de unbinding. |
 | Valores múltiplos | ✅ | As formas implementadas preservam valores entre chamadas, limpeza e transferência não local. `GETHASH`, `READ-LINE`, `INTERN` e `FIND-SYMBOL` expõem seus valores secundários testados. |
 | Listas e sequências | ◐ | Operações centrais de listas e um protocolo inicial de sequências cobrem listas, vetores e strings UTF-8; faltam argumentos keyword e a família completa de funções de sequência. |
 | Números | ◐ | Existem inteiros de largura fixa e doubles do hospedeiro; faltam bignums, razões, complexos, overflow exato e a biblioteca numérica completa. |
@@ -46,15 +47,21 @@ ao ANSI Common Lisp.
   nem todos os designadores de stream ANSI são aceitos.
 - Designadores de nome de package ainda dobram caixa ASCII como extensão de
   compatibilidade; a semântica ANSI completa de nomes e apelidos está pendente.
-- `NIL` é representado pelo singleton nulo do runtime e ainda não expõe todo o
-  comportamento observável de um símbolo comum.
-- Símbolos keyword agora são instalados como externos, mas o protocolo completo
-  de mutação de packages continua pendente.
+- `CONSTANTP` reconhece os objetos autoavaliáveis obrigatórios, símbolos
+  constantes e formas `QUOTE` no ambiente nulo; objetos de ambiente não nulo
+  ainda não são expostos.
+- Símbolos keyword são externos, autoavaliáveis, vinculados a si próprios e
+  protegidos contra atribuição, mas as property lists de símbolos estão pendentes.
 
-Os testes da implementação ficam em `testes/teste_nucleo.c`; o trabalho mais
+Os testes da implementação ficam em `testes/teste_nucleo.c`, com cobertura
+direcionada da migração v6 em `testes/teste_imagem_legada.c`; o trabalho mais
 amplo restante está no [roteiro para 1.0](roteiro.md). Os contratos corrigidos
 são comparados às entradas do Common Lisp HyperSpec para
 [`READ-LINE`](https://www.lispworks.com/documentation/HyperSpec/Body/f_rd_lin.htm),
-[`INTERN`](https://www.lispworks.com/documentation/HyperSpec/Body/f_intern.htm)
+[`INTERN`](https://www.lispworks.com/documentation/HyperSpec/Body/f_intern.htm),
+[`FIND-SYMBOL`](https://www.lispworks.com/documentation/HyperSpec/Body/f_find_s.htm),
+[`SYMBOLP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symbol.htm),
+[`SYMBOL-NAME`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symb_2.htm),
+[`SYMBOL-PACKAGE`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symb_3.htm)
 e
-[`FIND-SYMBOL`](https://www.lispworks.com/documentation/HyperSpec/Body/f_find_s.htm).
+[`CONSTANTP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm).

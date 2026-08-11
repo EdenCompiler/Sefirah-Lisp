@@ -197,6 +197,8 @@ SefRuntime *sef_runtime_criar(SefErro *erro) {
         pacote_sefirah == NULL || pacote_usuario == NULL)
         goto falhou;
     runtime->pacote_atual = pacote_usuario;
+    if (!sef_pacote_instalar_nulo(runtime, erro))
+        goto falhou;
     if (!sef_pacote_usar(runtime, pacote_usuario, runtime->pacote_common_lisp, erro))
         goto falhou;
     runtime->verdadeiro =

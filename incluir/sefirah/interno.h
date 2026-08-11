@@ -208,11 +208,16 @@ bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t ind
 SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho, SefErro *erro);
 SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const char *nome,
                                  size_t tamanho, SefErro *erro);
+bool sef_valor_e_simbolo_logico(const SefRuntime *runtime, SefValor valor);
+bool sef_simbolo_e_constante(const SefRuntime *runtime, SefValor simbolo);
+bool sef_simbolo_nome_logico(const SefRuntime *runtime, SefValor simbolo, const char **nome,
+                             size_t *tamanho);
 SefValor sef_pacote_novo(SefRuntime *runtime, const char *nome, SefErro *erro);
 SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tamanho);
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
 bool sef_pacote_usa(SefValor pacote, SefValor usado);
 bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro);
+bool sef_pacote_instalar_nulo(SefRuntime *runtime, SefErro *erro);
 bool sef_pacote_simbolo_exportado(SefValor pacote, SefValor simbolo);
 SefValor sef_pacote_localizar_simbolo(SefValor pacote, const char *nome, size_t tamanho,
                                       bool incluir_herdados);
@@ -289,6 +294,7 @@ SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, Sef
 SefValor sef_aplicar(SefRuntime *runtime, SefValor funcao, SefValor argumentos, SefErro *erro);
 
 bool sef_primitivas_instalar(SefRuntime *runtime, SefErro *erro);
+bool sef_primitivas_reconciliar(SefRuntime *runtime, SefErro *erro);
 SefFuncaoNativa sef_primitiva_buscar(const char *nome);
 const char *sef_primitiva_nome(SefFuncaoNativa funcao);
 SefValor sef_primitiva_copy_seq(SefRuntime *runtime, SefValor argumentos, SefErro *erro);

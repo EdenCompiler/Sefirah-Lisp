@@ -894,10 +894,12 @@ static SefValor primitiva_boundp(SefRuntime *runtime, SefValor argumentos, SefEr
         return NULL;
     SefValor simbolo = car(argumentos);
     SefValor ignorado;
-    if (simbolo->tipo != SEF_TIPO_SIMBOLO) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
         sef_erro_definir(erro, 0, 0, "BOUNDP exige um simbolo");
         return NULL;
     }
+    if (sef_simbolo_e_constante(runtime, simbolo))
+        return runtime->verdadeiro;
     return sef_ambiente_obter(runtime->ambiente_global, simbolo, &ignorado) ? runtime->verdadeiro
                                                                             : runtime->nulo;
 }
@@ -907,7 +909,7 @@ static SefValor primitiva_fboundp(SefRuntime *runtime, SefValor argumentos, SefE
         return NULL;
     SefValor simbolo = car(argumentos);
     SefValor ignorado;
-    if (simbolo->tipo != SEF_TIPO_SIMBOLO) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
         sef_erro_definir(erro, 0, 0, "FBOUNDP exige um simbolo");
         return NULL;
     }
@@ -921,8 +923,13 @@ static SefValor primitiva_symbol_value(SefRuntime *runtime, SefValor argumentos,
         return NULL;
     SefValor simbolo = car(argumentos);
     SefValor valor;
-    if (simbolo->tipo != SEF_TIPO_SIMBOLO ||
-        !sef_ambiente_obter(runtime->ambiente_global, simbolo, &valor)) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "SYMBOL-VALUE exige um simbolo");
+        return NULL;
+    }
+    if (sef_simbolo_e_constante(runtime, simbolo))
+        return simbolo;
+    if (!sef_ambiente_obter(runtime->ambiente_global, simbolo, &valor)) {
         sef_erro_definir(erro, 0, 0, "simbolo nao possui valor global");
         return NULL;
     }
@@ -934,8 +941,11 @@ static SefValor primitiva_symbol_function(SefRuntime *runtime, SefValor argument
         return NULL;
     SefValor simbolo = car(argumentos);
     SefValor valor;
-    if (simbolo->tipo != SEF_TIPO_SIMBOLO ||
-        !sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &valor)) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "SYMBOL-FUNCTION exige um simbolo");
+        return NULL;
+    }
+    if (!sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &valor)) {
         sef_erro_definir(erro, 0, 0, "simbolo nao possui funcao global");
         return NULL;
     }
@@ -947,8 +957,12 @@ static SefValor primitiva_set(SefRuntime *runtime, SefValor argumentos, SefErro 
         return NULL;
     SefValor simbolo = car(argumentos);
     SefValor valor = car(cdr(argumentos));
-    if (simbolo->tipo != SEF_TIPO_SIMBOLO) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
         sef_erro_definir(erro, 0, 0, "SET exige um simbolo");
+        return NULL;
+    }
+    if (sef_simbolo_e_constante(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "SET nao pode alterar um simbolo constante");
         return NULL;
     }
     return sef_ambiente_definir(runtime, runtime->ambiente_global, simbolo, valor, erro) ? valor
@@ -960,6 +974,46 @@ static SefValor primitiva_functionp(SefRuntime *runtime, SefValor argumentos, Se
         return NULL;
     SefTipo tipo = car(argumentos)->tipo;
     return tipo == SEF_TIPO_FUNCAO || tipo == SEF_TIPO_NATIVA ? runtime->verdadeiro : runtime->nulo;
+}
+
+static SefValor primitiva_symbolp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "SYMBOLP", erro))
+        return NULL;
+    return sef_valor_e_simbolo_logico(runtime, car(argumentos)) ? runtime->verdadeiro
+                                                                 : runtime->nulo;
+}
+
+static SefValor primitiva_keywordp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "KEYWORDP", erro))
+        return NULL;
+    SefValor valor = car(argumentos);
+    return valor->tipo == SEF_TIPO_SIMBOLO &&
+                   valor->como.simbolo.pacote == runtime->pacote_keyword
+               ? runtime->verdadeiro
+               : runtime->nulo;
+}
+
+static SefValor primitiva_constantp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "CONSTANTP", erro))
+        return NULL;
+    if (cdr(argumentos) != runtime->nulo && car(cdr(argumentos)) != runtime->nulo) {
+        sef_erro_definir(erro, 0, 0, "CONSTANTP ainda aceita somente o ambiente NIL");
+        return NULL;
+    }
+    SefValor forma = car(argumentos);
+    if (sef_simbolo_e_constante(runtime, forma))
+        return runtime->verdadeiro;
+    if (forma->tipo == SEF_TIPO_SIMBOLO)
+        return runtime->nulo;
+    if (forma->tipo == SEF_TIPO_PAR) {
+        SefValor operador = car(forma);
+        SefValor cauda = cdr(forma);
+        bool quote = operador->tipo == SEF_TIPO_SIMBOLO &&
+                     sef_simbolo_tem_nome(operador, "QUOTE") && cauda != runtime->nulo &&
+                     cauda->tipo == SEF_TIPO_PAR && cdr(cauda) == runtime->nulo;
+        return quote ? runtime->verdadeiro : runtime->nulo;
+    }
+    return runtime->verdadeiro;
 }
 
 static SefValor primitiva_compile(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -1002,15 +1056,14 @@ static SefValor primitiva_compiled_function_p(SefRuntime *runtime, SefValor argu
     return compilada ? runtime->verdadeiro : runtime->nulo;
 }
 
-static const char *nome_designador(SefValor valor, size_t *tamanho) {
+static const char *nome_designador(SefRuntime *runtime, SefValor valor, size_t *tamanho) {
     if (valor->tipo == SEF_TIPO_TEXTO) {
         *tamanho = valor->como.texto.tamanho;
         return valor->como.texto.dados;
     }
-    if (valor->tipo == SEF_TIPO_SIMBOLO) {
-        *tamanho = valor->como.simbolo.tamanho;
-        return valor->como.simbolo.nome;
-    }
+    const char *nome_simbolo = NULL;
+    if (sef_simbolo_nome_logico(runtime, valor, &nome_simbolo, tamanho))
+        return nome_simbolo;
     if (valor->tipo == SEF_TIPO_PACOTE) {
         *tamanho = strlen(valor->como.pacote.nome);
         return valor->como.pacote.nome;
@@ -1022,7 +1075,7 @@ static SefValor pacote_designador(SefRuntime *runtime, SefValor valor, SefErro *
     if (valor->tipo == SEF_TIPO_PACOTE)
         return valor;
     size_t tamanho = 0;
-    const char *nome = nome_designador(valor, &tamanho);
+    const char *nome = nome_designador(runtime, valor, &tamanho);
     SefValor pacote = nome == NULL ? NULL : sef_pacote_encontrar(runtime, nome, tamanho);
     if (pacote == NULL)
         sef_erro_definir(erro, 0, 0, "designador nao nomeia um pacote existente");
@@ -1033,7 +1086,7 @@ static SefValor primitiva_make_package(SefRuntime *runtime, SefValor argumentos,
     if (!quantidade(runtime, argumentos, 1, 1, "MAKE-PACKAGE", erro))
         return NULL;
     size_t tamanho = 0;
-    const char *nome = nome_designador(car(argumentos), &tamanho);
+    const char *nome = nome_designador(runtime, car(argumentos), &tamanho);
     if (nome == NULL || tamanho == 0) {
         sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE exige nome textual");
         return NULL;
@@ -1056,7 +1109,7 @@ static SefValor primitiva_find_package(SefRuntime *runtime, SefValor argumentos,
     if (!quantidade(runtime, argumentos, 1, 1, "FIND-PACKAGE", erro))
         return NULL;
     size_t tamanho = 0;
-    const char *nome = nome_designador(car(argumentos), &tamanho);
+    const char *nome = nome_designador(runtime, car(argumentos), &tamanho);
     if (nome == NULL)
         return runtime->nulo;
     SefValor pacote = sef_pacote_encontrar(runtime, nome, tamanho);
@@ -1126,7 +1179,7 @@ static SefValor primitiva_intern(SefRuntime *runtime, SefValor argumentos, SefEr
     if (!quantidade(runtime, argumentos, 1, 2, "INTERN", erro))
         return NULL;
     size_t tamanho = 0;
-    const char *nome = nome_designador(car(argumentos), &tamanho);
+    const char *nome = nome_designador(runtime, car(argumentos), &tamanho);
     SefValor pacote = cdr(argumentos) == runtime->nulo
                           ? runtime->pacote_atual
                           : pacote_designador(runtime, car(cdr(argumentos)), erro);
@@ -1153,7 +1206,7 @@ static SefValor primitiva_find_symbol(SefRuntime *runtime, SefValor argumentos, 
     if (!quantidade(runtime, argumentos, 1, 2, "FIND-SYMBOL", erro))
         return NULL;
     size_t tamanho = 0;
-    const char *nome = nome_designador(car(argumentos), &tamanho);
+    const char *nome = nome_designador(runtime, car(argumentos), &tamanho);
     SefValor pacote = cdr(argumentos) == runtime->nulo
                           ? runtime->pacote_atual
                           : pacote_designador(runtime, car(cdr(argumentos)), erro);
@@ -1174,21 +1227,25 @@ static SefValor primitiva_symbol_name(SefRuntime *runtime, SefValor argumentos, 
     if (!quantidade(runtime, argumentos, 1, 1, "SYMBOL-NAME", erro))
         return NULL;
     SefValor simbolo = car(argumentos);
-    if (simbolo->tipo != SEF_TIPO_SIMBOLO) {
+    const char *nome = NULL;
+    size_t tamanho = 0;
+    if (!sef_simbolo_nome_logico(runtime, simbolo, &nome, &tamanho)) {
         sef_erro_definir(erro, 0, 0, "SYMBOL-NAME exige simbolo");
         return NULL;
     }
-    return sef_texto_novo(runtime, simbolo->como.simbolo.nome, simbolo->como.simbolo.tamanho, erro);
+    return sef_texto_novo(runtime, nome, tamanho, erro);
 }
 
 static SefValor primitiva_symbol_package(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "SYMBOL-PACKAGE", erro))
         return NULL;
     SefValor simbolo = car(argumentos);
-    if (simbolo->tipo != SEF_TIPO_SIMBOLO) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
         sef_erro_definir(erro, 0, 0, "SYMBOL-PACKAGE exige simbolo");
         return NULL;
     }
+    if (simbolo == runtime->nulo)
+        return runtime->pacote_common_lisp;
     return simbolo->como.simbolo.pacote == NULL ? runtime->nulo : simbolo->como.simbolo.pacote;
 }
 
@@ -1287,7 +1344,8 @@ static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErr
     return NULL;
 }
 
-static bool instalar(SefRuntime *runtime, const char *nome, SefFuncaoNativa funcao, SefErro *erro) {
+static bool instalar(SefRuntime *runtime, const char *nome, SefFuncaoNativa funcao,
+                     bool preservar_existente, SefErro *erro) {
     const char *separador = strstr(nome, "::");
     SefValor pacote = runtime->pacote_common_lisp;
     const char *nome_simbolo = nome;
@@ -1303,6 +1361,10 @@ static bool instalar(SefRuntime *runtime, const char *nome, SefFuncaoNativa func
     }
     SefValor simbolo =
         sef_simbolo_internar_em(runtime, pacote, nome_simbolo, strlen(nome_simbolo), erro);
+    SefValor existente = NULL;
+    if (simbolo != NULL && preservar_existente &&
+        sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &existente))
+        return !exportar || sef_pacote_exportar(runtime, pacote, simbolo, erro);
     SefValor valor = simbolo == NULL ? NULL : sef_nativa_nova(runtime, nome, funcao, erro);
     return valor != NULL &&
            sef_ambiente_definir_funcao(runtime, runtime->ambiente_global, simbolo, valor, erro) &&
@@ -1392,6 +1454,9 @@ static const struct {
                   {"SYMBOL-VALUE", primitiva_symbol_value},
                   {"SYMBOL-FUNCTION", primitiva_symbol_function},
                   {"SET", primitiva_set},
+                  {"SYMBOLP", primitiva_symbolp},
+                  {"KEYWORDP", primitiva_keywordp},
+                  {"CONSTANTP", primitiva_constantp},
                   {"FUNCTIONP", primitiva_functionp},
                   {"COMPILE", primitiva_compile},
                   {"COMPILE-EXTERNAL-I64", primitiva_compile_external_i64},
@@ -1436,9 +1501,17 @@ const char *sef_primitiva_nome(SefFuncaoNativa funcao) {
 
 bool sef_primitivas_instalar(SefRuntime *runtime, SefErro *erro) {
     for (size_t i = 0; i < sizeof(primitivas) / sizeof(primitivas[0]); i++) {
-        if (!instalar(runtime, primitivas[i].nome, primitivas[i].funcao, erro)) {
+        if (!instalar(runtime, primitivas[i].nome, primitivas[i].funcao, false, erro)) {
             return false;
         }
+    }
+    return true;
+}
+
+bool sef_primitivas_reconciliar(SefRuntime *runtime, SefErro *erro) {
+    for (size_t i = 0; i < sizeof(primitivas) / sizeof(primitivas[0]); i++) {
+        if (!instalar(runtime, primitivas[i].nome, primitivas[i].funcao, true, erro))
+            return false;
     }
     return true;
 }

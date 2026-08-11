@@ -92,6 +92,7 @@ not mean the entire milestone is complete.
   non-local propagation, `GETHASH` presence, package status, and `READ-LINE`
   newline flags.
 - [x] Backward-compatible v6/v7/v8 image loading and v9 emission.
+- [x] Targeted image migration for canonical `NIL` and newly added primitives.
 - [x] Initial explicit ANSI conformance report with known deviations.
 - [ ] Complete ANSI Common Lisp symbol and semantic coverage.
 - [ ] Documented CLOS and MOP.

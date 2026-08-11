@@ -114,6 +114,38 @@ int main(int argc, char **argv) {
     testar_repl(runtime);
 
     verificar_texto(runtime, "(+ 1 2 39)", "42");
+    verificar_texto(runtime,
+                    "(list (symbolp nil) (symbolp '()) (symbolp :chave) (symbolp 42) "
+                    "(keywordp :chave) (keywordp nil))",
+                    "(T T T NIL T NIL)");
+    verificar_texto(runtime,
+                    "(list (symbol-name nil) (package-name (symbol-package nil)) "
+                    "(boundp nil) (symbol-value nil) (fboundp nil))",
+                    "(\"NIL\" \"COMMON-LISP\" T NIL NIL)");
+    verificar_texto(runtime,
+                    "(list (boundp :chave) (eq (symbol-value :chave) :chave) "
+                    "(constantp nil) (constantp t) (constantp :chave) "
+                    "(constantp 42) (constantp \"texto\") (constantp 'variavel) "
+                    "(constantp ''variavel) (constantp '(+ 1 2)))",
+                    "(T T T T T T T NIL T NIL)");
+    verificar_texto(runtime,
+                    "(list (eq (intern \"NIL\" \"COMMON-LISP\") nil) "
+                    "(eq 'common-lisp:nil nil) "
+                    "(multiple-value-list (find-symbol \"NIL\" \"COMMON-LISP\")) "
+                    "(multiple-value-list (find-symbol nil \"COMMON-LISP\")) "
+                    "(multiple-value-list (find-symbol \"NIL\" \"COMMON-LISP-USER\")) "
+                    "(multiple-value-list (intern \"NIL\" \"COMMON-LISP-USER\")))",
+                    "(T T (NIL :EXTERNAL) (NIL :EXTERNAL) "
+                    "(NIL :INHERITED) (NIL :INHERITED))");
+    verificar_texto(runtime,
+                    "(list (handler-case (set nil 42) (error (c) :nil-constante)) "
+                    "(handler-case (set t 42) (error (c) :t-constante)) "
+                    "(handler-case (set :chave 42) (error (c) :keyword-constante)) "
+                    "(handler-case (setq t 42) (error (c) :setq-constante)) "
+                    "(handler-case (let ((:chave 42)) :falhou) "
+                    "  (error (c) :let-constante)))",
+                    "(:NIL-CONSTANTE :T-CONSTANTE :KEYWORD-CONSTANTE "
+                    ":SETQ-CONSTANTE :LET-CONSTANTE)");
     verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v6.imagem", &erro),
               "imagem sem vetores foi salva no formato atual");
     converter_assinatura("teste-sefirah-v6.imagem", 6);
@@ -121,6 +153,11 @@ int main(int argc, char **argv) {
     verificar(runtime_v6 != NULL, "leitor atual aceitou imagem v6");
     if (runtime_v6 != NULL) {
         verificar_texto(runtime_v6, "(+ 40 2)", "42");
+        verificar_texto(runtime_v6,
+                        "(list (symbolp nil) (symbol-name nil) "
+                        "(package-name (symbol-package nil)) "
+                        "(multiple-value-list (find-symbol \"NIL\" \"COMMON-LISP-USER\")))",
+                        "(T \"NIL\" \"COMMON-LISP\" (NIL :INHERITED))");
         sef_runtime_destruir(runtime_v6);
     }
     remove("teste-sefirah-v6.imagem");

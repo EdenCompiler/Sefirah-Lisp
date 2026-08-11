@@ -45,7 +45,7 @@ faz parte do formato público.
 | sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | números | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=` e `/=` |
 | funções | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION` |
-| valores | `BOUNDP`, `SYMBOL-VALUE`, `SET`, `EQ`, `NOT`, `TYPE-OF` |
+| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `EQ`, `NOT`, `TYPE-OF` |
 
 Símbolos possuem células separadas de valor e função. Portanto, uma variável e
 uma função podem compartilhar o mesmo nome:
@@ -320,12 +320,19 @@ Formas e funções disponíveis:
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME` e `PACKAGEP`;
 - `USE-PACKAGE`, `EXPORT`, `INTERN` e `FIND-SYMBOL`;
-- `SYMBOL-NAME`, `SYMBOL-PACKAGE` e `LIST-ALL-PACKAGES`.
+- `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE` e
+  `LIST-ALL-PACKAGES`.
 
 `INTERN` e `FIND-SYMBOL` devolvem o valor secundário de estado definido pelo
 ANSI: `:INTERNAL`, `:EXTERNAL`, `:INHERITED` ou `NIL`. Um símbolo recém-criado
 tem estado `NIL`; uma consulta posterior informa seu estado real. Símbolos de
 `KEYWORD` são externos e se autoavaliam.
+
+`NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
+`"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,
+`SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP` e `SYMBOL-VALUE` observam essa
+semântica de símbolo. `T`, `NIL` e símbolos keyword são protegidos contra
+atribuição pelas formas de binding implementadas e por `SET`.
 
 ```lisp
 (defpackage :calculos
@@ -374,8 +381,9 @@ O formato binário v9 `.imagem` preserva o grafo do heap, incluindo vetores,
 caracteres, tabelas hash, símbolos, packages, ambientes, funções, macros,
 condições e recursos restauráveis. A gravação usa arquivo temporário e
 substituição atômica. Primitivas C são restauradas pelo nome, nunca pelo
-endereço. O leitor v9 aceita imagens v6, v7 e v8; uma nova gravação as atualiza
-para v9.
+endereço. O leitor v9 aceita imagens v6, v7 e v8; a abertura realiza migrações
+direcionadas que restauram primitivas novas e a associação canônica de `NIL` ao
+package, enquanto uma nova gravação atualiza o resultado para v9.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp

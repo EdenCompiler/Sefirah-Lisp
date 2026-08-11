@@ -575,6 +575,33 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
 
 static bool id_valido(uint32_t id, uint32_t quantidade) { return id < quantidade; }
 
+static bool validar_tabelas_de_pacotes(const SefRuntime *runtime, SefErro *erro) {
+    for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
+        SefValor pacote = runtime->pacotes[i];
+        for (size_t j = 0; j < pacote->como.pacote.quantidade_simbolos; j++) {
+            SefValor simbolo = pacote->como.pacote.simbolos[j];
+            if (simbolo != runtime->nulo && simbolo->tipo != SEF_TIPO_SIMBOLO) {
+                sef_erro_definir(erro, 0, 0, "tabela de simbolos de pacote corrompida");
+                return false;
+            }
+        }
+        for (size_t j = 0; j < pacote->como.pacote.quantidade_exportados; j++) {
+            SefValor simbolo = pacote->como.pacote.exportados[j];
+            if (simbolo != runtime->nulo && simbolo->tipo != SEF_TIPO_SIMBOLO) {
+                sef_erro_definir(erro, 0, 0, "tabela de exportacoes de pacote corrompida");
+                return false;
+            }
+        }
+        for (size_t j = 0; j < pacote->como.pacote.quantidade_usados; j++) {
+            if (pacote->como.pacote.usados[j]->tipo != SEF_TIPO_PACOTE) {
+                sef_erro_definir(erro, 0, 0, "lista de uso de pacote corrompida");
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 static bool validar_registro(const RegistroImagem *registro, uint32_t quantidade, SefErro *erro) {
     if (registro->tipo == SEF_TIPO_CARACTERE) {
         uint32_t codigo = registro->caractere;
@@ -969,6 +996,10 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             }
         }
     }
+    if (sucesso)
+        sucesso = validar_tabelas_de_pacotes(runtime, erro) &&
+                  sef_pacote_instalar_nulo(runtime, erro) &&
+                  sef_primitivas_reconciliar(runtime, erro);
 
     free(objetos);
     free(ids_simbolos);

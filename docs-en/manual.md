@@ -45,7 +45,7 @@ not part of the public format.
 | sequences | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | numbers | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=`, and `/=` |
 | functions | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION` |
-| values | `BOUNDP`, `SYMBOL-VALUE`, `SET`, `EQ`, `NOT`, `TYPE-OF` |
+| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `EQ`, `NOT`, `TYPE-OF` |
 
 Symbols have separate value and function cells, so a variable and a function
 can share a name:
@@ -316,12 +316,19 @@ Available forms and functions:
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME`, and `PACKAGEP`;
 - `USE-PACKAGE`, `EXPORT`, `INTERN`, and `FIND-SYMBOL`;
-- `SYMBOL-NAME`, `SYMBOL-PACKAGE`, and `LIST-ALL-PACKAGES`.
+- `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, and
+  `LIST-ALL-PACKAGES`.
 
 `INTERN` and `FIND-SYMBOL` return the ANSI secondary status value:
 `:INTERNAL`, `:EXTERNAL`, `:INHERITED`, or `NIL`. A newly created symbol has
 status `NIL`; a later lookup reports its actual status. Symbols in `KEYWORD`
 are external and self-evaluating.
+
+`NIL` is simultaneously the empty list, false, and the external symbol named
+`"NIL"` in `COMMON-LISP`. It is inherited by `COMMON-LISP-USER`; `SYMBOLP`,
+`SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, and `SYMBOL-VALUE` observe those
+symbol semantics. `T`, `NIL`, and keyword symbols are protected against
+assignment through the implemented binding forms and `SET`.
 
 ```lisp
 (defpackage :calculations
@@ -370,7 +377,9 @@ The v9 `.imagem` binary format preserves the heap graph, including vectors,
 characters, hash tables, symbols, packages, environments, functions, macros,
 conditions, and restorable resources. Saving uses a temporary file and atomic
 replacement. C primitives are restored by name, never by address. The v9
-reader accepts v6, v7, and v8 images; saving upgrades them to v9.
+reader accepts v6, v7, and v8 images; loading performs targeted migrations that
+restore newly available primitives and canonical `NIL` package membership,
+while saving upgrades the result to v9.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
