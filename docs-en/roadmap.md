@@ -28,6 +28,8 @@ not mean the entire milestone is complete.
 - [x] CPU rasterizer, bitmap font, and custom visual composition.
 - [x] X11 and Win32 windows; macOS bridge written in pure C.
 - [x] Graphical listener connected to the runtime on X11 and Win32.
+- [x] Multiline textual REPL with complete-form detection and multiple-value
+  printing.
 - [x] CI declared for Linux, Windows, and macOS.
 - [x] Versioned image with atomic saving and heap restoration.
 - [x] Explicit root handles for safe C, IDE, and FFI integration.
@@ -86,6 +88,8 @@ not mean the entire milestone is complete.
 - [x] Initial list protocol with composition, navigation, search, and
   multi-list `MAPCAR`/`MAPC`.
 - [x] `EQL` hash tables with `GETHASH`, `SETF`, removal, GC, and persistence.
+- [x] Initial Common Lisp multiple values with binding, collection, calls,
+  non-local propagation, and the `GETHASH` presence flag.
 - [x] Backward-compatible v6/v7/v8 image loading and v9 emission.
 - [ ] ANSI Common Lisp coverage with a conformance report.
 - [ ] Documented CLOS and MOP.
@@ -126,8 +130,12 @@ not mean the entire milestone is complete.
 
 ### Lisp environment
 
-- [ ] Text and structural editor.
-- [ ] Object inspector and code browser.
+- [x] Initial editable `.lisp` buffer with whole-buffer evaluation and
+  load/save.
+- [x] Multiline listener, persistent transcript, and initial result inspector.
+- [x] UTF-8-aware cursor movement and insertion in the text editor.
+- [ ] Selection and structural editing.
+- [ ] General object inspector and code browser.
 - [ ] Debugger, profiler, and condition/restart navigation.
 - [ ] Reversible DWIM and transactional history.
 - [ ] Git integration, autosave, and session restoration.

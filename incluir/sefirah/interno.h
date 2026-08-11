@@ -49,6 +49,11 @@ typedef struct SefEntradaHash {
     SefEstadoEntradaHash estado;
 } SefEntradaHash;
 
+typedef struct SefValoresSalvos {
+    SefValor *itens;
+    size_t quantidade;
+} SefValoresSalvos;
+
 typedef enum SefTipoControle {
     SEF_CONTROLE_BLOCO,
     SEF_CONTROLE_CAPTURA,
@@ -169,6 +174,11 @@ struct SefRuntime {
     SefQuadroControle *controle;
     SefQuadroControle *destino_transferencia;
     SefValor valor_transferencia;
+    SefValor *valores_multiplos;
+    size_t quantidade_valores;
+    size_t capacidade_valores;
+    uint64_t versao_valores;
+    SefValoresSalvos valores_transferencia;
     SefRaiz *raizes;
 };
 
@@ -217,10 +227,18 @@ bool sef_tabela_hash_inicializar(SefRuntime *runtime, SefValor tabela, SefErro *
 bool sef_tabela_hash_definir(SefRuntime *runtime, SefValor tabela, SefValor chave, SefValor valor,
                              SefErro *erro);
 SefValor sef_tabela_hash_obter(SefRuntime *runtime, SefValor tabela, SefValor chave,
-                               SefValor padrao, SefErro *erro);
+                               SefValor padrao, bool *encontrou, SefErro *erro);
 bool sef_tabela_hash_remover(SefRuntime *runtime, SefValor tabela, SefValor chave, bool *removeu,
                              SefErro *erro);
 void sef_tabela_hash_limpar(SefValor tabela);
+bool sef_valores_definir(SefRuntime *runtime, const SefValor *valores, size_t quantidade,
+                         SefErro *erro);
+bool sef_valores_definir_um(SefRuntime *runtime, SefValor valor, SefErro *erro);
+bool sef_valores_definir_lista(SefRuntime *runtime, SefValor lista, SefErro *erro);
+SefValor sef_valores_primario(const SefRuntime *runtime);
+bool sef_valores_salvar(const SefRuntime *runtime, SefValoresSalvos *salvos, SefErro *erro);
+bool sef_valores_restaurar(SefRuntime *runtime, const SefValoresSalvos *salvos, SefErro *erro);
+void sef_valores_salvos_liberar(SefValoresSalvos *salvos);
 bool sef_biblioteca_fechar(SefValor biblioteca, SefErro *erro);
 SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro *erro);
 void sef_biblioteca_recurso_reter(SefRecursoBiblioteca *recurso);

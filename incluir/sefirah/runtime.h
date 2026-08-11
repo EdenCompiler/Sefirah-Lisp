@@ -13,10 +13,17 @@ typedef struct SefObjeto *SefValor;
 typedef struct SefRaiz SefRaiz;
 typedef struct SefFuncaoCompilada SefFuncaoCompilada;
 
+typedef enum SefEstadoCodigo {
+    SEF_CODIGO_COMPLETO,
+    SEF_CODIGO_INCOMPLETO,
+    SEF_CODIGO_INVALIDO
+} SefEstadoCodigo;
+
 SefRuntime *sef_runtime_criar(SefErro *erro);
 void sef_runtime_destruir(SefRuntime *runtime);
 
 SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefErro *erro);
+SefEstadoCodigo sef_runtime_estado_codigo(const char *codigo, SefErro *erro);
 bool sef_runtime_executar_arquivo(SefRuntime *runtime, const char *caminho, SefValor *ultimo,
                                   SefErro *erro);
 int sef_runtime_repl(SefRuntime *runtime, FILE *entrada, FILE *saida);
@@ -29,6 +36,8 @@ void sef_texto_liberar(char *texto);
 
 size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria);
 size_t sef_runtime_objetos_vivos(const SefRuntime *runtime);
+size_t sef_runtime_quantidade_valores(const SefRuntime *runtime);
+SefValor sef_runtime_valor(const SefRuntime *runtime, size_t indice);
 
 SefRaiz *sef_raiz_criar(SefRuntime *runtime, SefValor valor, SefErro *erro);
 SefValor sef_raiz_valor(const SefRaiz *raiz);

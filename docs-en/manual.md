@@ -37,6 +37,7 @@ not part of the public format.
 | composition | `COND`, `WHEN`, `UNLESS`, `AND`, `OR`, quasiquote, `,`, and `,@` |
 | control | `BLOCK`, `RETURN-FROM`, `RETURN`, `CATCH`, `THROW`, `UNWIND-PROTECT` |
 | conditions | `ERROR`, `HANDLER-CASE`, `IGNORE-ERRORS` |
+| multiple values | `VALUES`, `VALUES-LIST`, `MULTIPLE-VALUE-BIND`, `MULTIPLE-VALUE-LIST`, `MULTIPLE-VALUE-CALL`, `MULTIPLE-VALUE-PROG1`, `NTH-VALUE` |
 | lists | `CONS`, `CAR`, `CDR`, `FIRST`, `REST`, `LIST`, `APPEND`, `NCONC`, `NTH`, `NTHCDR`, `LAST` |
 | vectors | `VECTOR`, `MAKE-ARRAY`, `AREF`, `SVREF`, `VECTORP`, `ARRAYP` |
 | hash tables | `MAKE-HASH-TABLE`, `GETHASH`, `HASH-TABLE-P`, `HASH-TABLE-COUNT`, `REMHASH`, `CLRHASH` |
@@ -180,10 +181,9 @@ automatically.
 ```
 
 `REMHASH` returns true when it removes a key. `CLRHASH` empties and returns the
-table. Since multiple values are not part of the bootstrap yet, `GETHASH`
-returns only the found value or default; the Common Lisp secondary presence
-indicator remains pending. Other key tests and resizing options are also
-pending.
+table. `GETHASH` returns the found value or default as its primary value and a
+secondary presence flag, so a stored `NIL` can be distinguished from a missing
+key. Other key tests and resizing options remain pending.
 
 Keys and values participate in GC marking. Images preserve entries, shared
 identity, and cycles, including a table containing itself.
@@ -351,8 +351,9 @@ systems.
 ```
 
 `:DIRECTION` accepts `:INPUT`, `:OUTPUT`, and `:IO`. For output, `:IF-EXISTS`
-accepts `:SUPERSEDE`, `:APPEND`, or `:ERROR`. Until multiple values are
-available, `READ-LINE` returns `NIL` at end of file.
+accepts `:SUPERSEDE`, `:APPEND`, or `:ERROR`. The current `READ-LINE` returns
+`NIL` at end of file; its Common Lisp secondary EOF indicator is still
+pending.
 
 ## Persistent image
 
@@ -377,22 +378,39 @@ Before saving:
 Standard streams are rebound to the new process. Closed file streams and
 libraries remain closed objects.
 
-## Custom GUI
+## REPL and IDE
 
-`sefirah_ide` opens the initial composition rasterized by the project itself:
+The textual REPL accepts complete Lisp programs rather than isolated physical
+lines. An open list, string, vector, or reader prefix changes `sefirah>` to the
+`......>` continuation prompt. It evaluates only after the form is complete
+and prints every returned value. `:ajuda` lists commands and `:sair` exits.
+
+The graphical IDE is split into a platform-independent session engine and a
+window presentation. It provides an editable `.lisp` buffer, multiline
+listener, persistent transcript, result inspector, whole-buffer evaluation,
+and file load/save:
 
 ```bash
 sefirah_ide
+sefirah_ide path/to/program.lisp
 ```
+
+Tab or a pointer click switches between editor and listener. Enter inserts a
+line in the editor and submits a complete form in the listener. F5 or
+Ctrl+Enter runs the editor, Ctrl+S saves, and Ctrl+O reloads the current path.
+Arrow, Home, and End keys move the UTF-8-aware editor cursor. The session
+engine is covered by headless automated tests.
+
+## Custom GUI
 
 The C17 API provides `SefComponente` for panels, labels, buttons, and fields;
 weighted row/column layouts; `SefTemaGui`; hit testing; focus navigation; and
 action dispatch. `SefInteracaoGui` turns Tab, Enter, and pointer input into
 focus and activation.
 
-X11 and Win32 already deliver keyboard and pointer events to the listener. The
-macOS bridge does not forward keyboard input yet, while the editor and
-inspector remain demonstrators.
+X11 and Win32 deliver keyboard, shortcuts, and pointer events to the IDE. The
+macOS bridge presents the rasterized composition but does not forward keyboard
+input yet.
 
 ## Reader and printing
 
@@ -411,10 +429,11 @@ compiled functions, conditions, hash tables, and shared libraries.
 - Unicode operations without normalization, grapheme clusters, or case
   folding;
 - division always produces `FLOAT`;
-- one-line-at-a-time text REPL;
 - incomplete conditions and restarts;
 - compilation limited to the i64 subset;
 - FFI without general floats, pointers, structs, and callbacks;
-- GUI without vector fonts, HiDPI, IME, and accessibility.
+- GUI without vector fonts, HiDPI, IME, and accessibility;
+- IDE without selection, structural editing, file chooser, debugger,
+  profiler, and transactional history.
 
 See the [1.0 roadmap](roadmap.md) for the next milestones.

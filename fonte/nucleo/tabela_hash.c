@@ -118,16 +118,18 @@ bool sef_tabela_hash_definir(SefRuntime *runtime, SefValor tabela, SefValor chav
 }
 
 SefValor sef_tabela_hash_obter(SefRuntime *runtime, SefValor tabela, SefValor chave,
-                               SefValor padrao, SefErro *erro) {
+                               SefValor padrao, bool *encontrou, SefErro *erro) {
     (void)runtime;
     if (tabela == NULL || tabela->tipo != SEF_TIPO_TABELA_HASH || chave == NULL) {
         sef_erro_definir(erro, 0, 0, "GETHASH exige tabela hash e chave");
         return NULL;
     }
 
-    bool encontrou;
-    SefEntradaHash *entrada = procurar_entrada(tabela, chave, &encontrou);
-    return encontrou ? entrada->valor : padrao;
+    bool achou;
+    SefEntradaHash *entrada = procurar_entrada(tabela, chave, &achou);
+    if (encontrou != NULL)
+        *encontrou = achou;
+    return achou ? entrada->valor : padrao;
 }
 
 bool sef_tabela_hash_remover(SefRuntime *runtime, SefValor tabela, SefValor chave, bool *removeu,

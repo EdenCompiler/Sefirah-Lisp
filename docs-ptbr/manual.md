@@ -37,6 +37,7 @@ faz parte do formato público.
 | composição | `COND`, `WHEN`, `UNLESS`, `AND`, `OR`, quasiquote, `,` e `,@` |
 | controle | `BLOCK`, `RETURN-FROM`, `RETURN`, `CATCH`, `THROW`, `UNWIND-PROTECT` |
 | condições | `ERROR`, `HANDLER-CASE`, `IGNORE-ERRORS` |
+| valores múltiplos | `VALUES`, `VALUES-LIST`, `MULTIPLE-VALUE-BIND`, `MULTIPLE-VALUE-LIST`, `MULTIPLE-VALUE-CALL`, `MULTIPLE-VALUE-PROG1`, `NTH-VALUE` |
 | listas | `CONS`, `CAR`, `CDR`, `FIRST`, `REST`, `LIST`, `APPEND`, `NCONC`, `NTH`, `NTHCDR`, `LAST` |
 | vetores | `VECTOR`, `MAKE-ARRAY`, `AREF`, `SVREF`, `VECTORP`, `ARRAYP` |
 | tabelas hash | `MAKE-HASH-TABLE`, `GETHASH`, `HASH-TABLE-P`, `HASH-TABLE-COUNT`, `REMHASH`, `CLRHASH` |
@@ -183,10 +184,10 @@ endereçamento aberto e a tabela cresce automaticamente.
 ```
 
 `REMHASH` devolve verdadeiro quando remove uma chave. `CLRHASH` esvazia a
-tabela e devolve a própria tabela. Como valores múltiplos ainda não fazem parte
-do bootstrap, `GETHASH` devolve somente o valor encontrado ou o valor padrão;
-o indicador secundário de presença de Common Lisp permanece pendente. Também
-permanecem pendentes outros testes de chave e opções de redimensionamento.
+tabela e devolve a própria tabela. `GETHASH` devolve o valor encontrado ou
+padrão como valor primário e um indicador secundário de presença, permitindo
+distinguir um `NIL` armazenado de uma chave ausente. Outros testes de chave e
+opções de redimensionamento permanecem pendentes.
 
 As chaves e os valores participam da marcação do GC. A imagem preserva as
 entradas, a identidade compartilhada e ciclos, inclusive uma tabela que
@@ -354,8 +355,9 @@ três sistemas.
 ```
 
 `:DIRECTION` aceita `:INPUT`, `:OUTPUT` e `:IO`. Para saída, `:IF-EXISTS`
-aceita `:SUPERSEDE`, `:APPEND` ou `:ERROR`. `READ-LINE` devolve `NIL` no fim do
-arquivo enquanto valores múltiplos não estiverem disponíveis.
+aceita `:SUPERSEDE`, `:APPEND` ou `:ERROR`. O `READ-LINE` atual devolve `NIL` no
+fim do arquivo; seu indicador secundário de EOF de Common Lisp ainda está
+pendente.
 
 ## Imagem persistente
 
@@ -381,21 +383,39 @@ Antes de salvar:
 Streams padrão são religados ao novo processo. Streams de arquivo e bibliotecas
 fechados permanecem objetos fechados.
 
-## GUI própria
+## REPL e IDE
 
-`sefirah_ide` abre a composição inicial rasterizada pelo próprio projeto:
+O REPL textual aceita programas Lisp completos em vez de linhas físicas
+isoladas. Lista, string, vetor ou prefixo de leitura aberto muda `sefirah>` para
+o prompt de continuação `......>`. A avaliação ocorre somente quando a forma
+está completa e imprime todos os valores devolvidos. `:ajuda` lista os comandos
+e `:sair` encerra a sessão.
+
+A IDE gráfica está dividida entre um motor de sessão independente da plataforma
+e a apresentação em janela. Ela oferece buffer `.lisp` editável, ouvinte
+multilinha, transcrição persistente, inspetor de resultados, avaliação do
+buffer inteiro e abertura/gravação de arquivo:
 
 ```bash
 sefirah_ide
+sefirah_ide caminho/para/programa.lisp
 ```
+
+Tab ou clique alterna entre editor e ouvinte. Enter insere linha no editor e
+envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o editor, Ctrl+S
+salva e Ctrl+O recarrega o caminho atual. Setas, Home e End movem o cursor do
+editor com consciência de UTF-8. O motor da sessão possui testes automatizados
+sem janela.
+
+## GUI própria
 
 A API C17 oferece `SefComponente` para painéis, rótulos, botões e campos;
 layouts em linha/coluna com pesos; `SefTemaGui`; hit-testing; navegação de foco;
 e despacho de ações. `SefInteracaoGui` converte Tab, Enter e ponteiro em foco e
 acionamento.
 
-X11 e Win32 já entregam teclado e ponteiro ao ouvinte. A ponte macOS ainda não
-encaminha teclado, e o editor e o inspetor permanecem demonstrativos.
+X11 e Win32 entregam teclado, atalhos e ponteiro à IDE. A ponte macOS apresenta
+a composição rasterizada, mas ainda não encaminha entrada de teclado.
 
 ## Leitor e impressão
 
@@ -413,10 +433,11 @@ funções compiladas, condições e bibliotecas compartilhadas.
 - arrays limitados a vetores simples unidimensionais;
 - operações Unicode sem normalização, grapheme clusters ou case folding;
 - divisão sempre produz `FLOAT`;
-- REPL textual com uma linha por interação;
 - condições e restarts ainda incompletos;
 - compilação limitada ao subconjunto i64;
 - FFI sem floats, ponteiros, structs e callbacks gerais;
-- GUI sem fontes vetoriais, HiDPI, IME e acessibilidade.
+- GUI sem fontes vetoriais, HiDPI, IME e acessibilidade;
+- IDE sem seleção, edição estrutural, seletor de arquivo, debugger,
+  profiler e histórico transacional.
 
 Consulte o [roteiro para 1.0](roteiro.md) para os próximos marcos.

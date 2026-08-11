@@ -31,14 +31,14 @@ the roadmap.
 
 | Subsystem | Current state |
 | --- | --- |
-| Language | Common Lisp subset with functions, macros, Unicode characters, vectors, hash tables, packages, and non-local control |
+| Language | Common Lisp subset with functions, macros, multiple values, Unicode characters, vectors, hash tables, packages, and non-local control |
 | Runtime | Object heap, mark-and-sweep GC, explicit roots, streams, and v9 binary images |
 | Compiler | i64 SSA IR, reference interpreter, W^X x86-64/AArch64 JIT, and relocatable objects |
 | FFI | Explicit shared libraries and C i64 calls with one or two inputs |
 | Graphics | Custom RGB surface, CPU rasterization, and bitmap font |
 | GUI | Component tree, layout, themes, focus, hit testing, and actions |
 | Platform | X11, Win32, and Cocoa/CoreGraphics bridge; macOS integration remains partial |
-| IDE | Graphical listener on X11/Win32; editor and inspector remain demonstrators |
+| IDE | Editable `.lisp` buffer, multiline listener, evaluation, result inspector, transcript, and file load/save on X11/Win32 |
 
 ## Highlights
 
@@ -53,6 +53,8 @@ the roadmap.
 - `CHARACTER` objects, `#\` literals, code-point-indexed UTF-8 strings, and
   uniform `ELT` access;
 - `EQL` hash tables with `GETHASH`, `SETF`, removal, GC, and persistence;
+- Common Lisp multiple values, including the secondary `GETHASH` presence
+  flag and propagation through non-local control;
 - `COPY-SEQ`, `REVERSE`, `SUBSEQ`, and `FILL` shared by lists, vectors, and
   strings;
 - list composition, destructive operations, search, navigation, and
@@ -100,6 +102,10 @@ macOS, the backend links AppKit, Foundation, and CoreGraphics.
 ./construir/sefirah executar exemplos/inicio.lisp
 ./construir/sefirah repl
 ```
+
+The REPL accepts multiline forms, changes to a continuation prompt while a
+form is open, and prints every value returned by `VALUES`. Use `:ajuda` for
+commands and `:sair` to leave.
 
 ```lisp
 (defun factorial (n)
@@ -177,11 +183,16 @@ v6, v7, and v8. File streams and shared libraries must be closed before saving.
 
 ```bash
 ./construir/sefirah_ide
+./construir/sefirah_ide path/to/program.lisp
 ```
 
 Sefirah rasterizes the composition over `SefSuperficie`. Panels, labels,
 buttons, and fields use the same component tree, flexible layout, theme, focus,
-and action dispatch exposed by `sefirah/gui.h`.
+and action dispatch exposed by `sefirah/gui.h`. The IDE provides an editable
+buffer, persistent transcript, multiline listener, live result inspector, and
+`.lisp` file load/save. Tab or a pointer click changes focus, F5 or Ctrl+Enter
+runs the editor, Ctrl+S saves, Ctrl+O reloads the current path, and the arrow,
+Home, and End keys move the editor cursor.
 
 ## Architecture
 
@@ -244,8 +255,8 @@ X11/Win32/Cocoa, and the compiler keeps its IR independent of object writers.
 - the GUI lacks vector fonts, HiDPI, IME, accessibility, and complete desktop
   integration;
 - macOS keyboard input, Wayland, and distribution packages remain pending;
-- the IDE editor, inspector, debugger, profiler, and transactional history are
-  not complete.
+- structural editing, arbitrary file dialogs, debugger, profiler, and
+  transactional history are not complete.
 
 Detailed, verifiable status is in the [implementation roadmap](docs-en/roadmap.md).
 
@@ -288,14 +299,14 @@ nativa permanecem no roteiro.
 
 | Subsistema | Estado atual |
 | --- | --- |
-| Linguagem | Subconjunto Common Lisp com funções, macros, caracteres Unicode, vetores, tabelas hash, packages e controle não local |
+| Linguagem | Subconjunto Common Lisp com funções, macros, valores múltiplos, caracteres Unicode, vetores, tabelas hash, packages e controle não local |
 | Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v9 |
 | Compilador | IR SSA i64, interpretador de referência, JIT W^X x86-64/AArch64 e objetos relocáveis |
 | FFI | Bibliotecas compartilhadas explícitas e chamadas C i64 com uma ou duas entradas |
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
 | GUI | Árvore de componentes, layout, temas, foco, hit-testing e ações |
 | Plataforma | X11, Win32 e ponte Cocoa/CoreGraphics; integração macOS ainda parcial |
-| IDE | Ouvinte gráfico funcional em X11/Win32; editor e inspetor ainda demonstrativos |
+| IDE | Buffer `.lisp` editável, ouvinte multilinha, avaliação, inspetor de resultados, transcrição e abertura/gravação em X11/Win32 |
 
 ## Destaques
 
@@ -312,6 +323,8 @@ nativa permanecem no roteiro.
 - objetos `CHARACTER`, literais `#\`, strings UTF-8 indexadas por ponto de
   código e acesso uniforme por `ELT`;
 - tabelas hash `EQL` com `GETHASH`, `SETF`, remoção, GC e persistência;
+- valores múltiplos de Common Lisp, inclusive o indicador secundário de
+  presença de `GETHASH` e propagação por controle não local;
 - `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL` compartilhados por listas, vetores e
   strings;
 - composição de listas, operações destrutivas, busca, navegação e mapeamento
@@ -358,6 +371,10 @@ macOS, o backend liga AppKit, Foundation e CoreGraphics.
 ./construir/sefirah executar exemplos/inicio.lisp
 ./construir/sefirah repl
 ```
+
+O REPL aceita formas multilinha, muda para um prompt de continuação enquanto
+uma forma está aberta e imprime todos os valores devolvidos por `VALUES`. Use
+`:ajuda` para consultar comandos e `:sair` para encerrar.
 
 ```lisp
 (defun fatorial (n)
@@ -436,11 +453,16 @@ estar fechados antes da gravação.
 
 ```bash
 ./construir/sefirah_ide
+./construir/sefirah_ide caminho/para/programa.lisp
 ```
 
 O Sefirah rasteriza a composição sobre `SefSuperficie`. Painéis, rótulos,
 botões e campos usam a mesma árvore de componentes, layout flexível, tema,
-foco e despacho de ações expostos por `sefirah/gui.h`.
+foco e despacho de ações expostos por `sefirah/gui.h`. A IDE oferece buffer
+editável, transcrição persistente, ouvinte multilinha, inspetor vivo de
+resultados e abertura/gravação de `.lisp`. Tab ou clique muda o foco, F5 ou
+Ctrl+Enter executa o editor, Ctrl+S salva, Ctrl+O recarrega o caminho atual e
+as setas, Home e End movem o cursor do editor.
 
 ## Arquitetura
 
@@ -503,8 +525,8 @@ compilador mantém a IR independente dos gravadores de objetos.
 - a GUI ainda não possui fontes vetoriais, HiDPI, IME, acessibilidade ou
   integração desktop completa;
 - teclado no macOS, Wayland e pacotes de distribuição continuam pendentes;
-- editor, inspetor, debugger, profiler e histórico transacional da IDE não
-  estão completos.
+- edição estrutural, diálogos de arquivo arbitrário, debugger, profiler e
+  histórico transacional ainda não estão completos.
 
 O estado detalhado e verificável está no
 [roteiro de implementação](docs-ptbr/roteiro.md).

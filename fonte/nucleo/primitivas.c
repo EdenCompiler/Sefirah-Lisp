@@ -1180,6 +1180,20 @@ static SefValor primitiva_list_all_packages(SefRuntime *runtime, SefValor argume
     return resultado;
 }
 
+static SefValor primitiva_values(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!sef_valores_definir_lista(runtime, argumentos, erro))
+        return NULL;
+    return sef_valores_primario(runtime);
+}
+
+static SefValor primitiva_values_list(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "VALUES-LIST", erro))
+        return NULL;
+    if (!sef_valores_definir_lista(runtime, car(argumentos), erro))
+        return NULL;
+    return sef_valores_primario(runtime);
+}
+
 static SefValor primitiva_make_hash_table(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 0, 0, "MAKE-HASH-TABLE", erro))
         return NULL;
@@ -1190,7 +1204,13 @@ static SefValor primitiva_gethash(SefRuntime *runtime, SefValor argumentos, SefE
         return NULL;
     SefValor padrao =
         cdr(cdr(argumentos)) == runtime->nulo ? runtime->nulo : car(cdr(cdr(argumentos)));
-    return sef_tabela_hash_obter(runtime, car(cdr(argumentos)), car(argumentos), padrao, erro);
+    bool encontrou = false;
+    SefValor valor = sef_tabela_hash_obter(runtime, car(cdr(argumentos)), car(argumentos), padrao,
+                                           &encontrou, erro);
+    if (valor == NULL)
+        return NULL;
+    SefValor valores[2] = {valor, encontrou ? runtime->verdadeiro : runtime->nulo};
+    return sef_valores_definir(runtime, valores, 2, erro) ? valor : NULL;
 }
 static SefValor primitiva_hash_table_p(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "HASH-TABLE-P", erro))
@@ -1363,6 +1383,8 @@ static const struct {
                   {"SYMBOL-NAME", primitiva_symbol_name},
                   {"SYMBOL-PACKAGE", primitiva_symbol_package},
                   {"LIST-ALL-PACKAGES", primitiva_list_all_packages},
+                  {"VALUES", primitiva_values},
+                  {"VALUES-LIST", primitiva_values_list},
                   {"MAKE-HASH-TABLE", primitiva_make_hash_table},
                   {"GETHASH", primitiva_gethash},
                   {"HASH-TABLE-P", primitiva_hash_table_p},

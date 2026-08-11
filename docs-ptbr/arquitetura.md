@@ -33,7 +33,7 @@ sefirah_compilador
        │
 sefirah_nucleo ───────────────┐
                               ├── sefirah (CLI)
-                              └── sefirah_ide (IDE)
+                              └── sefirah_ide_nucleo ── sefirah_ide (IDE)
 sefirah_graficos ◄── sefirah_plataforma
        ▲                      │
        └──────────────────────┘
@@ -46,7 +46,8 @@ sefirah_graficos ◄── sefirah_plataforma
 | `graficos` | pixels, formas e texto bitmap | X11, Win32 e Cocoa |
 | `plataforma` | janela, apresentação e eventos nativos | avaliação Lisp |
 | `cli` | APIs públicas de runtime e comandos textuais | GUI, plataforma e detalhes internos do heap |
-| `ide` | runtime, GUI e plataforma por `ide/ide.h` | comandos, parsing e políticas da CLI |
+| `ide_nucleo` | runtime e sessão de editor/ouvinte por `ide/ide.h` | janelas e eventos de plataforma |
+| `ide` | motor de sessão, GUI e plataforma | comandos da CLI e detalhes internos do núcleo |
 
 Cada build compila exatamente um backend de janela. O backend macOS permanece
 C puro e confina as chamadas tipadas ao runtime Objective-C dentro do adaptador
@@ -74,6 +75,19 @@ Símbolos possuem células separadas de valor e função; packages, vetores,
 caracteres e tabelas hash também são objetos do heap e preservam identidade e
 referências na imagem. Strings armazenam UTF-8 e são indexadas por ponto de
 código na API Lisp.
+
+Valores múltiplos vivem em estado explícito do runtime. Posições comuns de
+argumento consomem o valor primário, enquanto formas de valores múltiplos e
+transferências não locais preservam o conjunto completo. O mesmo analisador de
+forma completa atende ao REPL da CLI e ao ouvinte gráfico, evitando divergência
+no comportamento multilinha.
+
+## Sessão da IDE
+
+`sefirah_ide_nucleo` possui o buffer editável, entrada do ouvinte, transcrição,
+inspetor, caminho atual e runtime. Ele executa, abre e grava sem uma janela, o
+que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
+painéis, desenha o estado e converte eventos X11/Win32 em ações da sessão.
 
 ## Fluxo do compilador
 

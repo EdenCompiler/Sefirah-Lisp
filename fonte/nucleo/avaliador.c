@@ -7,6 +7,10 @@ static SefValor primeiro(SefValor lista) { return lista->como.par.primeiro; }
 
 static SefValor resto(SefValor lista) { return lista->como.par.resto; }
 
+static SefValor valor_unico(SefRuntime *runtime, SefValor valor, SefErro *erro) {
+    return valor != NULL && sef_valores_definir_um(runtime, valor, erro) ? valor : NULL;
+}
+
 static bool exigir_lista(SefRuntime *runtime, SefValor lista, const char *contexto, SefErro *erro) {
     if (sef_e_lista_propria(runtime, lista))
         return true;
@@ -18,6 +22,8 @@ static SefValor avaliar_sequencia(SefRuntime *runtime, SefValor formas, SefValor
                                   SefErro *erro) {
     if (!exigir_lista(runtime, formas, "sequencia", erro))
         return NULL;
+    if (formas == runtime->nulo)
+        return valor_unico(runtime, runtime->nulo, erro);
     SefValor resultado = runtime->nulo;
     while (formas != runtime->nulo) {
         resultado = sef_avaliar(runtime, primeiro(formas), ambiente, erro);
@@ -156,7 +162,8 @@ static SefValor especial_quasiquote(SefRuntime *runtime, SefValor argumentos, Se
                                     SefErro *erro) {
     if (!contar_exato(runtime, argumentos, 1, "QUASIQUOTE", erro))
         return NULL;
-    return avaliar_quasiquote(runtime, primeiro(argumentos), ambiente, 1, erro);
+    SefValor resultado = avaliar_quasiquote(runtime, primeiro(argumentos), ambiente, 1, erro);
+    return resultado == NULL ? NULL : valor_unico(runtime, resultado, erro);
 }
 
 static SefValor especial_if(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
@@ -175,7 +182,7 @@ static SefValor especial_if(SefRuntime *runtime, SefValor argumentos, SefValor a
         return sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
     }
     argumentos = resto(argumentos);
-    return argumentos == runtime->nulo ? runtime->nulo
+    return argumentos == runtime->nulo ? valor_unico(runtime, runtime->nulo, erro)
                                        : sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
 }
 
@@ -224,7 +231,9 @@ static SefValor especial_define(SefRuntime *runtime, SefValor argumentos, SefVal
     SefValor valor = sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro);
     if (valor == NULL)
         return NULL;
-    return sef_ambiente_definir(runtime, runtime->ambiente_global, nome, valor, erro) ? nome : NULL;
+    return sef_ambiente_definir(runtime, runtime->ambiente_global, nome, valor, erro)
+               ? valor_unico(runtime, nome, erro)
+               : NULL;
 }
 
 static SefValor especial_variavel_global(SefRuntime *runtime, SefValor argumentos,
@@ -250,7 +259,9 @@ static SefValor especial_variavel_global(SefRuntime *runtime, SefValor argumento
         if (valor == NULL)
             return NULL;
     }
-    return sef_ambiente_definir(runtime, runtime->ambiente_global, nome, valor, erro) ? nome : NULL;
+    return sef_ambiente_definir(runtime, runtime->ambiente_global, nome, valor, erro)
+               ? valor_unico(runtime, nome, erro)
+               : NULL;
 }
 
 static SefValor especial_setq(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
@@ -278,7 +289,7 @@ static SefValor especial_setq(SefRuntime *runtime, SefValor argumentos, SefValor
         }
         argumentos = resto(argumentos);
     }
-    return resultado;
+    return valor_unico(runtime, resultado, erro);
 }
 
 static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor forma_valor,
@@ -418,7 +429,7 @@ static SefValor especial_setf(SefRuntime *runtime, SefValor argumentos, SefValor
             return NULL;
         argumentos = resto(argumentos);
     }
-    return resultado;
+    return valor_unico(runtime, resultado, erro);
 }
 
 static SefValor especial_let(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
@@ -466,6 +477,140 @@ static SefValor especial_let(SefRuntime *runtime, SefValor argumentos, SefValor 
     return avaliar_sequencia(runtime, resto(argumentos), novo, erro);
 }
 
+static SefValor especial_multiple_value_bind(SefRuntime *runtime, SefValor argumentos,
+                                             SefValor ambiente, SefErro *erro) {
+    bool propria = false;
+    size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
+    if (!propria || quantidade < 2) {
+        sef_erro_definir(erro, 0, 0,
+                         "MULTIPLE-VALUE-BIND exige variaveis, forma de valores e corpo");
+        return NULL;
+    }
+    SefValor variaveis = primeiro(argumentos);
+    if (!exigir_lista(runtime, variaveis, "variaveis de MULTIPLE-VALUE-BIND", erro))
+        return NULL;
+
+    SefValor forma_valores = primeiro(resto(argumentos));
+    if (sef_avaliar(runtime, forma_valores, ambiente, erro) == NULL)
+        return NULL;
+    SefValoresSalvos salvos = {0};
+    if (!sef_valores_salvar(runtime, &salvos, erro))
+        return NULL;
+
+    SefValor local = sef_ambiente_novo(runtime, ambiente, erro);
+    if (local == NULL) {
+        sef_valores_salvos_liberar(&salvos);
+        return NULL;
+    }
+    size_t indice = 0;
+    while (variaveis != runtime->nulo) {
+        SefValor nome = primeiro(variaveis);
+        if (nome->tipo != SEF_TIPO_SIMBOLO) {
+            sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-BIND aceita somente nomes de variaveis");
+            sef_valores_salvos_liberar(&salvos);
+            return NULL;
+        }
+        SefValor valor = indice < salvos.quantidade ? salvos.itens[indice] : runtime->nulo;
+        if (!sef_ambiente_definir(runtime, local, nome, valor, erro)) {
+            sef_valores_salvos_liberar(&salvos);
+            return NULL;
+        }
+        indice++;
+        variaveis = resto(variaveis);
+    }
+    sef_valores_salvos_liberar(&salvos);
+    return avaliar_sequencia(runtime, resto(resto(argumentos)), local, erro);
+}
+
+static SefValor especial_multiple_value_list(SefRuntime *runtime, SefValor argumentos,
+                                             SefValor ambiente, SefErro *erro) {
+    if (!contar_exato(runtime, argumentos, 1, "MULTIPLE-VALUE-LIST", erro))
+        return NULL;
+    if (sef_avaliar(runtime, primeiro(argumentos), ambiente, erro) == NULL)
+        return NULL;
+
+    SefValor lista = runtime->nulo;
+    for (size_t i = runtime->quantidade_valores; i > 0; i--) {
+        lista = sef_par_novo(runtime, runtime->valores_multiplos[i - 1], lista, erro);
+        if (lista == NULL)
+            return NULL;
+    }
+    return valor_unico(runtime, lista, erro);
+}
+
+static SefValor especial_multiple_value_prog1(SefRuntime *runtime, SefValor argumentos,
+                                              SefValor ambiente, SefErro *erro) {
+    if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR ||
+        !sef_e_lista_propria(runtime, argumentos)) {
+        sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-PROG1 exige ao menos uma forma");
+        return NULL;
+    }
+    if (sef_avaliar(runtime, primeiro(argumentos), ambiente, erro) == NULL)
+        return NULL;
+    SefValoresSalvos salvos = {0};
+    if (!sef_valores_salvar(runtime, &salvos, erro))
+        return NULL;
+    if (resto(argumentos) != runtime->nulo &&
+        avaliar_sequencia(runtime, resto(argumentos), ambiente, erro) == NULL) {
+        sef_valores_salvos_liberar(&salvos);
+        return NULL;
+    }
+    bool restaurou = sef_valores_restaurar(runtime, &salvos, erro);
+    sef_valores_salvos_liberar(&salvos);
+    return restaurou ? sef_valores_primario(runtime) : NULL;
+}
+
+static SefValor especial_multiple_value_call(SefRuntime *runtime, SefValor argumentos,
+                                             SefValor ambiente, SefErro *erro) {
+    if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR ||
+        !sef_e_lista_propria(runtime, argumentos)) {
+        sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-CALL exige uma forma de funcao");
+        return NULL;
+    }
+    SefValor funcao = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+    if (funcao == NULL)
+        return NULL;
+
+    SefValor valores = runtime->nulo;
+    SefValor ultima = NULL;
+    for (SefValor formas = resto(argumentos); formas != runtime->nulo; formas = resto(formas)) {
+        if (sef_avaliar(runtime, primeiro(formas), ambiente, erro) == NULL)
+            return NULL;
+        for (size_t i = 0; i < runtime->quantidade_valores; i++) {
+            SefValor celula =
+                sef_par_novo(runtime, runtime->valores_multiplos[i], runtime->nulo, erro);
+            if (celula == NULL)
+                return NULL;
+            if (valores == runtime->nulo)
+                valores = celula;
+            else
+                ultima->como.par.resto = celula;
+            ultima = celula;
+        }
+    }
+    return sef_aplicar(runtime, funcao, valores, erro);
+}
+
+static SefValor especial_nth_value(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
+                                   SefErro *erro) {
+    if (!contar_exato(runtime, argumentos, 2, "NTH-VALUE", erro))
+        return NULL;
+    SefValor indice = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+    if (indice == NULL)
+        return NULL;
+    if (indice->tipo != SEF_TIPO_INTEIRO || indice->como.inteiro < 0 ||
+        (uint64_t)indice->como.inteiro > SIZE_MAX) {
+        sef_erro_definir(erro, 0, 0, "NTH-VALUE exige indice inteiro nao negativo");
+        return NULL;
+    }
+    if (sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro) == NULL)
+        return NULL;
+    size_t posicao = (size_t)indice->como.inteiro;
+    SefValor valor =
+        posicao < runtime->quantidade_valores ? runtime->valores_multiplos[posicao] : runtime->nulo;
+    return valor_unico(runtime, valor, erro);
+}
+
 static SefValor especial_cond(SefRuntime *runtime, SefValor clausulas, SefValor ambiente,
                               SefErro *erro) {
     if (!exigir_lista(runtime, clausulas, "COND", erro))
@@ -488,7 +633,7 @@ static SefValor especial_cond(SefRuntime *runtime, SefValor clausulas, SefValor 
         }
         clausulas = resto(clausulas);
     }
-    return runtime->nulo;
+    return valor_unico(runtime, runtime->nulo, erro);
 }
 
 static SefValor especial_when(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
@@ -501,7 +646,8 @@ static SefValor especial_when(SefRuntime *runtime, SefValor argumentos, SefValor
     if (teste == NULL)
         return NULL;
     bool executar = quando_verdadeiro ? teste != runtime->nulo : teste == runtime->nulo;
-    return executar ? avaliar_sequencia(runtime, resto(argumentos), ambiente, erro) : runtime->nulo;
+    return executar ? avaliar_sequencia(runtime, resto(argumentos), ambiente, erro)
+                    : valor_unico(runtime, runtime->nulo, erro);
 }
 
 static bool controle_eql(SefValor a, SefValor b) {
@@ -514,9 +660,7 @@ static bool controle_eql(SefValor a, SefValor b) {
     return false;
 }
 
-static void transferir_controle(SefRuntime *runtime, SefQuadroControle *destino, SefValor valor) {
-    runtime->destino_transferencia = destino;
-    runtime->valor_transferencia = valor;
+static void transferir_controle(SefRuntime *runtime, SefQuadroControle *destino) {
     for (SefQuadroControle *quadro = runtime->controle; quadro != NULL && quadro != destino;
          quadro = quadro->anterior) {
         if (quadro->tipo == SEF_CONTROLE_LIMPEZA) {
@@ -526,6 +670,16 @@ static void transferir_controle(SefRuntime *runtime, SefQuadroControle *destino,
     }
     runtime->controle = destino;
     longjmp(destino->salto, 1);
+}
+
+static bool iniciar_transferencia(SefRuntime *runtime, SefQuadroControle *destino, SefValor valor,
+                                  SefErro *erro) {
+    sef_valores_salvos_liberar(&runtime->valores_transferencia);
+    if (!sef_valores_salvar(runtime, &runtime->valores_transferencia, erro))
+        return false;
+    runtime->destino_transferencia = destino;
+    runtime->valor_transferencia = valor;
+    return true;
 }
 
 static SefValor executar_com_controle(SefRuntime *runtime, SefTipoControle tipo,
@@ -543,7 +697,12 @@ static SefValor executar_com_controle(SefRuntime *runtime, SefTipoControle tipo,
         return resultado;
     }
     runtime->controle = quadro.anterior;
-    return runtime->valor_transferencia;
+    SefValor resultado = runtime->valor_transferencia;
+    bool restaurou = sef_valores_restaurar(runtime, &runtime->valores_transferencia, erro);
+    sef_valores_salvos_liberar(&runtime->valores_transferencia);
+    runtime->destino_transferencia = NULL;
+    runtime->valor_transferencia = NULL;
+    return restaurou ? resultado : NULL;
 }
 
 static SefValor especial_block(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
@@ -576,12 +735,14 @@ static SefValor especial_return_from(SefRuntime *runtime, SefValor argumentos, S
     }
     SefValor valor = quantidade == 2
                          ? sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro)
-                         : runtime->nulo;
+                         : valor_unico(runtime, runtime->nulo, erro);
     if (valor == NULL)
         return NULL;
     for (SefQuadroControle *quadro = runtime->controle; quadro != NULL; quadro = quadro->anterior) {
         if (quadro->tipo == SEF_CONTROLE_BLOCO && quadro->nome_ou_etiqueta == nome) {
-            transferir_controle(runtime, quadro, valor);
+            if (!iniciar_transferencia(runtime, quadro, valor, erro))
+                return NULL;
+            transferir_controle(runtime, quadro);
         }
     }
     sef_erro_definir(erro, 0, 0, "nao existe BLOCK ativo com esse nome");
@@ -614,7 +775,9 @@ static SefValor especial_throw(SefRuntime *runtime, SefValor argumentos, SefValo
     for (SefQuadroControle *quadro = runtime->controle; quadro != NULL; quadro = quadro->anterior) {
         if (quadro->tipo == SEF_CONTROLE_CAPTURA &&
             controle_eql(quadro->nome_ou_etiqueta, etiqueta)) {
-            transferir_controle(runtime, quadro, valor);
+            if (!iniciar_transferencia(runtime, quadro, valor, erro))
+                return NULL;
+            transferir_controle(runtime, quadro);
         }
     }
     sef_erro_definir(erro, 0, 0, "nenhum CATCH ativo aceita essa etiqueta");
@@ -637,28 +800,39 @@ static SefValor especial_unwind_protect(SefRuntime *runtime, SefValor argumentos
     int transferencia = setjmp(quadro.salto);
     if (transferencia == 0) {
         SefValor resultado = sef_avaliar(runtime, protegida, ambiente, erro);
+        SefValoresSalvos salvos = {0};
+        bool preservou = resultado != NULL && sef_valores_salvar(runtime, &salvos, erro);
         runtime->controle = quadro.anterior;
         SefErro erro_limpeza;
         sef_erro_limpar(&erro_limpeza);
         SefValor resultado_limpeza = avaliar_sequencia(runtime, limpezas, ambiente, &erro_limpeza);
         if (resultado_limpeza == NULL && erro_limpeza.ocorreu) {
+            sef_valores_salvos_liberar(&salvos);
             *erro = erro_limpeza;
             return NULL;
         }
-        return resultado;
+        if (resultado == NULL || !preservou) {
+            sef_valores_salvos_liberar(&salvos);
+            return NULL;
+        }
+        bool restaurou = sef_valores_restaurar(runtime, &salvos, erro);
+        sef_valores_salvos_liberar(&salvos);
+        return restaurou ? resultado : NULL;
     }
 
     SefQuadroControle *destino = runtime->destino_transferencia;
-    SefValor valor = runtime->valor_transferencia;
     runtime->controle = quadro.anterior;
     SefErro erro_limpeza;
     sef_erro_limpar(&erro_limpeza);
     if (avaliar_sequencia(runtime, limpezas, ambiente, &erro_limpeza) == NULL &&
         erro_limpeza.ocorreu) {
+        sef_valores_salvos_liberar(&runtime->valores_transferencia);
+        runtime->destino_transferencia = NULL;
+        runtime->valor_transferencia = NULL;
         *erro = erro_limpeza;
         return NULL;
     }
-    transferir_controle(runtime, destino, valor);
+    transferir_controle(runtime, destino);
     return NULL;
 }
 
@@ -669,8 +843,15 @@ static SefValor especial_ignore_errors(SefRuntime *runtime, SefValor argumentos,
     SefErro ignorado;
     sef_erro_limpar(&ignorado);
     SefValor resultado = sef_avaliar(runtime, primeiro(argumentos), ambiente, &ignorado);
-    if (resultado == NULL && ignorado.ocorreu)
-        return runtime->nulo;
+    if (resultado == NULL && ignorado.ocorreu) {
+        SefValor classe = sef_simbolo_internar(runtime, "ERROR", 5, erro);
+        SefValor condicao =
+            classe == NULL ? NULL : sef_condicao_nova(runtime, classe, ignorado.mensagem, erro);
+        if (condicao == NULL)
+            return NULL;
+        SefValor valores[2] = {runtime->nulo, condicao};
+        return sef_valores_definir(runtime, valores, 2, erro) ? runtime->nulo : NULL;
+    }
     return resultado;
 }
 
@@ -953,7 +1134,8 @@ static bool vincular_parametros(SefRuntime *runtime, SefValor ambiente, SefValor
     return true;
 }
 
-SefValor sef_aplicar(SefRuntime *runtime, SefValor funcao, SefValor argumentos, SefErro *erro) {
+static SefValor aplicar_funcao(SefRuntime *runtime, SefValor funcao, SefValor argumentos,
+                               SefErro *erro) {
     if (funcao == NULL)
         return NULL;
     if (funcao->tipo == SEF_TIPO_NATIVA) {
@@ -999,7 +1181,17 @@ SefValor sef_aplicar(SefRuntime *runtime, SefValor funcao, SefValor argumentos, 
     return avaliar_sequencia(runtime, funcao->como.funcao.corpo, ambiente, erro);
 }
 
-SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, SefErro *erro) {
+SefValor sef_aplicar(SefRuntime *runtime, SefValor funcao, SefValor argumentos, SefErro *erro) {
+    uint64_t versao_anterior = runtime->versao_valores;
+    SefValor resultado = aplicar_funcao(runtime, funcao, argumentos, erro);
+    if (resultado != NULL && runtime->versao_valores == versao_anterior &&
+        !sef_valores_definir_um(runtime, resultado, erro))
+        return NULL;
+    return resultado;
+}
+
+static SefValor avaliar_forma(SefRuntime *runtime, SefValor forma, SefValor ambiente,
+                              SefErro *erro) {
     if (forma == NULL)
         return NULL;
     switch (forma->tipo) {
@@ -1063,6 +1255,16 @@ SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, Sef
             return especial_let(runtime, argumentos, ambiente, false, erro);
         if (sef_simbolo_tem_nome(operador, "LET*"))
             return especial_let(runtime, argumentos, ambiente, true, erro);
+        if (sef_simbolo_tem_nome(operador, "MULTIPLE-VALUE-BIND"))
+            return especial_multiple_value_bind(runtime, argumentos, ambiente, erro);
+        if (sef_simbolo_tem_nome(operador, "MULTIPLE-VALUE-LIST"))
+            return especial_multiple_value_list(runtime, argumentos, ambiente, erro);
+        if (sef_simbolo_tem_nome(operador, "MULTIPLE-VALUE-PROG1"))
+            return especial_multiple_value_prog1(runtime, argumentos, ambiente, erro);
+        if (sef_simbolo_tem_nome(operador, "MULTIPLE-VALUE-CALL"))
+            return especial_multiple_value_call(runtime, argumentos, ambiente, erro);
+        if (sef_simbolo_tem_nome(operador, "NTH-VALUE"))
+            return especial_nth_value(runtime, argumentos, ambiente, erro);
         if (sef_simbolo_tem_nome(operador, "COND"))
             return especial_cond(runtime, argumentos, ambiente, erro);
         if (sef_simbolo_tem_nome(operador, "WHEN"))
@@ -1124,4 +1326,13 @@ SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, Sef
     }
     SefValor valores = avaliar_argumentos(runtime, argumentos, ambiente, erro);
     return valores == NULL ? NULL : sef_aplicar(runtime, funcao, valores, erro);
+}
+
+SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, SefErro *erro) {
+    uint64_t versao_anterior = runtime->versao_valores;
+    SefValor resultado = avaliar_forma(runtime, forma, ambiente, erro);
+    if (resultado != NULL && runtime->versao_valores == versao_anterior &&
+        !sef_valores_definir_um(runtime, resultado, erro))
+        return NULL;
+    return resultado;
 }

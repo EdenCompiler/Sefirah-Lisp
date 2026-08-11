@@ -296,7 +296,8 @@ static SefValor mapear(SefRuntime *runtime, SefValor argumentos, bool coletar, c
         for (SefValor cursor = listas; cursor != runtime->nulo; cursor = resto(cursor))
             cursor->como.par.primeiro = resto(primeiro(cursor));
     }
-    return coletar ? sef_lista_inverter(runtime, resultados, erro) : primeira_lista;
+    SefValor resultado = coletar ? sef_lista_inverter(runtime, resultados, erro) : primeira_lista;
+    return resultado != NULL && sef_valores_definir_um(runtime, resultado, erro) ? resultado : NULL;
 }
 
 SefValor sef_primitiva_mapcar(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {

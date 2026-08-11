@@ -1,5 +1,5 @@
 /construir*/
-/build/
+/build*/
 /.cache/
 *.o
 *.obj

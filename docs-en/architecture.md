@@ -33,7 +33,7 @@ sefirah_compilador
        │
 sefirah_nucleo ───────────────┐
                               ├── sefirah (CLI)
-                              └── sefirah_ide (IDE)
+                              └── sefirah_ide_nucleo ── sefirah_ide (IDE)
 sefirah_graficos ◄── sefirah_plataforma
        ▲                      │
        └──────────────────────┘
@@ -46,7 +46,8 @@ sefirah_graficos ◄── sefirah_plataforma
 | `graficos` | pixels, shapes, and bitmap text | X11, Win32, and Cocoa |
 | `plataforma` | native windows, presentation, and events | Lisp evaluation |
 | `cli` | public runtime APIs and text commands | GUI, platform, and heap internals |
-| `ide` | runtime, GUI, and platform through `ide/ide.h` | CLI commands, parsing, and policies |
+| `ide_nucleo` | runtime and editor/listener session through `ide/ide.h` | windows and platform events |
+| `ide` | session engine, GUI, and platform | CLI commands and core internals |
 
 Each build compiles exactly one window backend. The macOS backend remains pure
 C and confines typed Objective-C runtime calls to the platform adapter.
@@ -71,6 +72,18 @@ The reader and evaluator are the reference implementation during bootstrap.
 Symbols have separate value and function cells. Packages, vectors, characters,
 and hash tables are also heap objects and preserve identity and references in
 an image. Strings store UTF-8 and the Lisp API indexes them by code point.
+
+Multiple values live in explicit runtime state. Ordinary argument positions
+consume the primary value, while multiple-value forms and non-local transfers
+preserve the complete set. The same complete-form scanner drives the CLI REPL
+and graphical listener, preventing their multiline behavior from diverging.
+
+## IDE session
+
+`sefirah_ide_nucleo` owns the editable buffer, listener input, transcript,
+inspector, current path, and runtime. It can execute, load, and save without a
+window, which makes behavior testable on CI. `sefirah_ide` only lays out the
+panels, draws the state, and translates X11/Win32 events into session actions.
 
 ## Compiler flow
 

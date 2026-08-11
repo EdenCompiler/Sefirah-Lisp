@@ -54,6 +54,40 @@ static void converter_assinatura(const char *caminho, int versao) {
     verificar(fclose(arquivo) == 0, "imagem de compatibilidade foi fechada");
 }
 
+static void testar_repl(SefRuntime *runtime) {
+    FILE *entrada = tmpfile();
+    FILE *saida = tmpfile();
+    verificar(entrada != NULL && saida != NULL, "arquivos temporarios do REPL foram criados");
+    if (entrada == NULL || saida == NULL) {
+        if (entrada != NULL)
+            fclose(entrada);
+        if (saida != NULL)
+            fclose(saida);
+        return;
+    }
+
+    fputs("(defun soma-repl\n  (a b)\n  (+ a b))\n", entrada);
+    fputs("(soma-repl 40 2)\n", entrada);
+    fputs("(values 40 41 42)\n", entrada);
+    fputs(":ajuda\n:sair\n", entrada);
+    rewind(entrada);
+    verificar(sef_runtime_repl(runtime, entrada, saida) == 0, "REPL executou sessao completa");
+    rewind(saida);
+
+    char transcricao[8192];
+    size_t lidos = fread(transcricao, 1, sizeof(transcricao) - 1, saida);
+    transcricao[lidos] = '\0';
+    verificar(strstr(transcricao, "......> ") != NULL, "REPL mostrou prompt de continuacao");
+    verificar(strstr(transcricao, "SOMA-REPL\n") != NULL, "REPL definiu funcao multilinha");
+    verificar(strstr(transcricao, "42\n") != NULL, "REPL executou a funcao definida");
+    verificar(strstr(transcricao, "40\n41\n42\n") != NULL,
+              "REPL imprimiu todos os valores retornados");
+    verificar(strstr(transcricao, ":ajuda  mostra esta ajuda") != NULL,
+              "REPL reconheceu comando interativo");
+    fclose(entrada);
+    fclose(saida);
+}
+
 int main(int argc, char **argv) {
     SefErro erro;
     SefRuntime *runtime = sef_runtime_criar(&erro);
@@ -61,6 +95,18 @@ int main(int argc, char **argv) {
         fprintf(stderr, "runtime nao iniciou: %s\n", erro.mensagem);
         return 1;
     }
+
+    verificar(sef_runtime_estado_codigo("(defun x (a)\n", &erro) == SEF_CODIGO_INCOMPLETO,
+              "analisador reconheceu forma multilinha incompleta");
+    verificar(sef_runtime_estado_codigo("(list #\\( \"texto)\")", &erro) == SEF_CODIGO_COMPLETO,
+              "analisador distinguiu caractere, texto e parenteses");
+    verificar(sef_runtime_estado_codigo("' ; comentario\n", &erro) == SEF_CODIGO_INCOMPLETO,
+              "analisador preservou prefixo de leitura pendente");
+    verificar(sef_runtime_estado_codigo("(list ')", &erro) == SEF_CODIGO_INVALIDO,
+              "analisador rejeitou prefixo sem forma dentro de lista");
+    verificar(sef_runtime_estado_codigo(")", &erro) == SEF_CODIGO_INVALIDO && erro.ocorreu,
+              "analisador rejeitou fechamento sem abertura");
+    testar_repl(runtime);
 
     verificar_texto(runtime, "(+ 1 2 39)", "42");
     verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v6.imagem", &erro),
@@ -117,6 +163,49 @@ int main(int argc, char **argv) {
                     "(setf (gethash 0.0 h) 42) "
                     "(list (gethash -0.0 h) (hash-table-count h)))",
                     "(42 1)");
+    verificar_texto(runtime, "(multiple-value-list (values 40 41 42))", "(40 41 42)");
+    verificar_texto(runtime, "(multiple-value-list (values))", "NIL");
+    verificar_texto(runtime, "(multiple-value-bind (a b c) (values 40 2) (list a b c))",
+                    "(40 2 NIL)");
+    verificar_texto(runtime, "(multiple-value-call #'list (values 40 41) (values 42))",
+                    "(40 41 42)");
+    verificar_texto(runtime,
+                    "(multiple-value-list "
+                    "(multiple-value-prog1 (values 40 41 42) (+ 1 2)))",
+                    "(40 41 42)");
+    verificar_texto(runtime, "(nth-value 1 (values 40 41 42))", "41");
+    verificar_texto(runtime, "(nth-value 4 (values 40 41 42))", "NIL");
+    verificar_texto(runtime,
+                    "(let ((h (make-hash-table))) "
+                    "(setf (gethash 'presente h) nil) "
+                    "(list (multiple-value-list (gethash 'presente h)) "
+                    "(multiple-value-list (gethash 'ausente h))))",
+                    "((NIL T) (NIL NIL))");
+    verificar_texto(runtime, "(list (values 40 41) 42)", "(40 42)");
+    verificar_texto(runtime, "(mapcar (lambda (x) (values x (+ x 40))) '(1 2))", "(1 2)");
+    verificar_texto(runtime,
+                    "(multiple-value-list "
+                    "(block fim (return-from fim (values 40 41 42))))",
+                    "(40 41 42)");
+    verificar_texto(runtime, "(multiple-value-list (catch 'fim (throw 'fim (values 40 41 42))))",
+                    "(40 41 42)");
+    verificar_texto(runtime,
+                    "(let ((limpo nil)) "
+                    "(list (multiple-value-list "
+                    "(unwind-protect (values 40 41 42) (setq limpo t))) limpo))",
+                    "((40 41 42) T)");
+    verificar_texto(runtime,
+                    "(multiple-value-bind (valor condicao) "
+                    "(ignore-errors (+ 1 desconhecido)) "
+                    "(list valor (type-of condicao)))",
+                    "(NIL ERROR)");
+    SefValor valores_sdk = avaliar(runtime, "(values 40 41 42)");
+    verificar(valores_sdk != NULL && sef_runtime_quantidade_valores(runtime) == 3,
+              "SDK informou tres valores retornados");
+    verificar(sef_runtime_valor(runtime, 0) == valores_sdk &&
+                  sef_valor_como_inteiro(sef_runtime_valor(runtime, 2)) == 42,
+              "SDK preservou o valor primario e consultou os secundarios");
+    verificar(sef_runtime_valor(runtime, 3) == NULL, "SDK rejeitou valor multiplo inexistente");
     verificar_texto(runtime,
                     "(let ((h (make-hash-table))) "
                     "(labels ((preencher (n) "

@@ -57,7 +57,27 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                     executando = false;
                 else if (ao_evento != NULL) {
                     SefEventoJanela evento_sefirah = {0};
-                    if (tecla == XK_Return || tecla == XK_KP_Enter) {
+                    bool controle = (evento.xkey.state & ControlMask) != 0;
+                    if (tecla == XK_F5 ||
+                        (controle && (tecla == XK_Return || tecla == XK_KP_Enter))) {
+                        evento_sefirah.tipo = SEF_EVENTO_EXECUTAR;
+                    } else if (controle && (tecla == XK_s || tecla == XK_S)) {
+                        evento_sefirah.tipo = SEF_EVENTO_SALVAR;
+                    } else if (controle && (tecla == XK_o || tecla == XK_O)) {
+                        evento_sefirah.tipo = SEF_EVENTO_ABRIR;
+                    } else if (tecla == XK_Left) {
+                        evento_sefirah.tipo = SEF_EVENTO_CURSOR_ESQUERDA;
+                    } else if (tecla == XK_Right) {
+                        evento_sefirah.tipo = SEF_EVENTO_CURSOR_DIREITA;
+                    } else if (tecla == XK_Up) {
+                        evento_sefirah.tipo = SEF_EVENTO_CURSOR_CIMA;
+                    } else if (tecla == XK_Down) {
+                        evento_sefirah.tipo = SEF_EVENTO_CURSOR_BAIXO;
+                    } else if (tecla == XK_Home) {
+                        evento_sefirah.tipo = SEF_EVENTO_CURSOR_INICIO;
+                    } else if (tecla == XK_End) {
+                        evento_sefirah.tipo = SEF_EVENTO_CURSOR_FIM;
+                    } else if (tecla == XK_Return || tecla == XK_KP_Enter) {
                         evento_sefirah.tipo = SEF_EVENTO_ENTER;
                     } else if (tecla == XK_BackSpace) {
                         evento_sefirah.tipo = SEF_EVENTO_APAGAR;

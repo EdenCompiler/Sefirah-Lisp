@@ -45,6 +45,38 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
         DestroyWindow(janela);
         return 0;
     } else if (mensagem == WM_KEYDOWN && estado != NULL && estado->ao_evento != NULL &&
+               (wparam == VK_F5 || ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
+                                    (wparam == VK_RETURN || wparam == 'S' || wparam == 'O')))) {
+        SefEventoJanela evento = {0};
+        if (wparam == 'S')
+            evento.tipo = SEF_EVENTO_SALVAR;
+        else if (wparam == 'O')
+            evento.tipo = SEF_EVENTO_ABRIR;
+        else
+            evento.tipo = SEF_EVENTO_EXECUTAR;
+        if (estado->ao_evento(&evento, estado->dados))
+            InvalidateRect(janela, NULL, FALSE);
+        return 0;
+    } else if (mensagem == WM_KEYDOWN && estado != NULL && estado->ao_evento != NULL &&
+               (wparam == VK_LEFT || wparam == VK_RIGHT || wparam == VK_UP || wparam == VK_DOWN ||
+                wparam == VK_HOME || wparam == VK_END)) {
+        SefEventoJanela evento = {0};
+        if (wparam == VK_LEFT)
+            evento.tipo = SEF_EVENTO_CURSOR_ESQUERDA;
+        else if (wparam == VK_RIGHT)
+            evento.tipo = SEF_EVENTO_CURSOR_DIREITA;
+        else if (wparam == VK_UP)
+            evento.tipo = SEF_EVENTO_CURSOR_CIMA;
+        else if (wparam == VK_DOWN)
+            evento.tipo = SEF_EVENTO_CURSOR_BAIXO;
+        else if (wparam == VK_HOME)
+            evento.tipo = SEF_EVENTO_CURSOR_INICIO;
+        else
+            evento.tipo = SEF_EVENTO_CURSOR_FIM;
+        if (estado->ao_evento(&evento, estado->dados))
+            InvalidateRect(janela, NULL, FALSE);
+        return 0;
+    } else if (mensagem == WM_KEYDOWN && estado != NULL && estado->ao_evento != NULL &&
                wparam == VK_TAB) {
         SefEventoJanela evento = {0};
         evento.tipo = SEF_EVENTO_TAB;
@@ -70,12 +102,13 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
             evento.tipo = SEF_EVENTO_ENTER;
         else if (wparam == '\b')
             evento.tipo = SEF_EVENTO_APAGAR;
-        else {
+        else if (wparam >= 32) {
             wchar_t caractere[2] = {(wchar_t)wparam, 0};
             evento.tipo = SEF_EVENTO_TEXTO;
             WideCharToMultiByte(CP_UTF8, 0, caractere, 1, evento.texto_utf8,
                                 (int)sizeof(evento.texto_utf8) - 1, NULL, NULL);
-        }
+        } else
+            return 0;
         if (estado->ao_evento(&evento, estado->dados)) {
             InvalidateRect(janela, NULL, FALSE);
         }

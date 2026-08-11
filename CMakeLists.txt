@@ -41,6 +41,7 @@ add_library(sefirah_nucleo
     fonte/nucleo/ambiente.c
     fonte/nucleo/avaliador.c
     fonte/nucleo/biblioteca.c
+    fonte/nucleo/codigo.c
     fonte/nucleo/compilacao.c
     fonte/nucleo/impressor.c
     fonte/nucleo/imagem.c
@@ -51,6 +52,7 @@ add_library(sefirah_nucleo
     fonte/nucleo/sequencias.c
     fonte/nucleo/tabela_hash.c
     fonte/nucleo/utf8.c
+    fonte/nucleo/valores_multiplos.c
     fonte/nucleo/valor.c
 )
 target_include_directories(sefirah_nucleo PUBLIC incluir)
@@ -92,11 +94,15 @@ endif()
 add_executable(sefirah fonte/cli/principal.c)
 target_link_libraries(sefirah PRIVATE sefirah_nucleo)
 
+add_library(sefirah_ide_nucleo fonte/ide/sessao.c)
+target_include_directories(sefirah_ide_nucleo PUBLIC incluir)
+target_link_libraries(sefirah_ide_nucleo PUBLIC sefirah_nucleo)
+
 add_executable(sefirah_ide fonte/ide/principal.c fonte/ide/ide.c)
 target_include_directories(sefirah_ide PRIVATE incluir)
-target_link_libraries(sefirah_ide PRIVATE sefirah_nucleo sefirah_plataforma)
+target_link_libraries(sefirah_ide PRIVATE sefirah_ide_nucleo sefirah_plataforma)
 
-foreach(alvo sefirah_compilador sefirah_nucleo sefirah_graficos sefirah_plataforma sefirah sefirah_ide)
+foreach(alvo sefirah_compilador sefirah_nucleo sefirah_graficos sefirah_plataforma sefirah_ide_nucleo sefirah sefirah_ide)
     if(MSVC)
         target_compile_options(${alvo} PRIVATE /W4 /utf-8)
         if(SEFIRAH_AVISOS_COMO_ERROS)
@@ -129,6 +135,10 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     target_link_libraries(teste_compilador PRIVATE sefirah_compilador)
     add_test(NAME compilador COMMAND teste_compilador)
 
+    add_executable(teste_ide testes/teste_ide.c)
+    target_link_libraries(teste_ide PRIVATE sefirah_ide_nucleo)
+    add_test(NAME ide COMMAND teste_ide)
+
     add_test(NAME cli_sem_ide COMMAND sefirah --help)
     set_tests_properties(cli_sem_ide PROPERTIES PASS_REGULAR_EXPRESSION "compilar-elf")
 
@@ -147,7 +157,7 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     endif()
 endif()
 
-install(TARGETS sefirah sefirah_ide sefirah_nucleo sefirah_compilador sefirah_graficos sefirah_plataforma
+install(TARGETS sefirah sefirah_ide sefirah_ide_nucleo sefirah_nucleo sefirah_compilador sefirah_graficos sefirah_plataforma
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

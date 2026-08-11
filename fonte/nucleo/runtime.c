@@ -141,6 +141,10 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria) {
     marcar(runtime->saida_padrao);
     marcar(runtime->erro_padrao);
     marcar(runtime->valor_transferencia);
+    for (size_t i = 0; i < runtime->quantidade_valores; i++)
+        marcar(runtime->valores_multiplos[i]);
+    for (size_t i = 0; i < runtime->valores_transferencia.quantidade; i++)
+        marcar(runtime->valores_transferencia.itens[i]);
     for (SefRaiz *raiz = runtime->raizes; raiz != NULL; raiz = raiz->proxima)
         marcar(raiz->valor);
     for (SefQuadroControle *quadro = runtime->controle; quadro != NULL; quadro = quadro->anterior)
@@ -232,14 +236,43 @@ SefRuntime *sef_runtime_criar(SefErro *erro) {
                                   erro))
             goto falhou;
     }
-    static const char *formas_common_lisp[] = {
-        "QUOTE",          "QUASIQUOTE",    "IF",           "PROGN",  "LAMBDA",
-        "FUNCTION",       "DEFUN",         "DEFMACRO",     "DEFVAR", "DEFPARAMETER",
-        "SETQ",           "SETF",          "LET",          "LET*",   "COND",
-        "WHEN",           "UNLESS",        "FLET",         "LABELS", "MACROLET",
-        "BLOCK",          "RETURN-FROM",   "RETURN",       "CATCH",  "THROW",
-        "UNWIND-PROTECT", "IGNORE-ERRORS", "HANDLER-CASE", "AND",    "OR",
-        "IN-PACKAGE",     "DEFPACKAGE"};
+    static const char *formas_common_lisp[] = {"QUOTE",
+                                               "QUASIQUOTE",
+                                               "IF",
+                                               "PROGN",
+                                               "LAMBDA",
+                                               "FUNCTION",
+                                               "DEFUN",
+                                               "DEFMACRO",
+                                               "DEFVAR",
+                                               "DEFPARAMETER",
+                                               "SETQ",
+                                               "SETF",
+                                               "LET",
+                                               "LET*",
+                                               "COND",
+                                               "MULTIPLE-VALUE-BIND",
+                                               "MULTIPLE-VALUE-LIST",
+                                               "MULTIPLE-VALUE-PROG1",
+                                               "MULTIPLE-VALUE-CALL",
+                                               "NTH-VALUE",
+                                               "WHEN",
+                                               "UNLESS",
+                                               "FLET",
+                                               "LABELS",
+                                               "MACROLET",
+                                               "BLOCK",
+                                               "RETURN-FROM",
+                                               "RETURN",
+                                               "CATCH",
+                                               "THROW",
+                                               "UNWIND-PROTECT",
+                                               "IGNORE-ERRORS",
+                                               "HANDLER-CASE",
+                                               "AND",
+                                               "OR",
+                                               "IN-PACKAGE",
+                                               "DEFPACKAGE"};
     for (size_t i = 0; i < sizeof(formas_common_lisp) / sizeof(formas_common_lisp[0]); i++) {
         SefValor forma =
             sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, formas_common_lisp[i],
@@ -283,6 +316,8 @@ void sef_runtime_destruir(SefRuntime *runtime) {
     }
     free(runtime->simbolos);
     free(runtime->pacotes);
+    free(runtime->valores_multiplos);
+    sef_valores_salvos_liberar(&runtime->valores_transferencia);
     free(runtime);
 }
 
@@ -333,6 +368,8 @@ SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefE
         sef_erro_definir(erro, 0, 0, "runtime ou codigo ausente");
         return NULL;
     }
+    if (!sef_valores_definir(runtime, NULL, 0, erro))
+        return NULL;
 
     SefLeitor leitor;
     sef_leitor_iniciar(&leitor, runtime, codigo);
@@ -401,36 +438,137 @@ bool sef_runtime_executar_arquivo(SefRuntime *runtime, const char *caminho, SefV
     return true;
 }
 
-int sef_runtime_repl(SefRuntime *runtime, FILE *entrada, FILE *saida) {
-    char linha[8192];
-    SefErro erro;
-    fputs("Sefirah Lisp 0.0.1 — bootstrap C17\n", saida);
-    fputs("Digite (SAIR) ou Ctrl-D para encerrar.\n", saida);
-
-    for (;;) {
-        fputs("sefirah> ", saida);
-        fflush(saida);
-        if (fgets(linha, sizeof(linha), entrada) == NULL)
-            break;
-        if (strcmp(linha, "(SAIR)\n") == 0 || strcmp(linha, "(sair)\n") == 0)
-            break;
-        SefValor valor = sef_runtime_avaliar_texto(runtime, linha, &erro);
-        if (valor == NULL) {
-            if (erro.linha > 0) {
-                fprintf(saida, "Erro em %zu:%zu: %s\n", erro.linha, erro.coluna, erro.mensagem);
-            } else {
-                fprintf(saida, "Erro: %s\n", erro.mensagem);
+static bool texto_acrescentar(char **destino, size_t *tamanho, size_t *capacidade,
+                              const char *origem, size_t quantidade) {
+    if (quantidade > SIZE_MAX - *tamanho - 1)
+        return false;
+    size_t necessario = *tamanho + quantidade + 1;
+    if (necessario > *capacidade) {
+        size_t nova_capacidade = *capacidade == 0 ? 256 : *capacidade;
+        while (nova_capacidade < necessario) {
+            if (nova_capacidade > SIZE_MAX / 2u) {
+                nova_capacidade = necessario;
+                break;
             }
-            continue;
+            nova_capacidade *= 2u;
         }
-        char *texto = sef_valor_para_texto(runtime, valor, true, &erro);
-        if (texto == NULL) {
-            fprintf(saida, "Erro ao imprimir: %s\n", erro.mensagem);
-            continue;
-        }
+        char *novo = realloc(*destino, nova_capacidade);
+        if (novo == NULL)
+            return false;
+        *destino = novo;
+        *capacidade = nova_capacidade;
+    }
+    memcpy(*destino + *tamanho, origem, quantidade);
+    *tamanho += quantidade;
+    (*destino)[*tamanho] = '\0';
+    return true;
+}
+
+static bool repl_ler_linha(FILE *entrada, char **linha, size_t *tamanho, size_t *capacidade) {
+    *tamanho = 0;
+    int caractere;
+    while ((caractere = fgetc(entrada)) != EOF) {
+        char byte = (char)caractere;
+        if (!texto_acrescentar(linha, tamanho, capacidade, &byte, 1))
+            return false;
+        if (caractere == '\n')
+            break;
+    }
+    return *tamanho > 0;
+}
+
+static bool repl_comando_igual(const char *linha, size_t tamanho, const char *comando) {
+    while (tamanho > 0 && (linha[tamanho - 1] == '\n' || linha[tamanho - 1] == '\r'))
+        tamanho--;
+    return strlen(comando) == tamanho && memcmp(linha, comando, tamanho) == 0;
+}
+
+static void repl_imprimir_erro(FILE *saida, const SefErro *erro) {
+    if (erro->linha > 0)
+        fprintf(saida, "Erro em %zu:%zu: %s\n", erro->linha, erro->coluna, erro->mensagem);
+    else
+        fprintf(saida, "Erro: %s\n", erro->mensagem);
+}
+
+static bool repl_imprimir_valores(SefRuntime *runtime, FILE *saida, SefErro *erro) {
+    size_t quantidade = sef_runtime_quantidade_valores(runtime);
+    for (size_t i = 0; i < quantidade; i++) {
+        char *texto = sef_valor_para_texto(runtime, sef_runtime_valor(runtime, i), true, erro);
+        if (texto == NULL)
+            return false;
         fprintf(saida, "%s\n", texto);
         sef_texto_liberar(texto);
     }
+    return true;
+}
+
+int sef_runtime_repl(SefRuntime *runtime, FILE *entrada, FILE *saida) {
+    char *linha = NULL;
+    char *codigo = NULL;
+    size_t tamanho_linha = 0, capacidade_linha = 0;
+    size_t tamanho_codigo = 0, capacidade_codigo = 0;
+    int resultado = 0;
+    SefErro erro;
+
+    fputs("Sefirah Lisp 0.0.1 — ambiente interativo\n", saida);
+    fputs("Use :sair ou Ctrl-D para encerrar; :ajuda mostra os comandos.\n", saida);
+
+    for (;;) {
+        fputs(tamanho_codigo == 0 ? "sefirah> " : "......> ", saida);
+        fflush(saida);
+        if (!repl_ler_linha(entrada, &linha, &tamanho_linha, &capacidade_linha)) {
+            if (ferror(entrada)) {
+                fputs("Erro: falha ao ler a entrada.\n", saida);
+                resultado = 1;
+            } else if (tamanho_codigo > 0) {
+                fputs("Erro: codigo incompleto ao final da entrada.\n", saida);
+                resultado = 1;
+            }
+            break;
+        }
+
+        if (tamanho_codigo == 0 && (repl_comando_igual(linha, tamanho_linha, ":sair") ||
+                                    repl_comando_igual(linha, tamanho_linha, ":quit") ||
+                                    repl_comando_igual(linha, tamanho_linha, "(SAIR)") ||
+                                    repl_comando_igual(linha, tamanho_linha, "(sair)"))) {
+            break;
+        }
+        if (tamanho_codigo == 0 && repl_comando_igual(linha, tamanho_linha, ":ajuda")) {
+            fputs(":ajuda  mostra esta ajuda\n:sair   encerra o REPL\n", saida);
+            continue;
+        }
+        if (!texto_acrescentar(&codigo, &tamanho_codigo, &capacidade_codigo, linha,
+                               tamanho_linha)) {
+            fputs("Erro: memoria insuficiente para a entrada.\n", saida);
+            resultado = 1;
+            break;
+        }
+
+        SefEstadoCodigo estado = sef_runtime_estado_codigo(codigo, &erro);
+        if (estado == SEF_CODIGO_INCOMPLETO)
+            continue;
+        if (estado == SEF_CODIGO_INVALIDO) {
+            repl_imprimir_erro(saida, &erro);
+            tamanho_codigo = 0;
+            codigo[0] = '\0';
+            continue;
+        }
+
+        SefValor valor = sef_runtime_avaliar_texto(runtime, codigo, &erro);
+        tamanho_codigo = 0;
+        codigo[0] = '\0';
+        if (valor == NULL) {
+            repl_imprimir_erro(saida, &erro);
+            continue;
+        }
+        if (!repl_imprimir_valores(runtime, saida, &erro)) {
+            fprintf(saida, "Erro ao imprimir: %s\n", erro.mensagem);
+            continue;
+        }
+    }
+
+    free(linha);
+    free(codigo);
     fputc('\n', saida);
-    return 0;
+    return resultado;
 }

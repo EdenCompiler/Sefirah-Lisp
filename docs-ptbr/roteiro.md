@@ -28,6 +28,8 @@ não significa que o marco inteiro esteja concluído.
 - [x] Rasterizador CPU, fonte bitmap e composição visual própria.
 - [x] Janela X11 e Win32; ponte macOS escrita em C puro.
 - [x] Ouvinte gráfico ligado ao runtime em X11 e Win32.
+- [x] REPL textual multilinha com detecção de forma completa e impressão de
+  valores múltiplos.
 - [x] CI declarada para Linux, Windows e macOS.
 - [x] Imagem versionada com gravação atômica e restauração do heap.
 - [x] Handles de raiz explícitos para integração segura com C, IDE e FFI.
@@ -89,6 +91,8 @@ não significa que o marco inteiro esteja concluído.
 - [x] Protocolo inicial de listas com composição, navegação, busca e
   `MAPCAR`/`MAPC` sobre múltiplas listas.
 - [x] Tabelas hash `EQL` com `GETHASH`, `SETF`, remoção, GC e persistência.
+- [x] Valores múltiplos iniciais de Common Lisp com binding, coleta, chamadas,
+  propagação não local e indicador de presença de `GETHASH`.
 - [x] Leitura retrocompatível de imagens v6/v7/v8 e emissão do formato v9.
 - [ ] Cobertura ANSI Common Lisp acompanhada por relatório de conformidade.
 - [ ] CLOS e MOP documentada.
@@ -129,8 +133,11 @@ não significa que o marco inteiro esteja concluído.
 
 ### Ambiente Lisp
 
-- [ ] Editor textual e estrutural.
-- [ ] Inspetor de objetos e navegador de código.
+- [x] Buffer `.lisp` editável inicial com avaliação integral e abertura/gravação.
+- [x] Ouvinte multilinha, transcrição persistente e inspetor inicial de resultados.
+- [x] Movimento e inserção por cursor com consciência de UTF-8 no editor textual.
+- [ ] Seleção e edição estrutural.
+- [ ] Inspetor geral de objetos e navegador de código.
 - [ ] Debugger, profiler e navegação por condições/restarts.
 - [ ] DWIM reversível e histórico transacional.
 - [ ] Integração Git, autosave e restauração de sessão.
