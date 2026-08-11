@@ -1,6 +1,8 @@
 #include "sefirah/interno.h"
 
 #include <ctype.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -829,4 +831,145 @@ SefValor sef_caractere_criar(SefRuntime *runtime, uint32_t codigo, SefErro *erro
 
 uint32_t sef_caractere_codigo(SefValor caractere) {
     return sef_valor_e_caractere(caractere) ? caractere->como.caractere : 0;
+}
+
+static size_t quantidade_vinculos(const SefVinculo *vinculo) {
+    size_t quantidade = 0;
+    while (vinculo != NULL) {
+        quantidade++;
+        vinculo = vinculo->proximo;
+    }
+    return quantidade;
+}
+
+size_t sef_valor_quantidade_componentes(const SefRuntime *runtime, SefValor valor) {
+    if (runtime == NULL || valor == NULL)
+        return 0;
+    switch (valor->tipo) {
+    case SEF_TIPO_NULO:
+        return 1;
+    case SEF_TIPO_SIMBOLO:
+        return valor->como.simbolo.pacote == NULL ? 0 : 1;
+    case SEF_TIPO_PAR:
+        return 2;
+    case SEF_TIPO_FUNCAO:
+        return 3;
+    case SEF_TIPO_AMBIENTE:
+        return 1 + 2 * quantidade_vinculos(valor->como.ambiente.vinculos) +
+               2 * quantidade_vinculos(valor->como.ambiente.funcoes);
+    case SEF_TIPO_CONDICAO:
+        return 2;
+    case SEF_TIPO_PACOTE:
+        return valor->como.pacote.quantidade_simbolos + valor->como.pacote.quantidade_usados +
+               valor->como.pacote.quantidade_exportados;
+    case SEF_TIPO_VETOR:
+        return valor->como.vetor.tamanho;
+    case SEF_TIPO_TABELA_HASH:
+        return 2 * valor->como.tabela_hash.quantidade;
+    default:
+        return 0;
+    }
+}
+
+static bool definir_rotulo(char *rotulo, size_t capacidade, const char *formato, ...) {
+    if (rotulo == NULL || capacidade == 0)
+        return false;
+    va_list argumentos;
+    va_start(argumentos, formato);
+    int tamanho = vsnprintf(rotulo, capacidade, formato, argumentos);
+    va_end(argumentos);
+    return tamanho >= 0 && (size_t)tamanho < capacidade;
+}
+
+static bool componente_vinculo(SefVinculo *vinculo, size_t indice, const char *categoria,
+                               SefValor *componente, char *rotulo, size_t capacidade_rotulo) {
+    size_t numero = indice / 2;
+    for (size_t i = 0; i < numero && vinculo != NULL; i++)
+        vinculo = vinculo->proximo;
+    if (vinculo == NULL)
+        return false;
+    bool simbolo = indice % 2 == 0;
+    *componente = simbolo ? vinculo->simbolo : vinculo->valor;
+    return definir_rotulo(rotulo, capacidade_rotulo, "%s %zu %s", categoria, numero + 1,
+                          simbolo ? "SIMBOLO" : "VALOR");
+}
+
+static bool componente_hash(SefValor valor, size_t indice, SefValor *componente, char *rotulo,
+                            size_t capacidade_rotulo) {
+    size_t numero = indice / 2;
+    size_t encontrado = 0;
+    for (size_t i = 0; i < valor->como.tabela_hash.capacidade; i++) {
+        SefEntradaHash *entrada = &valor->como.tabela_hash.entradas[i];
+        if (entrada->estado != SEF_ENTRADA_HASH_OCUPADA)
+            continue;
+        if (encontrado++ != numero)
+            continue;
+        bool chave = indice % 2 == 0;
+        *componente = chave ? entrada->chave : entrada->valor;
+        return definir_rotulo(rotulo, capacidade_rotulo, "%s %zu", chave ? "CHAVE" : "VALOR",
+                              numero + 1);
+    }
+    return false;
+}
+
+bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indice,
+                          SefValor *componente, char *rotulo, size_t capacidade_rotulo) {
+    if (runtime == NULL || valor == NULL || componente == NULL || rotulo == NULL ||
+        capacidade_rotulo == 0 || indice >= sef_valor_quantidade_componentes(runtime, valor))
+        return false;
+    switch (valor->tipo) {
+    case SEF_TIPO_NULO:
+        *componente = runtime->pacote_common_lisp;
+        return definir_rotulo(rotulo, capacidade_rotulo, "PACOTE");
+    case SEF_TIPO_SIMBOLO:
+        *componente = valor->como.simbolo.pacote;
+        return definir_rotulo(rotulo, capacidade_rotulo, "PACOTE");
+    case SEF_TIPO_PAR:
+        *componente = indice == 0 ? valor->como.par.primeiro : valor->como.par.resto;
+        return definir_rotulo(rotulo, capacidade_rotulo, "%s", indice == 0 ? "PRIMEIRO" : "RESTO");
+    case SEF_TIPO_FUNCAO: {
+        SefValor componentes[] = {valor->como.funcao.parametros, valor->como.funcao.corpo,
+                                  valor->como.funcao.ambiente};
+        const char *rotulos[] = {"PARAMETROS", "CORPO", "AMBIENTE"};
+        *componente = componentes[indice];
+        return definir_rotulo(rotulo, capacidade_rotulo, "%s", rotulos[indice]);
+    }
+    case SEF_TIPO_AMBIENTE: {
+        if (indice == 0) {
+            *componente = valor->como.ambiente.pai;
+            return definir_rotulo(rotulo, capacidade_rotulo, "PAI");
+        }
+        indice--;
+        size_t quantidade_variaveis = quantidade_vinculos(valor->como.ambiente.vinculos);
+        if (indice < 2 * quantidade_variaveis)
+            return componente_vinculo(valor->como.ambiente.vinculos, indice, "VARIAVEL",
+                                      componente, rotulo, capacidade_rotulo);
+        return componente_vinculo(valor->como.ambiente.funcoes,
+                                  indice - 2 * quantidade_variaveis, "FUNCAO", componente,
+                                  rotulo, capacidade_rotulo);
+    }
+    case SEF_TIPO_CONDICAO:
+        *componente = indice == 0 ? valor->como.condicao.classe : valor->como.condicao.mensagem;
+        return definir_rotulo(rotulo, capacidade_rotulo, "%s", indice == 0 ? "CLASSE" : "MENSAGEM");
+    case SEF_TIPO_PACOTE:
+        if (indice < valor->como.pacote.quantidade_simbolos) {
+            *componente = valor->como.pacote.simbolos[indice];
+            return definir_rotulo(rotulo, capacidade_rotulo, "SIMBOLO %zu", indice + 1);
+        }
+        indice -= valor->como.pacote.quantidade_simbolos;
+        if (indice < valor->como.pacote.quantidade_usados) {
+            *componente = valor->como.pacote.usados[indice];
+            return definir_rotulo(rotulo, capacidade_rotulo, "USA %zu", indice + 1);
+        }
+        indice -= valor->como.pacote.quantidade_usados;
+        *componente = valor->como.pacote.exportados[indice];
+        return definir_rotulo(rotulo, capacidade_rotulo, "EXPORTA %zu", indice + 1);
+    case SEF_TIPO_VETOR:
+        *componente = valor->como.vetor.itens[indice];
+        return definir_rotulo(rotulo, capacidade_rotulo, "[%zu]", indice);
+    case SEF_TIPO_TABELA_HASH:
+        return componente_hash(valor, indice, componente, rotulo, capacidade_rotulo);
+    default:
+        return false;
+    }
 }

@@ -33,6 +33,7 @@ not mean the entire milestone is complete.
 - [x] Green build-and-test CI matrix for Linux, Windows, and macOS.
 - [x] Versioned image with atomic saving and heap restoration.
 - [x] Explicit root handles for safe C, IDE, and FFI integration.
+- [x] Cross-platform CI installation audit for binaries, public headers, and documentation.
 - [x] Quasiquote, unquote, and splice for readable macros.
 - [x] Heap packages, qualified symbols, `KEYWORD`, `:USE` inheritance, and
   image persistence.
@@ -143,8 +144,9 @@ not mean the entire milestone is complete.
 - [x] Named-definition browser and incremental evaluation of changed top-level forms.
 - [x] Symbol-at-point definition lookup and structural caller/reference navigation.
 - [x] Save and restore the live Lisp world from the IDE.
+- [x] Recursive, GC-rooted inspector for compound object graphs.
 - [ ] Selection and structural editing.
-- [ ] General object inspector and code browser.
+- [ ] Multi-file and runtime-aware code browser.
 - [ ] Debugger, profiler, and condition/restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and full desktop-session restoration.

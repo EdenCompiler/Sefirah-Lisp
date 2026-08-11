@@ -300,10 +300,67 @@ int main(int argc, char **argv) {
                   sef_valor_como_inteiro(sef_vetor_obter(vetor_sdk, 1)) == 42,
               "SDK alterou item do vetor");
     verificar(sef_vetor_obter(vetor_sdk, 3) == NULL, "SDK rejeitou indice fora do vetor");
+    char rotulo_componente[64];
+    SefValor componente_sdk = NULL;
+    verificar(sef_valor_quantidade_componentes(runtime, vetor_sdk) == 3 &&
+                  sef_valor_componente(runtime, vetor_sdk, 2, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "[2]") == 0 &&
+                  sef_valor_como_inteiro(componente_sdk) == 42,
+              "SDK inspecionou componente estrutural de vetor");
+    verificar(!sef_valor_componente(runtime, vetor_sdk, 3, &componente_sdk,
+                                    rotulo_componente, sizeof(rotulo_componente)),
+              "SDK rejeitou componente estrutural inexistente");
     SefValor vetor_criado = sef_vetor_criar(runtime, 2, sef_vetor_obter(vetor_sdk, 2), &erro);
     verificar(vetor_criado != NULL && sef_vetor_tamanho(vetor_criado) == 2 &&
                   sef_valor_como_inteiro(sef_vetor_obter(vetor_criado, 0)) == 42,
               "SDK criou vetor inicializado");
+    SefValor par_sdk = avaliar(runtime, "(cons 40 42)");
+    verificar(sef_valor_quantidade_componentes(runtime, par_sdk) == 2 &&
+                  sef_valor_componente(runtime, par_sdk, 0, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "PRIMEIRO") == 0 &&
+                  sef_valor_como_inteiro(componente_sdk) == 40 &&
+                  sef_valor_componente(runtime, par_sdk, 1, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "RESTO") == 0 &&
+                  sef_valor_como_inteiro(componente_sdk) == 42,
+              "SDK expôs os dois componentes de um par");
+    SefValor nulo_sdk = avaliar(runtime, "nil");
+    verificar(sef_valor_quantidade_componentes(runtime, nulo_sdk) == 1 &&
+                  sef_valor_componente(runtime, nulo_sdk, 0, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "PACOTE") == 0 &&
+                  strcmp(sef_valor_nome_tipo(componente_sdk), "PACKAGE") == 0,
+              "SDK preservou a identidade simbolica de NIL na introspeccao");
+    SefValor funcao_sdk = avaliar(runtime, "#'(lambda (x) (+ x 1))");
+    verificar(sef_valor_quantidade_componentes(runtime, funcao_sdk) == 3 &&
+                  sef_valor_componente(runtime, funcao_sdk, 2, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "AMBIENTE") == 0 &&
+                  strcmp(sef_valor_nome_tipo(componente_sdk), "SEFIRAH::ENVIRONMENT") == 0 &&
+                  sef_valor_quantidade_componentes(runtime, componente_sdk) >= 1,
+              "SDK inspecionou funcao e seu ambiente lexico");
+    SefValor condicao_sdk =
+        avaliar(runtime, "(handler-case (error \"falha sdk\") (error (c) c))");
+    verificar(sef_valor_quantidade_componentes(runtime, condicao_sdk) == 2 &&
+                  sef_valor_componente(runtime, condicao_sdk, 1, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "MENSAGEM") == 0 &&
+                  strcmp(sef_valor_nome_tipo(componente_sdk), "STRING") == 0,
+              "SDK expôs classe e mensagem da condicao");
+    SefValor hash_sdk = avaliar(runtime,
+                                "(let ((h (make-hash-table))) "
+                                "(setf (gethash 'chave h) 42) h)");
+    verificar(sef_valor_quantidade_componentes(runtime, hash_sdk) == 2 &&
+                  sef_valor_componente(runtime, hash_sdk, 0, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "CHAVE 1") == 0 &&
+                  sef_valor_componente(runtime, hash_sdk, 1, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "VALOR 1") == 0 &&
+                  sef_valor_como_inteiro(componente_sdk) == 42,
+              "SDK inspecionou pares de chave e valor da hash table");
     verificar_texto(runtime, "(define vetor-v7 #(40 41 42))", "VETOR-V7");
     verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v7.imagem", &erro),
               "imagem com vetor foi salva no formato atual");

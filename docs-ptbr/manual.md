@@ -116,7 +116,12 @@ No SDK C, `sef_vetor_criar`, `sef_vetor_tamanho`, `sef_vetor_obter` e
 `sef_vetor_definir` operam sobre o mesmo objeto coletado. Um valor mantido pelo
 hospedeiro entre avaliações deve continuar protegido por `SefRaiz`.
 `sef_valor_nome_tipo` expõe o nome de tipo estável usado para diagnóstico pelas
-ferramentas residentes sem revelar o layout privado do objeto.
+ferramentas residentes sem revelar o layout privado do objeto. Ferramentas
+genéricas podem usar `sef_valor_quantidade_componentes` e
+`sef_valor_componente` para percorrer valores filhos rotulados sem incluir o
+header privado `sefirah/interno.h`. Componentes são emprestados: o pai precisa
+continuar enraizado, e um filho retido precisa de sua própria `SefRaiz` antes de
+outra avaliação ou coleta.
 
 ## Caracteres Unicode e strings
 
@@ -419,8 +424,9 @@ sefirah_ide
 sefirah_ide caminho/para/programa.lisp
 ```
 
-Tab ou clique alterna entre editor e ouvinte. Enter insere linha no editor e
-envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
+Tab, Shift+Tab ou clique alterna entre editor, inspetor e ouvinte. Enter insere
+linha no editor, abre o componente selecionado no inspetor ou envia uma forma
+completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
 F6 encontra e executa somente a forma completa de nível superior no cursor.
 Ctrl+Z e Ctrl+Y percorrem a linha do tempo linear e limitada do editor. Ctrl+S
 salva e Ctrl+O recarrega o caminho atual. F7 avalia somente as formas de topo
@@ -446,10 +452,13 @@ mostra o catálogo de definições ou as referências/callers do símbolo
 selecionado, marca a ocorrência atual e move o cursor do editor diretamente até
 ela. O inspetor enraíza no coletor de lixo todos os valores da última avaliação,
 mostra seu tipo e representação legível e expõe o resultado de valores
-múltiplos como uma prateleira viva de objetos. Um clique no inspetor seleciona
-o próximo objeto. O motor da sessão, os históricos, o analisador estrutural e o
-inspetor possuem testes automatizados sem janela. No macOS, Command pode
-substituir Ctrl nos atalhos.
+múltiplos como uma prateleira viva de objetos. Ele expõe recursivamente os
+componentes rotulados de pares, vetores, funções, ambientes lexicais, condições,
+símbolos, packages e hash tables. Cima/Baixo selecionam um componente, Enter o
+abre, Backspace volta ao pai e Esquerda/Direita alternam as raízes; cada nó do
+caminho possui uma raiz explícita no GC. O motor da sessão, os históricos, o
+analisador estrutural e o inspetor possuem testes automatizados sem janela. No
+macOS, Command pode substituir Ctrl nos atalhos.
 
 Essas ferramentas recuperam de propósito uma parte pequena e prática do fluxo
 das Lisp machines: o Programmer's Assistant do Interlisp mantinha eventos que

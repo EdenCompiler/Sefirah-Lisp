@@ -52,7 +52,8 @@ sefirah_graficos ◄── sefirah_plataforma
 Each build compiles exactly one window backend. The macOS backend remains pure
 C and confines typed Objective-C runtime calls to the platform adapter.
 `sefirah/interno.h` groups private core contracts for the build and does not
-promise SDK or ABI stability; applications must use `sefirah/runtime.h`.
+promise SDK or ABI stability; it is not installed, and applications must use
+`sefirah/runtime.h`.
 
 ## Language flow
 
@@ -92,10 +93,12 @@ forms, fingerprints them for incremental evaluation, and catalogs named
 definitions without evaluating source. Its lexical pass also resolves the atom
 at the cursor and catalogs references while excluding comments, strings,
 character literals, and definition-name occurrences. The inspector retains
-returned objects through public GC roots. World restoration opens the
-replacement image before releasing those roots and the old runtime, so a
-damaged or absent snapshot does not destroy the active world. Presentation code
-sees only formatted session state and never reaches into runtime internals.
+returned objects and every recursive navigation step through public GC roots.
+The public component-introspection API presents labeled edges for compound
+objects without exposing the private object union to the IDE. World restoration
+opens the replacement image before releasing those roots and the old runtime,
+so a damaged or absent snapshot does not destroy the active world. Presentation
+code sees only formatted session state and never reaches into runtime internals.
 
 ## Compiler flow
 
@@ -122,6 +125,9 @@ function can be compiled again.
 The current heap uses mark-and-sweep at evaluation-unit boundaries. Values
 passed to C code can be retained across collections with `SefRaiz`. The handle
 is explicit and removable, avoiding conservative scans of the host stack.
+`sef_valor_quantidade_componentes` and `sef_valor_componente` expose a read-only,
+labeled view of object-graph edges for resident tools while preserving this
+ownership model.
 
 ### Streams
 

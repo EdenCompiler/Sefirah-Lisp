@@ -33,6 +33,7 @@ não significa que o marco inteiro esteja concluído.
 - [x] Matriz CI verde de build e testes para Linux, Windows e macOS.
 - [x] Imagem versionada com gravação atômica e restauração do heap.
 - [x] Handles de raiz explícitos para integração segura com C, IDE e FFI.
+- [x] Auditoria de instalação na CI para binários, headers públicos e documentação.
 - [x] Quasiquote, unquote e splice para macros legíveis.
 - [x] Packages no heap, símbolos qualificados, `KEYWORD`, herança por `:USE` e
   persistência em imagem.
@@ -145,8 +146,9 @@ não significa que o marco inteiro esteja concluído.
 - [x] Navegador de definições nomeadas e avaliação incremental das formas de topo alteradas.
 - [x] Definição do símbolo no cursor e navegação estrutural de callers/referências.
 - [x] Gravação e restauração do mundo Lisp pela IDE.
+- [x] Inspetor recursivo e enraizado no GC para grafos de objetos compostos.
 - [ ] Seleção e edição estrutural.
-- [ ] Inspetor geral de objetos e navegador de código.
+- [ ] Navegador de código multifonte e consciente do runtime.
 - [ ] Debugger, profiler e navegação por condições/restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração completa da sessão de desktop.

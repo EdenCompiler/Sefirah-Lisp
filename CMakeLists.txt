@@ -172,7 +172,7 @@ install(TARGETS sefirah sefirah_ide sefirah_ide_nucleo sefirah_nucleo sefirah_co
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 install(DIRECTORY incluir/sefirah DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h")
+    FILES_MATCHING PATTERN "*.h" PATTERN "interno.h" EXCLUDE)
 install(DIRECTORY incluir/ide DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.h")
 install(FILES

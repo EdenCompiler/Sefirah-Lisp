@@ -92,7 +92,7 @@ int main(void) {
     verificar(strstr(sef_sessao_ide_inspetor(sessao), "OBJETOS: 3") != NULL,
               "inspetor reteve valores multiplos");
     verificar(sef_sessao_ide_inspetor_mover(sessao, SEF_INSPETOR_PROXIMO, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "SELECIONADO: 2/3") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "RAIZ: 2/3") != NULL &&
                   strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 41") != NULL,
               "inspetor navegou pela prateleira de objetos vivos");
 
@@ -108,6 +108,28 @@ int main(void) {
                   sef_sessao_ide_ouvinte_mover_historico(sessao, SEF_HISTORICO_PROXIMO, &erro) &&
                   strlen(sef_sessao_ide_ouvinte(sessao)) == 0,
               "ouvinte percorreu o historico ate o fim");
+
+    verificar(sef_sessao_ide_ouvinte_inserir(sessao,
+                                             "(values #(10 20) (cons 30 40))", &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "COMPONENTES: 2") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "> [0]: 10") != NULL,
+              "inspetor geral abriu a estrutura do primeiro valor vivo");
+    verificar(sef_sessao_ide_inspetor_mover_componente(
+                  sessao, SEF_COMPONENTE_INSPETOR_PROXIMO, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "> [1]: 20") != NULL &&
+                  sef_sessao_ide_inspetor_entrar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "PROFUNDIDADE: 1") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "CAMINHO: RAIZ > [1]") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 20") != NULL,
+              "inspetor entrou em componente selecionado e manteve caminho enraizado");
+    verificar(sef_sessao_ide_inspetor_voltar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "PROFUNDIDADE: 0") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: #(10 20)") != NULL &&
+                  sef_sessao_ide_inspetor_mover(sessao, SEF_INSPETOR_PROXIMO, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: (30 . 40)") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "> PRIMEIRO: 30") != NULL,
+              "inspetor voltou e alternou entre raizes estruturadas");
 
     verificar(sef_sessao_ide_editor_inserir(sessao, "; ação", &erro), "editor inseriu texto UTF-8");
     sef_sessao_ide_editor_apagar(sessao);

@@ -17,6 +17,11 @@ typedef struct TextoIde {
     size_t capacidade;
 } TextoIde;
 
+typedef struct PassoInspecaoIde {
+    SefRaiz *raiz;
+    char rotulo[64];
+} PassoInspecaoIde;
+
 struct SefSessaoIde {
     SefRuntime *runtime;
     TextoIde editor;
@@ -33,6 +38,10 @@ struct SefSessaoIde {
     SefRaiz **objetos_inspecao;
     size_t quantidade_objetos_inspecao;
     size_t objeto_selecionado;
+    PassoInspecaoIde *caminho_inspecao;
+    size_t profundidade_inspecao;
+    size_t capacidade_caminho_inspecao;
+    size_t componente_inspecao;
     uint64_t *formas_executadas;
     size_t quantidade_formas_executadas;
     size_t capacidade_formas_executadas;
@@ -187,13 +196,32 @@ static bool registrar_erro(SefSessaoIde *sessao, const char *origem, const SefEr
            texto_acrescentar(&sessao->transcricao, "\n", erro);
 }
 
+static void liberar_caminho_inspecao(SefSessaoIde *sessao) {
+    for (size_t i = 0; i < sessao->profundidade_inspecao; i++)
+        sef_raiz_liberar(sessao->caminho_inspecao[i].raiz);
+    free(sessao->caminho_inspecao);
+    sessao->caminho_inspecao = NULL;
+    sessao->profundidade_inspecao = 0;
+    sessao->capacidade_caminho_inspecao = 0;
+    sessao->componente_inspecao = 0;
+}
+
 static void liberar_objetos_inspecao(SefSessaoIde *sessao) {
+    liberar_caminho_inspecao(sessao);
     for (size_t i = 0; i < sessao->quantidade_objetos_inspecao; i++)
         sef_raiz_liberar(sessao->objetos_inspecao[i]);
     free(sessao->objetos_inspecao);
     sessao->objetos_inspecao = NULL;
     sessao->quantidade_objetos_inspecao = 0;
     sessao->objeto_selecionado = 0;
+}
+
+static SefValor objeto_inspecionado(const SefSessaoIde *sessao) {
+    if (sessao->profundidade_inspecao > 0)
+        return sef_raiz_valor(sessao->caminho_inspecao[sessao->profundidade_inspecao - 1].raiz);
+    if (sessao->quantidade_objetos_inspecao == 0)
+        return NULL;
+    return sef_raiz_valor(sessao->objetos_inspecao[sessao->objeto_selecionado]);
 }
 
 static bool capturar_objetos_inspecao(SefSessaoIde *sessao, SefErro *erro) {
@@ -226,16 +254,52 @@ static bool atualizar_inspetor(SefSessaoIde *sessao, SefErro *erro) {
                               sef_historico_texto_quantidade(sessao->historico_ouvinte));
     if (sessao->objeto_selecionado >= quantidade)
         sessao->objeto_selecionado = 0;
-    SefValor selecionado = sef_raiz_valor(sessao->objetos_inspecao[sessao->objeto_selecionado]);
+    SefValor selecionado = objeto_inspecionado(sessao);
     char *representacao = sef_valor_para_texto(sessao->runtime, selecionado, true, erro);
     if (representacao == NULL)
         return false;
+    size_t quantidade_componentes =
+        sef_valor_quantidade_componentes(sessao->runtime, selecionado);
+    if (quantidade_componentes == 0)
+        sessao->componente_inspecao = 0;
+    else if (sessao->componente_inspecao >= quantidade_componentes)
+        sessao->componente_inspecao = quantidade_componentes - 1;
     bool atualizou = texto_formatar(
         &sessao->inspetor, erro,
-        "OBJETOS: %zu\nSELECIONADO: %zu/%zu\nTIPO: %s\nVALOR: %s\n\nPRATELEIRA VIVA:", quantidade,
-        sessao->objeto_selecionado + 1, quantidade, sef_valor_nome_tipo(selecionado),
-        representacao);
+        "OBJETOS: %zu\nRAIZ: %zu/%zu\nPROFUNDIDADE: %zu\nTIPO: %s\nVALOR: %s\nCOMPONENTES: %zu",
+        quantidade, sessao->objeto_selecionado + 1, quantidade,
+        sessao->profundidade_inspecao, sef_valor_nome_tipo(selecionado), representacao,
+        quantidade_componentes);
     sef_texto_liberar(representacao);
+    if (atualizou && sessao->profundidade_inspecao > 0) {
+        atualizou = texto_acrescentar(&sessao->inspetor, "\nCAMINHO: RAIZ", erro);
+        for (size_t i = 0; atualizou && i < sessao->profundidade_inspecao; i++) {
+            atualizou = texto_acrescentar(&sessao->inspetor, " > ", erro) &&
+                        texto_acrescentar(&sessao->inspetor,
+                                          sessao->caminho_inspecao[i].rotulo, erro);
+        }
+    }
+    for (size_t i = 0; atualizou && i < quantidade_componentes; i++) {
+        SefValor componente = NULL;
+        char rotulo[64];
+        if (!sef_valor_componente(sessao->runtime, selecionado, i, &componente, rotulo,
+                                 sizeof(rotulo))) {
+            sef_erro_definir(erro, 0, 0, "componente invalido durante inspecao");
+            return false;
+        }
+        char *texto = sef_valor_para_texto(sessao->runtime, componente, true, erro);
+        if (texto == NULL)
+            return false;
+        char prefixo[96];
+        int tamanho = snprintf(prefixo, sizeof(prefixo), "\n%c %s: ",
+                               i == sessao->componente_inspecao ? '>' : ' ', rotulo);
+        atualizou = tamanho > 0 && (size_t)tamanho < sizeof(prefixo) &&
+                    texto_acrescentar(&sessao->inspetor, prefixo, erro) &&
+                    texto_acrescentar(&sessao->inspetor, texto, erro);
+        sef_texto_liberar(texto);
+    }
+    if (atualizou)
+        atualizou = texto_acrescentar(&sessao->inspetor, "\n\nPRATELEIRA VIVA:", erro);
     for (size_t i = 0; atualizou && i < quantidade; i++) {
         char *texto = sef_valor_para_texto(sessao->runtime,
                                            sef_raiz_valor(sessao->objetos_inspecao[i]), true, erro);
@@ -942,7 +1006,96 @@ bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde
         sessao->objeto_selecionado =
             (sessao->objeto_selecionado + 1) % sessao->quantidade_objetos_inspecao;
     }
+    liberar_caminho_inspecao(sessao);
     return atualizar_inspetor(sessao, erro);
+}
+
+bool sef_sessao_ide_inspetor_mover_componente(SefSessaoIde *sessao,
+                                              SefMovimentoComponenteIde movimento,
+                                              SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    if (sessao->quantidade_objetos_inspecao == 0)
+        return true;
+    size_t quantidade =
+        sef_valor_quantidade_componentes(sessao->runtime, objeto_inspecionado(sessao));
+    if (quantidade == 0)
+        return texto_definir(&sessao->estado, "Objeto nao possui componentes", erro);
+    if (movimento == SEF_COMPONENTE_INSPETOR_ANTERIOR)
+        sessao->componente_inspecao =
+            sessao->componente_inspecao == 0 ? quantidade - 1 : sessao->componente_inspecao - 1;
+    else
+        sessao->componente_inspecao = (sessao->componente_inspecao + 1) % quantidade;
+    return atualizar_inspetor(sessao, erro);
+}
+
+bool sef_sessao_ide_inspetor_entrar(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    if (sessao->quantidade_objetos_inspecao == 0)
+        return true;
+    SefValor atual = objeto_inspecionado(sessao);
+    size_t quantidade = sef_valor_quantidade_componentes(sessao->runtime, atual);
+    if (quantidade == 0)
+        return texto_definir(&sessao->estado, "Objeto nao possui componentes", erro);
+    SefValor componente = NULL;
+    char rotulo[64];
+    if (!sef_valor_componente(sessao->runtime, atual, sessao->componente_inspecao, &componente,
+                             rotulo, sizeof(rotulo))) {
+        sef_erro_definir(erro, 0, 0, "nao foi possivel abrir componente do inspetor");
+        return false;
+    }
+    SefRaiz *raiz = sef_raiz_criar(sessao->runtime, componente, erro);
+    if (raiz == NULL)
+        return false;
+    if (sessao->profundidade_inspecao == sessao->capacidade_caminho_inspecao) {
+        size_t capacidade = sessao->capacidade_caminho_inspecao == 0
+                                ? 8
+                                : sessao->capacidade_caminho_inspecao * 2;
+        if (capacidade < sessao->capacidade_caminho_inspecao ||
+            capacidade > SIZE_MAX / sizeof(*sessao->caminho_inspecao)) {
+            sef_raiz_liberar(raiz);
+            sef_erro_definir(erro, 0, 0, "caminho do inspetor excedeu o limite");
+            return false;
+        }
+        PassoInspecaoIde *passos =
+            realloc(sessao->caminho_inspecao, capacidade * sizeof(*passos));
+        if (passos == NULL) {
+            sef_raiz_liberar(raiz);
+            sef_erro_definir(erro, 0, 0, "memoria insuficiente para caminho do inspetor");
+            return false;
+        }
+        sessao->caminho_inspecao = passos;
+        sessao->capacidade_caminho_inspecao = capacidade;
+    }
+    PassoInspecaoIde *passo = &sessao->caminho_inspecao[sessao->profundidade_inspecao++];
+    passo->raiz = raiz;
+    snprintf(passo->rotulo, sizeof(passo->rotulo), "%s", rotulo);
+    sessao->componente_inspecao = 0;
+    return atualizar_inspetor(sessao, erro) &&
+           texto_formatar(&sessao->estado, erro, "Inspetor abriu %s (profundidade %zu)", rotulo,
+                          sessao->profundidade_inspecao);
+}
+
+bool sef_sessao_ide_inspetor_voltar(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    if (sessao->profundidade_inspecao == 0)
+        return texto_definir(&sessao->estado, "Inspetor ja esta na raiz", erro);
+    sef_raiz_liberar(sessao->caminho_inspecao[--sessao->profundidade_inspecao].raiz);
+    sessao->componente_inspecao = 0;
+    return atualizar_inspetor(sessao, erro) &&
+           texto_formatar(&sessao->estado, erro, "Inspetor voltou para profundidade %zu",
+                          sessao->profundidade_inspecao);
 }
 
 bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {

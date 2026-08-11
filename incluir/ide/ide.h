@@ -26,6 +26,11 @@ typedef enum SefMovimentoInspetorIde {
     SEF_INSPETOR_PROXIMO
 } SefMovimentoInspetorIde;
 
+typedef enum SefMovimentoComponenteIde {
+    SEF_COMPONENTE_INSPETOR_ANTERIOR,
+    SEF_COMPONENTE_INSPETOR_PROXIMO
+} SefMovimentoComponenteIde;
+
 typedef enum SefMovimentoDefinicaoIde {
     SEF_DEFINICAO_ANTERIOR,
     SEF_DEFINICAO_PROXIMA
@@ -72,6 +77,11 @@ bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao,
                                       SefMovimentoReferenciaIde movimento, SefErro *erro);
 bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde movimento,
                                    SefErro *erro);
+bool sef_sessao_ide_inspetor_mover_componente(SefSessaoIde *sessao,
+                                              SefMovimentoComponenteIde movimento,
+                                              SefErro *erro);
+bool sef_sessao_ide_inspetor_entrar(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_inspetor_voltar(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_imagem_salvar(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_imagem_restaurar(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *erro);

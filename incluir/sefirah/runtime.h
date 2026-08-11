@@ -57,6 +57,15 @@ bool sef_valor_e_caractere(SefValor valor);
 SefValor sef_caractere_criar(SefRuntime *runtime, uint32_t codigo, SefErro *erro);
 uint32_t sef_caractere_codigo(SefValor caractere);
 
+/*
+ * Introspeccao estrutural somente de leitura para ferramentas residentes.
+ * O componente devolvido e emprestado: mantenha o pai enraizado e crie uma
+ * SefRaiz propria quando o filho precisar sobreviver a uma avaliacao/coleta.
+ */
+size_t sef_valor_quantidade_componentes(const SefRuntime *runtime, SefValor valor);
+bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indice,
+                          SefValor *componente, char *rotulo, size_t capacidade_rotulo);
+
 SefFuncaoCompilada *sef_runtime_compilar_funcao_i64(SefRuntime *runtime, const char *nome,
                                                     SefErro *erro);
 SefFuncaoCompilada *sef_runtime_compilar_objeto_i64(SefRuntime *runtime, const char *nome,

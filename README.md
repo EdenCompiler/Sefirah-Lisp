@@ -38,7 +38,8 @@ the roadmap.
 | Graphics | Custom RGB surface, CPU rasterization, and bitmap font |
 | GUI | Component tree, layout, themes, focus, hit testing, and actions |
 | Platform | X11, Win32, and Cocoa/CoreGraphics raster windows with keyboard, shortcuts, and pointer events |
-| IDE | Editable `.lisp` buffer, incremental structural evaluation, definition browser, world snapshots, undo/redo, listener history, live inspector, and file load/save on Linux, Windows, and macOS |
+| IDE | Editable `.lisp` buffer, incremental structural evaluation, source browser, recursive live-object inspector, world snapshots, undo/redo, listener history, and file load/save on Linux, Windows, and macOS |
+| Delivery | CI builds, tests, installs, and audits the public SDK on Linux, Windows, and macOS |
 
 ## Highlights
 
@@ -194,11 +195,11 @@ Sefirah rasterizes the composition over `SefSuperficie`. Panels, labels,
 buttons, and fields use the same component tree, flexible layout, theme, focus,
 and action dispatch exposed by `sefirah/gui.h`. The IDE provides an editable
 buffer, persistent transcript, multiline listener with navigable event history,
-a live multiple-value object inspector, linear undo/redo, structural form
+a recursive multiple-value object inspector, linear undo/redo, structural form
 evaluation, an indexed definition browser, incremental installation of changed
 top-level forms, symbol-at-point definition lookup, structural caller/reference
 navigation, restorable world snapshots, and `.lisp` file load/save. Tab or a
-pointer click changes focus;
+pointer click changes focus among the editor, inspector, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
 F7 runs only forms changed since their last successful installation; F8 and
 Shift+F8 navigate named definitions; F9/F10 save and restore the live Lisp
@@ -206,8 +207,10 @@ world beside the current source as `.imagem`; F11 jumps to the definition of
 the symbol at the cursor; and F12/Shift+F12 cycle its references. Ctrl+Z/Ctrl+Y
 undo and redo; Ctrl+S saves; and Ctrl+O reloads the current path. Arrow, Home,
 and End move the editor cursor. In the listener, Up and Down browse submitted
-events. Clicking the inspector selects the next returned object; clicking the
-definition browser advances to the next definition. On macOS, Command can
+events. In the inspector, Up/Down select an object component, Enter opens it,
+Backspace returns to its parent, and Left/Right switch between returned roots.
+The complete navigation path remains rooted in the garbage collector. Clicking
+the definition browser advances to the next definition. On macOS, Command can
 replace Ctrl.
 
 ## Architecture
@@ -323,7 +326,8 @@ nativa permanecem no roteiro.
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
 | GUI | Árvore de componentes, layout, temas, foco, hit-testing e ações |
 | Plataforma | Janelas raster X11, Win32 e Cocoa/CoreGraphics com teclado, atalhos e eventos de ponteiro |
-| IDE | Buffer `.lisp` editável, avaliação estrutural incremental, navegador de definições, snapshots do mundo, desfazer/refazer, histórico do ouvinte, inspetor vivo e abertura/gravação em Linux, Windows e macOS |
+| IDE | Buffer `.lisp` editável, avaliação estrutural incremental, navegador de fontes, inspetor recursivo de objetos vivos, snapshots do mundo, desfazer/refazer, histórico do ouvinte e abertura/gravação em Linux, Windows e macOS |
+| Entrega | A CI compila, testa, instala e audita o SDK público em Linux, Windows e macOS |
 
 ## Destaques
 
@@ -481,20 +485,23 @@ O Sefirah rasteriza a composição sobre `SefSuperficie`. Painéis, rótulos,
 botões e campos usam a mesma árvore de componentes, layout flexível, tema,
 foco e despacho de ações expostos por `sefirah/gui.h`. A IDE oferece buffer
 editável, transcrição persistente, ouvinte multilinha com histórico navegável de
-eventos, inspetor vivo dos valores múltiplos, desfazer/refazer linear, avaliação
+eventos, inspetor recursivo dos valores múltiplos, desfazer/refazer linear, avaliação
 estrutural de formas, navegador indexado de definições, instalação incremental
 das formas de topo alteradas, localização da definição do símbolo no cursor,
 navegação estrutural de callers/referências, snapshots restauráveis do mundo e
-abertura/gravação de `.lisp`. Tab ou clique muda o foco; F5 ou Ctrl+Enter
+abertura/gravação de `.lisp`. Tab ou clique alterna o foco entre editor,
+inspetor e ouvinte; F5 ou Ctrl+Enter
 executa o buffer; F6 executa a forma completa no cursor; F7 executa somente as
 formas alteradas desde a última instalação bem-sucedida; F8 e Shift+F8 navegam
 pelas definições nomeadas; F9/F10 salvam e restauram o mundo Lisp ao lado do
 fonte como `.imagem`; F11 vai à definição do símbolo no cursor; e
 F12/Shift+F12 percorrem suas referências. Ctrl+Z/Ctrl+Y desfazem e refazem;
 Ctrl+S salva; e Ctrl+O recarrega o caminho atual. Setas, Home e End movem o
-cursor do editor. No ouvinte, Cima e Baixo percorrem os eventos enviados.
-Clicar no inspetor seleciona o próximo objeto devolvido; clicar no navegador
-avança para a próxima definição. No macOS, Command pode substituir Ctrl.
+cursor do editor. No ouvinte, Cima e Baixo percorrem os eventos enviados. No
+inspetor, Cima/Baixo selecionam um componente, Enter o abre, Backspace volta ao
+pai e Esquerda/Direita alternam entre as raízes devolvidas. O caminho completo
+permanece enraizado no coletor de lixo. Clicar no navegador avança para a
+próxima definição. No macOS, Command pode substituir Ctrl.
 
 ## Arquitetura
 

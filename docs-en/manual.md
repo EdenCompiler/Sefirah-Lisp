@@ -113,7 +113,11 @@ In the C SDK, `sef_vetor_criar`, `sef_vetor_tamanho`, `sef_vetor_obter`, and
 `sef_vetor_definir` operate on the same collected object. A value retained by
 the host across evaluations must stay protected by `SefRaiz`.
 `sef_valor_nome_tipo` exposes the stable diagnostic type name used by resident
-tools without exposing the private object layout.
+tools without exposing the private object layout. Generic tools can use
+`sef_valor_quantidade_componentes` and `sef_valor_componente` to traverse
+labeled child values without including the private `sefirah/interno.h` header.
+Components are borrowed: the parent must remain rooted, and a retained child
+needs its own `SefRaiz` before another evaluation or collection.
 
 ## Unicode characters and strings
 
@@ -414,8 +418,9 @@ sefirah_ide
 sefirah_ide path/to/program.lisp
 ```
 
-Tab or a pointer click switches between editor and listener. Enter inserts a
-line in the editor and submits a complete form in the listener. F5 or
+Tab, Shift+Tab, or a pointer click switches among editor, inspector, and
+listener. Enter inserts a line in the editor, opens the selected inspector
+component, or submits a complete form in the listener. F5 or
 Ctrl+Enter runs the whole buffer; F6 finds and runs only the complete top-level
 form at the cursor. Ctrl+Z and Ctrl+Y traverse the editor's bounded linear
 timeline. F7 evaluates only top-level forms whose contents changed since their
@@ -441,10 +446,13 @@ show the definition catalog or the references/callers for the selected symbol,
 mark the current match, and move the editor cursor directly to it. The inspector
 roots every value from the latest evaluation in the garbage
 collector, shows its type and readable representation, and exposes the whole
-multiple-value result as a live object shelf. Click the inspector to select the
-next object. The session engine, histories, structural scanner, and inspector
-are covered by headless automated tests. On macOS, Command can replace Ctrl for
-the shortcuts.
+multiple-value result as a live object shelf. It recursively exposes labeled
+components of pairs, vectors, functions, lexical environments, conditions,
+symbols, packages, and hash tables. Up/Down select a component, Enter opens it,
+Backspace returns to its parent, and Left/Right switch roots; every path node is
+held by an explicit GC root. The session engine, histories, structural scanner,
+and inspector are covered by headless automated tests. On macOS, Command can
+replace Ctrl for the shortcuts.
 
 These facilities deliberately recover a small, practical part of the Lisp
 machine workflow: Interlisp's Programmer's Assistant kept replayable events and

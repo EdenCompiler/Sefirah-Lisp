@@ -12,7 +12,7 @@ jobs:
         sistema: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.sistema }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Dependencias Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libx11-dev
@@ -22,3 +22,7 @@ jobs:
         run: cmake --build construir --config Debug --parallel
       - name: Testar
         run: ctest --test-dir construir -C Debug --output-on-failure
+      - name: Instalar
+        run: cmake --install construir --config Debug --prefix "${{ runner.temp }}/sefirah-install"
+      - name: Verificar instalacao
+        run: cmake -DSEFIRAH_PREFIXO="${{ runner.temp }}/sefirah-install" -P cmake/verificar_instalacao.cmake

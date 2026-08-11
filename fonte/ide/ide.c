@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum FocoIde { FOCO_EDITOR, FOCO_OUVINTE } FocoIde;
+typedef enum FocoIde { FOCO_EDITOR, FOCO_INSPETOR, FOCO_OUVINTE } FocoIde;
 
 typedef struct EstadoIde {
     SefSessaoIde *sessao;
@@ -52,6 +52,15 @@ static bool iniciar_componentes(EstadoIde *estado) {
 static bool ponto_dentro(SefRetangulo retangulo, int x, int y) {
     return x >= retangulo.x && y >= retangulo.y && x < retangulo.x + retangulo.largura &&
            y < retangulo.y + retangulo.altura;
+}
+
+static void alternar_foco(EstadoIde *estado, bool anterior) {
+    if (anterior)
+        estado->foco = estado->foco == FOCO_EDITOR ? FOCO_OUVINTE
+                                                   : (FocoIde)(estado->foco - 1);
+    else
+        estado->foco = estado->foco == FOCO_OUVINTE ? FOCO_EDITOR
+                                                    : (FocoIde)(estado->foco + 1);
 }
 
 static void desenhar_painel(SefSuperficie *superficie, SefRetangulo limites, const char *titulo,
@@ -163,7 +172,9 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
 
     desenhar_painel(superficie, estado->editor.limites, "EDITOR [F5 TUDO] [F6 FORMA] [F7 MUDANCAS]",
                     estado->foco == FOCO_EDITOR);
-    desenhar_painel(superficie, estado->inspetor.limites, "INSPETOR  [CLIQUE AVANCA]", false);
+    desenhar_painel(superficie, estado->inspetor.limites,
+                    "INSPETOR [ENTER ABRE] [BACK VOLTA]",
+                    estado->foco == FOCO_INSPETOR);
     desenhar_painel(superficie, estado->navegador.limites,
                     "NAVEGADOR [F11 DEF.] [F12 REFS.]", false);
     desenhar_painel(superficie, estado->ouvinte.limites, "OUVINTE  [ENTER ENVIA] [CIMA HIST.]",
@@ -212,23 +223,27 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_TEXTO:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_inserir(estado->sessao, evento->texto_utf8, &erro);
-        else
+        else if (estado->foco == FOCO_OUVINTE)
             sef_sessao_ide_ouvinte_inserir(estado->sessao, evento->texto_utf8, &erro);
         break;
     case SEF_EVENTO_APAGAR:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_apagar(estado->sessao);
-        else
+        else if (estado->foco == FOCO_OUVINTE)
             sef_sessao_ide_ouvinte_apagar(estado->sessao);
+        else
+            sef_sessao_ide_inspetor_voltar(estado->sessao, &erro);
         break;
     case SEF_EVENTO_ENTER:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_nova_linha(estado->sessao, &erro);
-        else
+        else if (estado->foco == FOCO_OUVINTE)
             sef_sessao_ide_ouvinte_enviar(estado->sessao, &erro);
+        else
+            sef_sessao_ide_inspetor_entrar(estado->sessao, &erro);
         break;
     case SEF_EVENTO_TAB:
-        estado->foco = estado->foco == FOCO_EDITOR ? FOCO_OUVINTE : FOCO_EDITOR;
+        alternar_foco(estado, evento->modificador_shift);
         break;
     case SEF_EVENTO_EXECUTAR:
         sef_sessao_ide_executar_editor(estado->sessao, &erro);
@@ -278,22 +293,32 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_CURSOR_ESQUERDA:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_ESQUERDA);
+        else if (estado->foco == FOCO_INSPETOR)
+            sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_ANTERIOR, &erro);
         break;
     case SEF_EVENTO_CURSOR_DIREITA:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_DIREITA);
+        else if (estado->foco == FOCO_INSPETOR)
+            sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_PROXIMO, &erro);
         break;
     case SEF_EVENTO_CURSOR_CIMA:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_CIMA);
-        else
+        else if (estado->foco == FOCO_OUVINTE)
             sef_sessao_ide_ouvinte_mover_historico(estado->sessao, SEF_HISTORICO_ANTERIOR, &erro);
+        else
+            sef_sessao_ide_inspetor_mover_componente(
+                estado->sessao, SEF_COMPONENTE_INSPETOR_ANTERIOR, &erro);
         break;
     case SEF_EVENTO_CURSOR_BAIXO:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_BAIXO);
-        else
+        else if (estado->foco == FOCO_OUVINTE)
             sef_sessao_ide_ouvinte_mover_historico(estado->sessao, SEF_HISTORICO_PROXIMO, &erro);
+        else
+            sef_sessao_ide_inspetor_mover_componente(
+                estado->sessao, SEF_COMPONENTE_INSPETOR_PROXIMO, &erro);
         break;
     case SEF_EVENTO_CURSOR_INICIO:
         if (estado->foco == FOCO_EDITOR)
@@ -306,13 +331,15 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_PONTEIRO_PRESSIONAR:
         if (ponto_dentro(estado->editor.limites, evento->x, evento->y))
             estado->foco = FOCO_EDITOR;
-        else if (ponto_dentro(estado->inspetor.limites, evento->x, evento->y))
-            sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_PROXIMO, &erro);
-        else if (ponto_dentro(estado->navegador.limites, evento->x, evento->y)) {
+        else if (ponto_dentro(estado->inspetor.limites, evento->x, evento->y)) {
+            if (estado->foco == FOCO_INSPETOR)
+                sef_sessao_ide_inspetor_mover_componente(
+                    estado->sessao, SEF_COMPONENTE_INSPETOR_PROXIMO, &erro);
+            estado->foco = FOCO_INSPETOR;
+        } else if (ponto_dentro(estado->navegador.limites, evento->x, evento->y)) {
             estado->foco = FOCO_EDITOR;
             sef_sessao_ide_navegar_definicao(estado->sessao, SEF_DEFINICAO_PROXIMA, &erro);
-        }
-        else if (ponto_dentro(estado->ouvinte.limites, evento->x, evento->y))
+        } else if (ponto_dentro(estado->ouvinte.limites, evento->x, evento->y))
             estado->foco = FOCO_OUVINTE;
         break;
     default:

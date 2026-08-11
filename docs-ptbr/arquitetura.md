@@ -53,7 +53,7 @@ Cada build compila exatamente um backend de janela. O backend macOS permanece
 C puro e confina as chamadas tipadas ao runtime Objective-C dentro do adaptador
 de plataforma.
 `sefirah/interno.h` reúne contratos privados do núcleo para o build e não
-oferece estabilidade de SDK ou ABI; aplicações devem usar
+é instalado nem oferece estabilidade de SDK ou ABI; aplicações devem usar
 `sefirah/runtime.h`.
 
 ## Fluxo da linguagem
@@ -96,11 +96,13 @@ formas Lisp completas de nível superior, calcula suas assinaturas para avaliaç
 incremental e cataloga definições nomeadas sem avaliar o fonte. Sua passagem
 léxica também resolve o átomo no cursor e cataloga referências, excluindo
 comentários, strings, literais de caractere e ocorrências que nomeiam a própria
-definição. O inspetor retém os objetos devolvidos por meio de raízes públicas do
-GC. A restauração abre a imagem substituta antes de liberar essas raízes e o
-runtime antigo; assim, um snapshot ausente ou danificado não destrói o mundo
-ativo. O código de apresentação enxerga somente o estado formatado da sessão e
-nunca acessa os detalhes internos do runtime.
+definição. O inspetor retém os objetos devolvidos e cada passo da navegação
+recursiva por meio de raízes públicas do GC. A API pública de introspecção de
+componentes apresenta arestas rotuladas dos objetos compostos sem expor à IDE a
+union privada dos objetos. A restauração abre a imagem substituta antes de
+liberar essas raízes e o runtime antigo; assim, um snapshot ausente ou danificado
+não destrói o mundo ativo. O código de apresentação enxerga somente o estado
+formatado da sessão e nunca acessa os detalhes internos do runtime.
 
 ## Fluxo do compilador
 
@@ -127,7 +129,10 @@ pode ser recompilada.
 O heap atual usa mark-and-sweep nos limites de uma unidade de avaliação.
 Valores entregues a código C podem ser preservados entre coletas por
 `SefRaiz`. O handle é explícito e removível, evitando depender de varredura
-conservadora da pilha hospedeira.
+conservadora da pilha hospedeira. `sef_valor_quantidade_componentes` e
+`sef_valor_componente` expõem uma visão rotulada e somente de leitura das
+arestas do grafo para ferramentas residentes, preservando esse modelo de
+ownership.
 
 ### Streams
 
