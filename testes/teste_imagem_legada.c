@@ -36,6 +36,18 @@ static void remover_funcao_global(SefRuntime *runtime, SefValor simbolo) {
     }
 }
 
+static void remover_simbolo_publico(SefRuntime *runtime, SefValor simbolo, bool possui_funcao) {
+    if (simbolo == NULL)
+        return;
+    if (possui_funcao)
+        remover_funcao_global(runtime, simbolo);
+    remover_de_vetor(runtime->pacote_common_lisp->como.pacote.exportados,
+                     &runtime->pacote_common_lisp->como.pacote.quantidade_exportados, simbolo);
+    remover_de_vetor(runtime->pacote_common_lisp->como.pacote.simbolos,
+                     &runtime->pacote_common_lisp->como.pacote.quantidade_simbolos, simbolo);
+    remover_de_vetor(runtime->simbolos, &runtime->quantidade_simbolos, simbolo);
+}
+
 static void converter_para_v6(const char *caminho) {
     FILE *arquivo = fopen(caminho, "r+b");
     verificar(arquivo != NULL, "imagem legada foi aberta para conversao");
@@ -57,28 +69,24 @@ int main(void) {
     SefValor simbolo_symbolp =
         sef_pacote_localizar_simbolo(runtime->pacote_common_lisp, "SYMBOLP", 7, false);
     verificar(simbolo_symbolp != NULL, "SYMBOLP existia antes da simulacao legada");
-    if (simbolo_symbolp != NULL) {
-        remover_funcao_global(runtime, simbolo_symbolp);
-        remover_de_vetor(runtime->pacote_common_lisp->como.pacote.exportados,
-                         &runtime->pacote_common_lisp->como.pacote.quantidade_exportados,
-                         simbolo_symbolp);
-        remover_de_vetor(runtime->pacote_common_lisp->como.pacote.simbolos,
-                         &runtime->pacote_common_lisp->como.pacote.quantidade_simbolos,
-                         simbolo_symbolp);
-        remover_de_vetor(runtime->simbolos, &runtime->quantidade_simbolos, simbolo_symbolp);
-    }
+    remover_simbolo_publico(runtime, simbolo_symbolp, true);
+    SefValor simbolo_signal =
+        sef_pacote_localizar_simbolo(runtime->pacote_common_lisp, "SIGNAL", 6, false);
+    SefValor simbolo_restart_case =
+        sef_pacote_localizar_simbolo(runtime->pacote_common_lisp, "RESTART-CASE", 12, false);
+    verificar(simbolo_signal != NULL && simbolo_restart_case != NULL,
+              "recursos novos existiam antes da simulacao legada");
+    remover_simbolo_publico(runtime, simbolo_signal, true);
+    remover_simbolo_publico(runtime, simbolo_restart_case, false);
     remover_de_vetor(runtime->pacote_common_lisp->como.pacote.exportados,
                      &runtime->pacote_common_lisp->como.pacote.quantidade_exportados,
                      runtime->nulo);
     remover_de_vetor(runtime->pacote_common_lisp->como.pacote.simbolos,
-                     &runtime->pacote_common_lisp->como.pacote.quantidade_simbolos,
-                     runtime->nulo);
-    SefValor nulo_legado =
-        sef_simbolo_internar_em(runtime, runtime->pacote_atual, "NIL", 3, &erro);
+                     &runtime->pacote_common_lisp->como.pacote.quantidade_simbolos, runtime->nulo);
+    SefValor nulo_legado = sef_simbolo_internar_em(runtime, runtime->pacote_atual, "NIL", 3, &erro);
     verificar(nulo_legado != NULL && nulo_legado != runtime->nulo,
               "imagem simulada recebeu NIL local legado");
-    verificar(sef_runtime_avaliar_texto(runtime, "(defun keywordp (x) :preservada)", &erro) !=
-                  NULL,
+    verificar(sef_runtime_avaliar_texto(runtime, "(defun keywordp (x) :preservada)", &erro) != NULL,
               "imagem simulada recebeu redefinicao Lisp deliberada");
 
     verificar(sef_runtime_imagem_salvar(runtime, caminho, &erro),
@@ -90,8 +98,8 @@ int main(void) {
     verificar(runtime != NULL, "imagem v6 incompleta foi migrada");
     if (runtime != NULL) {
         SefEstadoSimboloPacote estado = SEF_SIMBOLO_AUSENTE;
-        SefValor nulo = sef_pacote_localizar_simbolo_com_estado(
-            runtime->pacote_common_lisp, "NIL", 3, false, &estado);
+        SefValor nulo = sef_pacote_localizar_simbolo_com_estado(runtime->pacote_common_lisp, "NIL",
+                                                                3, false, &estado);
         verificar(nulo == runtime->nulo && estado == SEF_SIMBOLO_EXTERNO,
                   "migracao reinstalou NIL externo em COMMON-LISP");
         SefValor resultado = sef_runtime_avaliar_texto(
@@ -99,18 +107,25 @@ int main(void) {
             "(list (symbolp nil) (symbol-name nil) "
             "(multiple-value-list (find-symbol \"NIL\" \"COMMON-LISP-USER\")))",
             &erro);
-        char *texto = resultado == NULL
-                          ? NULL
-                          : sef_valor_para_texto(runtime, resultado, true, &erro);
+        char *texto =
+            resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);
         verificar(texto != NULL && strcmp(texto, "(T \"NIL\" (NIL :INHERITED))") == 0,
                   "migracao reinstalou primitiva e visibilidade herdada");
         sef_texto_liberar(texto);
         resultado = sef_runtime_avaliar_texto(runtime, "(keywordp nil)", &erro);
-        texto = resultado == NULL
-                    ? NULL
-                    : sef_valor_para_texto(runtime, resultado, true, &erro);
+        texto = resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);
         verificar(texto != NULL && strcmp(texto, ":PRESERVADA") == 0,
                   "migracao preservou redefinicao Lisp existente");
+        sef_texto_liberar(texto);
+        resultado = sef_runtime_avaliar_texto(
+            runtime,
+            "(list (fboundp 'signal) "
+            "(restart-case (use-value 42) (use-value (valor) valor)) "
+            "(multiple-value-list (find-symbol \"RESTART-CASE\" \"COMMON-LISP-USER\")))",
+            &erro);
+        texto = resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);
+        verificar(texto != NULL && strcmp(texto, "(T 42 (RESTART-CASE :INHERITED))") == 0,
+                  "migracao reconciliou primitivas e formas especiais novas");
         sef_texto_liberar(texto);
         sef_runtime_destruir(runtime);
     }

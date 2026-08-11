@@ -7,6 +7,9 @@ static SefValor primeiro(SefValor lista) { return lista->como.par.primeiro; }
 
 static SefValor resto(SefValor lista) { return lista->como.par.resto; }
 
+static bool vincular_parametros(SefRuntime *runtime, SefValor ambiente, SefValor parametros,
+                                SefValor argumentos, SefErro *erro);
+
 static SefValor valor_unico(SefRuntime *runtime, SefValor valor, SefErro *erro) {
     return valor != NULL && sef_valores_definir_um(runtime, valor, erro) ? valor : NULL;
 }
@@ -671,14 +674,48 @@ static bool controle_eql(SefValor a, SefValor b) {
     return false;
 }
 
+static void reinicios_descartar_ate(SefRuntime *runtime, SefReinicioDinamico *limite) {
+    while (runtime->reinicios != limite) {
+        SefReinicioDinamico *reinicio = runtime->reinicios;
+        if (reinicio == NULL)
+            return;
+        runtime->reinicios = reinicio->anterior;
+        free(reinicio);
+    }
+}
+
+static void handlers_descartar_ate(SefRuntime *runtime, SefHandlerDinamico *limite) {
+    while (runtime->handlers != limite) {
+        SefHandlerDinamico *handler = runtime->handlers;
+        if (handler == NULL)
+            return;
+        runtime->handlers = handler->anterior;
+        free(handler);
+    }
+    runtime->handlers_visiveis = runtime->handlers;
+}
+
+static void transferencia_limpar(SefRuntime *runtime) {
+    sef_valores_salvos_liberar(&runtime->valores_transferencia);
+    runtime->destino_transferencia = NULL;
+    runtime->valor_transferencia = NULL;
+    runtime->parametros_transferencia = NULL;
+    runtime->corpo_transferencia = NULL;
+    runtime->ambiente_transferencia = NULL;
+}
+
 static void transferir_controle(SefRuntime *runtime, SefQuadroControle *destino) {
     for (SefQuadroControle *quadro = runtime->controle; quadro != NULL && quadro != destino;
          quadro = quadro->anterior) {
         if (quadro->tipo == SEF_CONTROLE_LIMPEZA) {
+            reinicios_descartar_ate(runtime, quadro->reinicios_anteriores);
+            handlers_descartar_ate(runtime, quadro->handlers_anteriores);
             runtime->controle = quadro;
             longjmp(quadro->salto, 1);
         }
     }
+    reinicios_descartar_ate(runtime, destino->reinicios_anteriores);
+    handlers_descartar_ate(runtime, destino->handlers_anteriores);
     runtime->controle = destino;
     longjmp(destino->salto, 1);
 }
@@ -700,6 +737,8 @@ static SefValor executar_com_controle(SefRuntime *runtime, SefTipoControle tipo,
     quadro.tipo = tipo;
     quadro.nome_ou_etiqueta = nome_ou_etiqueta;
     quadro.anterior = runtime->controle;
+    quadro.reinicios_anteriores = runtime->reinicios;
+    quadro.handlers_anteriores = runtime->handlers;
     runtime->controle = &quadro;
     int transferencia = setjmp(quadro.salto);
     if (transferencia == 0) {
@@ -710,9 +749,7 @@ static SefValor executar_com_controle(SefRuntime *runtime, SefTipoControle tipo,
     runtime->controle = quadro.anterior;
     SefValor resultado = runtime->valor_transferencia;
     bool restaurou = sef_valores_restaurar(runtime, &runtime->valores_transferencia, erro);
-    sef_valores_salvos_liberar(&runtime->valores_transferencia);
-    runtime->destino_transferencia = NULL;
-    runtime->valor_transferencia = NULL;
+    transferencia_limpar(runtime);
     return restaurou ? resultado : NULL;
 }
 
@@ -807,6 +844,8 @@ static SefValor especial_unwind_protect(SefRuntime *runtime, SefValor argumentos
     quadro.tipo = SEF_CONTROLE_LIMPEZA;
     quadro.nome_ou_etiqueta = runtime->nulo;
     quadro.anterior = runtime->controle;
+    quadro.reinicios_anteriores = runtime->reinicios;
+    quadro.handlers_anteriores = runtime->handlers;
     runtime->controle = &quadro;
     int transferencia = setjmp(quadro.salto);
     if (transferencia == 0) {
@@ -837,14 +876,284 @@ static SefValor especial_unwind_protect(SefRuntime *runtime, SefValor argumentos
     sef_erro_limpar(&erro_limpeza);
     if (avaliar_sequencia(runtime, limpezas, ambiente, &erro_limpeza) == NULL &&
         erro_limpeza.ocorreu) {
-        sef_valores_salvos_liberar(&runtime->valores_transferencia);
-        runtime->destino_transferencia = NULL;
-        runtime->valor_transferencia = NULL;
+        transferencia_limpar(runtime);
         *erro = erro_limpeza;
         return NULL;
     }
     transferir_controle(runtime, destino);
     return NULL;
+}
+
+static bool clausula_reinicio_analisar(SefRuntime *runtime, SefValor clausula, SefValor *nome,
+                                       SefValor *parametros, SefValor *corpo, SefErro *erro) {
+    bool propria = false;
+    if (clausula == runtime->nulo || clausula->tipo != SEF_TIPO_PAR ||
+        sef_lista_tamanho(runtime, clausula, &propria) < 2 || !propria) {
+        sef_erro_definir(erro, 0, 0, "clausula RESTART-CASE invalida");
+        return false;
+    }
+    *nome = primeiro(clausula);
+    if (!sef_valor_e_simbolo_logico(runtime, *nome)) {
+        sef_erro_definir(erro, 0, 0, "nome de reinicio deve ser simbolo ou NIL");
+        return false;
+    }
+    SefValor cauda = resto(clausula);
+    *parametros = primeiro(cauda);
+    if (!sef_e_lista_propria(runtime, *parametros)) {
+        sef_erro_definir(erro, 0, 0, "parametros de reinicio devem formar lista propria");
+        return false;
+    }
+    *corpo = resto(cauda);
+    if (*corpo != runtime->nulo && (*corpo)->tipo == SEF_TIPO_PAR) {
+        SefValor primeira_forma = primeiro(*corpo);
+        bool opcao_keyword = primeira_forma != runtime->nulo &&
+                             primeira_forma->tipo == SEF_TIPO_SIMBOLO &&
+                             primeira_forma->como.simbolo.pacote == runtime->pacote_keyword;
+        if (opcao_keyword && (sef_simbolo_tem_nome(primeira_forma, "INTERACTIVE") ||
+                              sef_simbolo_tem_nome(primeira_forma, "REPORT") ||
+                              sef_simbolo_tem_nome(primeira_forma, "TEST"))) {
+            sef_erro_definir(erro, 0, 0,
+                             "opcoes :INTERACTIVE, :REPORT e :TEST ainda nao sao suportadas");
+            return false;
+        }
+    }
+    return true;
+}
+
+static SefValor especial_restart_case(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
+                                      SefErro *erro) {
+    if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
+        sef_erro_definir(erro, 0, 0, "RESTART-CASE exige uma forma protegida");
+        return NULL;
+    }
+    if (!sef_e_lista_propria(runtime, argumentos)) {
+        sef_erro_definir(erro, 0, 0, "RESTART-CASE exige argumentos proprios");
+        return NULL;
+    }
+
+    SefReinicioDinamico *limite = runtime->reinicios;
+    SefQuadroControle quadro;
+    quadro.tipo = SEF_CONTROLE_REINICIO;
+    quadro.nome_ou_etiqueta = runtime->nulo;
+    quadro.anterior = runtime->controle;
+    quadro.reinicios_anteriores = limite;
+    quadro.handlers_anteriores = runtime->handlers;
+
+    SefReinicioDinamico *primeiro_reinicio = NULL;
+    SefReinicioDinamico *ultimo_reinicio = NULL;
+    for (SefValor clausulas = resto(argumentos); clausulas != runtime->nulo;
+         clausulas = resto(clausulas)) {
+        SefValor nome = NULL;
+        SefValor parametros = NULL;
+        SefValor corpo = NULL;
+        if (!clausula_reinicio_analisar(runtime, primeiro(clausulas), &nome, &parametros, &corpo,
+                                        erro)) {
+            while (primeiro_reinicio != NULL) {
+                SefReinicioDinamico *proximo = primeiro_reinicio->anterior;
+                free(primeiro_reinicio);
+                primeiro_reinicio = proximo;
+            }
+            return NULL;
+        }
+        SefReinicioDinamico *reinicio = calloc(1, sizeof(*reinicio));
+        if (reinicio == NULL) {
+            while (primeiro_reinicio != NULL) {
+                SefReinicioDinamico *proximo = primeiro_reinicio->anterior;
+                free(primeiro_reinicio);
+                primeiro_reinicio = proximo;
+            }
+            sef_erro_definir(erro, 0, 0, "memoria insuficiente para registrar reinicio");
+            return NULL;
+        }
+        reinicio->nome = nome;
+        reinicio->parametros = parametros;
+        reinicio->corpo = corpo;
+        reinicio->ambiente = ambiente;
+        reinicio->destino = &quadro;
+        if (ultimo_reinicio == NULL)
+            primeiro_reinicio = reinicio;
+        else
+            ultimo_reinicio->anterior = reinicio;
+        ultimo_reinicio = reinicio;
+    }
+    if (ultimo_reinicio != NULL)
+        ultimo_reinicio->anterior = limite;
+    runtime->reinicios = primeiro_reinicio == NULL ? limite : primeiro_reinicio;
+    runtime->controle = &quadro;
+
+    int transferencia = setjmp(quadro.salto);
+    if (transferencia == 0) {
+        SefValor resultado = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+        runtime->controle = quadro.anterior;
+        reinicios_descartar_ate(runtime, limite);
+        return resultado;
+    }
+
+    runtime->controle = quadro.anterior;
+    SefRaiz *raiz_parametros = sef_raiz_criar(runtime, runtime->parametros_transferencia, erro);
+    SefRaiz *raiz_corpo = raiz_parametros == NULL
+                              ? NULL
+                              : sef_raiz_criar(runtime, runtime->corpo_transferencia, erro);
+    SefRaiz *raiz_ambiente =
+        raiz_corpo == NULL ? NULL : sef_raiz_criar(runtime, runtime->ambiente_transferencia, erro);
+    SefRaiz *raiz_argumentos =
+        raiz_ambiente == NULL ? NULL : sef_raiz_criar(runtime, runtime->valor_transferencia, erro);
+    if (raiz_argumentos == NULL) {
+        sef_raiz_liberar(raiz_ambiente);
+        sef_raiz_liberar(raiz_corpo);
+        sef_raiz_liberar(raiz_parametros);
+        transferencia_limpar(runtime);
+        return NULL;
+    }
+    transferencia_limpar(runtime);
+
+    SefValor local = sef_ambiente_novo(runtime, sef_raiz_valor(raiz_ambiente), erro);
+    SefValor resultado = NULL;
+    if (local != NULL && vincular_parametros(runtime, local, sef_raiz_valor(raiz_parametros),
+                                             sef_raiz_valor(raiz_argumentos), erro)) {
+        resultado = avaliar_sequencia(runtime, sef_raiz_valor(raiz_corpo), local, erro);
+    }
+    sef_raiz_liberar(raiz_argumentos);
+    sef_raiz_liberar(raiz_ambiente);
+    sef_raiz_liberar(raiz_corpo);
+    sef_raiz_liberar(raiz_parametros);
+    return resultado;
+}
+
+SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor argumentos,
+                              SefErro *erro) {
+    if (!sef_valor_e_simbolo_logico(runtime, designador)) {
+        sef_erro_definir(erro, 0, 0, "designador de reinicio deve ser simbolo ou NIL");
+        return NULL;
+    }
+    for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
+         reinicio = reinicio->anterior) {
+        if (reinicio->nome != designador)
+            continue;
+        if (!iniciar_transferencia(runtime, reinicio->destino, argumentos, erro))
+            return NULL;
+        runtime->parametros_transferencia = reinicio->parametros;
+        runtime->corpo_transferencia = reinicio->corpo;
+        runtime->ambiente_transferencia = reinicio->ambiente;
+        transferir_controle(runtime, reinicio->destino);
+    }
+    sef_erro_definir(erro, 0, 0, "reinicio solicitado nao esta ativo");
+    return NULL;
+}
+
+static bool handler_aceita_condicao(SefValor tipo, SefValor condicao) {
+    if (sef_simbolo_tem_nome(tipo, "CONDITION"))
+        return true;
+    if (condicao->tipo != SEF_TIPO_CONDICAO)
+        return false;
+    SefValor classe = condicao->como.condicao.classe;
+    return tipo == classe ||
+           (sef_simbolo_tem_nome(tipo, "ERROR") && sef_simbolo_tem_nome(classe, "ERROR"));
+}
+
+bool sef_condicao_sinalizar(SefRuntime *runtime, SefValor condicao, SefErro *erro) {
+    if (condicao == NULL || condicao->tipo != SEF_TIPO_CONDICAO) {
+        sef_erro_definir(erro, 0, 0, "SIGNAL exige um objeto de condicao");
+        return false;
+    }
+    SefHandlerDinamico *handler = runtime->handlers_visiveis;
+    while (handler != NULL) {
+        if (!handler_aceita_condicao(handler->tipo, condicao)) {
+            handler = handler->anterior;
+            continue;
+        }
+        SefHandlerDinamico *visiveis_salvos = runtime->handlers_visiveis;
+        runtime->handlers_visiveis = handler->grupo_anterior;
+        SefValor argumentos = sef_par_novo(runtime, condicao, runtime->nulo, erro);
+        SefValor resultado =
+            argumentos == NULL ? NULL : sef_aplicar(runtime, handler->funcao, argumentos, erro);
+        runtime->handlers_visiveis = visiveis_salvos;
+        if (resultado == NULL)
+            return false;
+        handler = handler->grupo_anterior;
+    }
+    return true;
+}
+
+static void handlers_liberar_lista(SefHandlerDinamico *primeiro_handler) {
+    while (primeiro_handler != NULL) {
+        SefHandlerDinamico *proximo = primeiro_handler->anterior;
+        free(primeiro_handler);
+        primeiro_handler = proximo;
+    }
+}
+
+static SefValor especial_handler_bind(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
+                                      SefErro *erro) {
+    if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
+        sef_erro_definir(erro, 0, 0, "HANDLER-BIND exige uma lista de bindings");
+        return NULL;
+    }
+    SefValor bindings = primeiro(argumentos);
+    if (!sef_e_lista_propria(runtime, bindings) || !sef_e_lista_propria(runtime, argumentos)) {
+        sef_erro_definir(erro, 0, 0, "HANDLER-BIND exige listas proprias");
+        return NULL;
+    }
+
+    SefHandlerDinamico *limite = runtime->handlers;
+    SefHandlerDinamico *primeiro_handler = NULL;
+    SefHandlerDinamico *ultimo_handler = NULL;
+    for (; bindings != runtime->nulo; bindings = resto(bindings)) {
+        SefValor binding = primeiro(bindings);
+        bool proprio = false;
+        if (binding == runtime->nulo || binding->tipo != SEF_TIPO_PAR ||
+            sef_lista_tamanho(runtime, binding, &proprio) != 2 || !proprio) {
+            handlers_liberar_lista(primeiro_handler);
+            sef_erro_definir(erro, 0, 0, "binding de HANDLER-BIND deve ser (tipo handler)");
+            return NULL;
+        }
+        SefValor tipo = primeiro(binding);
+        if (!sef_valor_e_simbolo_logico(runtime, tipo)) {
+            handlers_liberar_lista(primeiro_handler);
+            sef_erro_definir(erro, 0, 0, "tipo de handler deve ser simbolo");
+            return NULL;
+        }
+        SefValor funcao = sef_avaliar(runtime, primeiro(resto(binding)), ambiente, erro);
+        if (funcao == NULL) {
+            handlers_liberar_lista(primeiro_handler);
+            return NULL;
+        }
+        if (sef_valor_e_simbolo_logico(runtime, funcao)) {
+            SefValor designada = NULL;
+            if (!sef_ambiente_obter_funcao(ambiente, funcao, &designada)) {
+                handlers_liberar_lista(primeiro_handler);
+                sef_erro_definir(erro, 0, 0, "funcao designada para handler nao existe");
+                return NULL;
+            }
+            funcao = designada;
+        }
+        if (funcao->tipo != SEF_TIPO_FUNCAO && funcao->tipo != SEF_TIPO_NATIVA) {
+            handlers_liberar_lista(primeiro_handler);
+            sef_erro_definir(erro, 0, 0, "handler deve avaliar para uma funcao");
+            return NULL;
+        }
+        SefHandlerDinamico *handler = calloc(1, sizeof(*handler));
+        if (handler == NULL) {
+            handlers_liberar_lista(primeiro_handler);
+            sef_erro_definir(erro, 0, 0, "memoria insuficiente para registrar handler");
+            return NULL;
+        }
+        handler->tipo = tipo;
+        handler->funcao = funcao;
+        handler->grupo_anterior = limite;
+        if (ultimo_handler == NULL)
+            primeiro_handler = handler;
+        else
+            ultimo_handler->anterior = handler;
+        ultimo_handler = handler;
+    }
+    if (ultimo_handler != NULL)
+        ultimo_handler->anterior = limite;
+    runtime->handlers = primeiro_handler == NULL ? limite : primeiro_handler;
+    runtime->handlers_visiveis = runtime->handlers;
+    SefValor resultado = avaliar_sequencia(runtime, resto(argumentos), ambiente, erro);
+    handlers_descartar_ate(runtime, limite);
+    return resultado;
 }
 
 static SefValor especial_ignore_errors(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
@@ -1308,6 +1617,10 @@ static SefValor avaliar_forma(SefRuntime *runtime, SefValor forma, SefValor ambi
             return especial_ignore_errors(runtime, argumentos, ambiente, erro);
         if (sef_simbolo_tem_nome(operador, "HANDLER-CASE"))
             return especial_handler_case(runtime, argumentos, ambiente, erro);
+        if (sef_simbolo_tem_nome(operador, "HANDLER-BIND"))
+            return especial_handler_bind(runtime, argumentos, ambiente, erro);
+        if (sef_simbolo_tem_nome(operador, "RESTART-CASE"))
+            return especial_restart_case(runtime, argumentos, ambiente, erro);
         if (sef_simbolo_tem_nome(operador, "IN-PACKAGE"))
             return especial_in_package(runtime, argumentos, erro);
         if (sef_simbolo_tem_nome(operador, "DEFPACKAGE"))

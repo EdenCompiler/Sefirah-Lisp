@@ -999,7 +999,8 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
     if (sucesso)
         sucesso = validar_tabelas_de_pacotes(runtime, erro) &&
                   sef_pacote_instalar_nulo(runtime, erro) &&
-                  sef_primitivas_reconciliar(runtime, erro);
+                  sef_primitivas_reconciliar(runtime, erro) &&
+                  sef_formas_especiais_reconciliar(runtime, erro);
 
     free(objetos);
     free(ids_simbolos);

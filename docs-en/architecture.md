@@ -79,6 +79,19 @@ consume the primary value, while multiple-value forms and non-local transfers
 preserve the complete set. The same complete-form scanner drives the CLI REPL
 and graphical listener, preventing their multiline behavior from diverging.
 
+Dynamic named restarts reuse the non-local control stack. Each control frame
+records the restart-stack boundary that was active when it was installed.
+Transfers discard inner restart records before jumping, while cleanup frames
+run first; the selected clause data is rooted in runtime transfer state until
+its lexical environment is rebuilt. This prevents a restart from retaining a
+dead `setjmp` destination after `RETURN-FROM`, `THROW`, or normal return.
+
+Dynamic handlers use a parallel runtime stack. Bindings from one
+`HANDLER-BIND` retain a shared outer boundary, so selecting one handler masks
+the complete binding group while it runs. A returning handler declines and
+search continues in outer groups; a handler that invokes a restart follows the
+same cleanup and stack-boundary rules as every other non-local transfer.
+
 ## IDE session
 
 `sefirah_ide_nucleo` owns the editable buffer, listener input, transcript,
@@ -159,9 +172,10 @@ replacement. The loader recognizes v6, v7, v8, and v9; loading and saving an
 older image emits the current format. After graph validation, a targeted
 migration restores canonical `COMMON-LISP:NIL` membership, removes legacy
 local `NIL` conflicts from packages that use `COMMON-LISP`, and reinstalls the
-missing members of the current primitive set by name. Existing Lisp function
-definitions are preserved. This lets an older world acquire new built-ins
-without serializing or trusting stale C addresses.
+missing members of the current primitive set by name together with exported
+special-form symbols. Existing Lisp function definitions are preserved. This
+lets an older world acquire new built-ins without serializing or trusting stale
+C addresses.
 
 Process resources follow an explicit policy:
 

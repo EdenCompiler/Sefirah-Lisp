@@ -51,6 +51,11 @@ not mean the entire milestone is complete.
 - [ ] Common Lisp numeric tower.
 - [x] Separate value/function namespaces and non-local control with cleanup.
 - [x] Initial condition objects and recoverable handling with `HANDLER-CASE`.
+- [x] Dynamic `HANDLER-BIND`/`SIGNAL` protocol integrated with active restarts.
+- [x] Initial named restart protocol with dynamic discovery, invocation,
+  multiple values, and `UNWIND-PROTECT` cleanup.
+- [x] Named helpers `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`, and
+  `USE-VALUE`.
 
 ### Compiler
 

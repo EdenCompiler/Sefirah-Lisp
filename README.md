@@ -19,7 +19,8 @@ readable platform for desktop applications on Windows, Linux, and macOS.
 ## What the current bootstrap means
 
 The repository already delivers an executable vertical path: reader,
-evaluator, lexical environments, packages, initial conditions, streams,
+evaluator, lexical environments, packages, dynamic condition handlers and
+named restarts, streams,
 garbage collection, persistent images, SSA compilation for x86-64/AArch64,
 ELF/COFF/Mach-O objects, an initial FFI, CPU rasterizer, custom GUI, and native
 windows.
@@ -31,7 +32,7 @@ the roadmap.
 
 | Subsystem | Current state |
 | --- | --- |
-| Language | Common Lisp subset with functions, macros, multiple values, Unicode characters, vectors, hash tables, packages, and non-local control |
+| Language | Common Lisp subset with functions, macros, multiple values, Unicode characters, vectors, hash tables, packages, dynamic condition handlers, named restarts, and non-local control |
 | Runtime | Object heap, mark-and-sweep GC, explicit roots, streams, and v9 binary images |
 | Compiler | i64 SSA IR, reference interpreter, W^X x86-64/AArch64 JIT, and relocatable objects |
 | FFI | Explicit shared libraries and C i64 calls with one or two inputs |
@@ -49,6 +50,10 @@ the roadmap.
 - public language symbols use English to converge with ANSI Common Lisp;
 - separate value/function cells, macros, quasiquote, packages, and non-local
   control with cleanup;
+- initial named restarts with dynamic discovery, invocation, multiple values,
+  and cleanup through `UNWIND-PROTECT`;
+- `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
+  choosing an active restart in the signaler's context;
 - simple `#(...)` vectors, one-dimensional arrays, `AREF`/`SVREF`, and basic
   `SETF` mutation;
 - `CHARACTER` objects, `#\` literals, code-point-indexed UTF-8 strings, and
@@ -308,7 +313,8 @@ em uma plataforma legível para aplicações desktop no Windows, Linux e macOS.
 ## O que o bootstrap atual significa
 
 O repositório já entrega um caminho vertical executável: leitor, avaliador,
-ambientes lexicais, packages, condições iniciais, streams, coleta de lixo,
+ambientes lexicais, packages, handlers dinâmicos de condições e restarts
+nomeados, streams, coleta de lixo,
 imagem persistente, compilação SSA para x86-64/AArch64, objetos
 ELF/COFF/Mach-O, FFI inicial, rasterizador CPU, GUI própria e janelas nativas.
 
@@ -319,7 +325,7 @@ nativa permanecem no roteiro.
 
 | Subsistema | Estado atual |
 | --- | --- |
-| Linguagem | Subconjunto Common Lisp com funções, macros, valores múltiplos, caracteres Unicode, vetores, tabelas hash, packages e controle não local |
+| Linguagem | Subconjunto Common Lisp com funções, macros, valores múltiplos, caracteres Unicode, vetores, tabelas hash, packages, handlers dinâmicos de condições, restarts nomeados e controle não local |
 | Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v9 |
 | Compilador | IR SSA i64, interpretador de referência, JIT W^X x86-64/AArch64 e objetos relocáveis |
 | FFI | Bibliotecas compartilhadas explícitas e chamadas C i64 com uma ou duas entradas |
@@ -339,6 +345,10 @@ nativa permanecem no roteiro.
   Lisp;
 - células separadas de valor e função, macros, quasiquote, packages e controle
   não local com limpeza;
+- restarts nomeados iniciais com descoberta dinâmica, invocação, valores
+  múltiplos e limpeza por `UNWIND-PROTECT`;
+- `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela
+  escolha de um restart ativo no contexto do sinalizador;
 - vetores simples `#(...)`, arrays unidimensionais, `AREF`/`SVREF` e mutação
   básica por `SETF`;
 - objetos `CHARACTER`, literais `#\`, strings UTF-8 indexadas por ponto de

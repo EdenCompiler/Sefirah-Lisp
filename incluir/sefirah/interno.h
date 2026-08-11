@@ -64,15 +64,37 @@ typedef struct SefValoresSalvos {
 typedef enum SefTipoControle {
     SEF_CONTROLE_BLOCO,
     SEF_CONTROLE_CAPTURA,
-    SEF_CONTROLE_LIMPEZA
+    SEF_CONTROLE_LIMPEZA,
+    SEF_CONTROLE_REINICIO
 } SefTipoControle;
+
+typedef struct SefReinicioDinamico SefReinicioDinamico;
+typedef struct SefHandlerDinamico SefHandlerDinamico;
 
 typedef struct SefQuadroControle {
     SefTipoControle tipo;
     SefValor nome_ou_etiqueta;
     jmp_buf salto;
     struct SefQuadroControle *anterior;
+    SefReinicioDinamico *reinicios_anteriores;
+    SefHandlerDinamico *handlers_anteriores;
 } SefQuadroControle;
+
+struct SefReinicioDinamico {
+    SefValor nome;
+    SefValor parametros;
+    SefValor corpo;
+    SefValor ambiente;
+    SefQuadroControle *destino;
+    SefReinicioDinamico *anterior;
+};
+
+struct SefHandlerDinamico {
+    SefValor tipo;
+    SefValor funcao;
+    SefHandlerDinamico *grupo_anterior;
+    SefHandlerDinamico *anterior;
+};
 
 struct SefRaiz {
     SefRuntime *runtime;
@@ -179,8 +201,14 @@ struct SefRuntime {
     SefValor erro_padrao;
 
     SefQuadroControle *controle;
+    SefReinicioDinamico *reinicios;
+    SefHandlerDinamico *handlers;
+    SefHandlerDinamico *handlers_visiveis;
     SefQuadroControle *destino_transferencia;
     SefValor valor_transferencia;
+    SefValor parametros_transferencia;
+    SefValor corpo_transferencia;
+    SefValor ambiente_transferencia;
     SefValor *valores_multiplos;
     size_t quantidade_valores;
     size_t capacidade_valores;
@@ -295,6 +323,10 @@ SefValor sef_aplicar(SefRuntime *runtime, SefValor funcao, SefValor argumentos, 
 
 bool sef_primitivas_instalar(SefRuntime *runtime, SefErro *erro);
 bool sef_primitivas_reconciliar(SefRuntime *runtime, SefErro *erro);
+bool sef_formas_especiais_reconciliar(SefRuntime *runtime, SefErro *erro);
+SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor argumentos,
+                              SefErro *erro);
+bool sef_condicao_sinalizar(SefRuntime *runtime, SefValor condicao, SefErro *erro);
 SefFuncaoNativa sef_primitiva_buscar(const char *nome);
 const char *sef_primitiva_nome(SefFuncaoNativa funcao);
 SefValor sef_primitiva_copy_seq(SefRuntime *runtime, SefValor argumentos, SefErro *erro);

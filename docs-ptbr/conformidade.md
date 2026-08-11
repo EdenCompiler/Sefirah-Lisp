@@ -25,7 +25,7 @@ ao ANSI Common Lisp.
 | Números | ◐ | Existem inteiros de largura fixa e doubles do hospedeiro; faltam bignums, razões, complexos, overflow exato e a biblioteca numérica completa. |
 | Packages | ◐ | Packages no heap, `DEFPACKAGE`, listas de uso, exportação, consulta exata do nome do símbolo, estado de consulta, símbolos qualificados e persistência em imagem funcionam; faltam importação, shadowing, apelidos e uninterning. |
 | Streams | ◐ | Streams padrão/de arquivo e I/O textual básico funcionam. Faltam streams compostos, element types, semântica de pathnames e o protocolo completo de designadores de stream. |
-| Condições | ◐ | Objetos de condição, `ERROR`, `HANDLER-CASE` e `IGNORE-ERRORS` funcionam; faltam restarts, binding de handlers, hierarquia padrão completa e integração com debugger. |
+| Condições | ◐ | Objetos de condição, `ERROR`, `SIGNAL`, `HANDLER-BIND` com escopo dinâmico, `HANDLER-CASE`, `IGNORE-ERRORS`, um protocolo inicial nomeado de `RESTART-CASE`/invocação/descoberta e cinco auxiliares padrão de restart nomeado funcionam; faltam objetos restart de primeira classe, hierarquia padrão completa e integração com debugger. |
 | CLOS e MOP | — | Classes, funções genéricas, combinação de métodos e protocolo de metaobjetos não estão implementados. |
 | Compilação | ◐ | `COMPILE` atende ao subconjunto i64 documentado por meio da IR e dos backends nativos próprios; faltam compilação Lisp geral e ambientes de compilação ANSI. |
 
@@ -52,6 +52,13 @@ ao ANSI Common Lisp.
   ainda não são expostos.
 - Símbolos keyword são externos, autoavaliáveis, vinculados a si próprios e
   protegidos contra atribuição, mas as property lists de símbolos estão pendentes.
+- `FIND-RESTART` e `COMPUTE-RESTARTS` devolvem atualmente símbolos com os nomes
+  dos restarts, não objetos restart de primeira classe. Associação a condições
+  e as opções `:REPORT`, `:TEST` e `:INTERACTIVE` de `RESTART-CASE` ainda não
+  foram implementadas.
+- `SIGNAL` e `ERROR` aceitam atualmente um objeto condição ou uma única string.
+  O protocolo completo de argumentos designadores de condição e a hierarquia
+  padrão de tipos continuam pendentes.
 
 Os testes da implementação ficam em `testes/teste_nucleo.c`, com cobertura
 direcionada da migração v6 em `testes/teste_imagem_legada.c`; o trabalho mais
@@ -62,6 +69,9 @@ são comparados às entradas do Common Lisp HyperSpec para
 [`FIND-SYMBOL`](https://www.lispworks.com/documentation/HyperSpec/Body/f_find_s.htm),
 [`SYMBOLP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symbol.htm),
 [`SYMBOL-NAME`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symb_2.htm),
-[`SYMBOL-PACKAGE`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symb_3.htm)
+[`SYMBOL-PACKAGE`](https://www.lispworks.com/documentation/HyperSpec/Body/f_symb_3.htm),
+[`CONSTANTP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm),
+[`HANDLER-BIND`](https://www.lispworks.com/documentation/HyperSpec/Body/m_handle.htm),
+[`SIGNAL`](https://www.lispworks.com/documentation/HyperSpec/Body/f_signal.htm)
 e
-[`CONSTANTP`](https://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm).
+[`RESTART-CASE`](https://www.lispworks.com/documentation/HyperSpec/Body/m_rst_ca.htm).

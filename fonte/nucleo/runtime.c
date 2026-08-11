@@ -6,6 +6,58 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const char *formas_common_lisp[] = {"QUOTE",
+                                           "QUASIQUOTE",
+                                           "IF",
+                                           "PROGN",
+                                           "LAMBDA",
+                                           "FUNCTION",
+                                           "DEFUN",
+                                           "DEFMACRO",
+                                           "DEFVAR",
+                                           "DEFPARAMETER",
+                                           "SETQ",
+                                           "SETF",
+                                           "LET",
+                                           "LET*",
+                                           "COND",
+                                           "MULTIPLE-VALUE-BIND",
+                                           "MULTIPLE-VALUE-LIST",
+                                           "MULTIPLE-VALUE-PROG1",
+                                           "MULTIPLE-VALUE-CALL",
+                                           "NTH-VALUE",
+                                           "WHEN",
+                                           "UNLESS",
+                                           "FLET",
+                                           "LABELS",
+                                           "MACROLET",
+                                           "BLOCK",
+                                           "RETURN-FROM",
+                                           "RETURN",
+                                           "CATCH",
+                                           "THROW",
+                                           "UNWIND-PROTECT",
+                                           "IGNORE-ERRORS",
+                                           "HANDLER-CASE",
+                                           "HANDLER-BIND",
+                                           "RESTART-CASE",
+                                           "AND",
+                                           "OR",
+                                           "IN-PACKAGE",
+                                           "DEFPACKAGE"};
+
+bool sef_formas_especiais_reconciliar(SefRuntime *runtime, SefErro *erro) {
+    for (size_t i = 0; i < sizeof(formas_common_lisp) / sizeof(formas_common_lisp[0]); i++) {
+        SefValor forma =
+            sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, formas_common_lisp[i],
+                                    strlen(formas_common_lisp[i]), erro);
+        if (forma == NULL ||
+            !sef_pacote_exportar(runtime, runtime->pacote_common_lisp, forma, erro))
+            return false;
+    }
+    return true;
+}
+
 void sef_erro_limpar(SefErro *erro) {
     if (erro == NULL)
         return;
@@ -141,6 +193,9 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria) {
     marcar(runtime->saida_padrao);
     marcar(runtime->erro_padrao);
     marcar(runtime->valor_transferencia);
+    marcar(runtime->parametros_transferencia);
+    marcar(runtime->corpo_transferencia);
+    marcar(runtime->ambiente_transferencia);
     for (size_t i = 0; i < runtime->quantidade_valores; i++)
         marcar(runtime->valores_multiplos[i]);
     for (size_t i = 0; i < runtime->valores_transferencia.quantidade; i++)
@@ -149,6 +204,18 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria) {
         marcar(raiz->valor);
     for (SefQuadroControle *quadro = runtime->controle; quadro != NULL; quadro = quadro->anterior)
         marcar(quadro->nome_ou_etiqueta);
+    for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
+         reinicio = reinicio->anterior) {
+        marcar(reinicio->nome);
+        marcar(reinicio->parametros);
+        marcar(reinicio->corpo);
+        marcar(reinicio->ambiente);
+    }
+    for (SefHandlerDinamico *handler = runtime->handlers; handler != NULL;
+         handler = handler->anterior) {
+        marcar(handler->tipo);
+        marcar(handler->funcao);
+    }
     marcar(raiz_temporaria);
     for (size_t i = 0; i < runtime->quantidade_simbolos; i++) {
         marcar(runtime->simbolos[i]);
@@ -238,51 +305,8 @@ SefRuntime *sef_runtime_criar(SefErro *erro) {
                                   erro))
             goto falhou;
     }
-    static const char *formas_common_lisp[] = {"QUOTE",
-                                               "QUASIQUOTE",
-                                               "IF",
-                                               "PROGN",
-                                               "LAMBDA",
-                                               "FUNCTION",
-                                               "DEFUN",
-                                               "DEFMACRO",
-                                               "DEFVAR",
-                                               "DEFPARAMETER",
-                                               "SETQ",
-                                               "SETF",
-                                               "LET",
-                                               "LET*",
-                                               "COND",
-                                               "MULTIPLE-VALUE-BIND",
-                                               "MULTIPLE-VALUE-LIST",
-                                               "MULTIPLE-VALUE-PROG1",
-                                               "MULTIPLE-VALUE-CALL",
-                                               "NTH-VALUE",
-                                               "WHEN",
-                                               "UNLESS",
-                                               "FLET",
-                                               "LABELS",
-                                               "MACROLET",
-                                               "BLOCK",
-                                               "RETURN-FROM",
-                                               "RETURN",
-                                               "CATCH",
-                                               "THROW",
-                                               "UNWIND-PROTECT",
-                                               "IGNORE-ERRORS",
-                                               "HANDLER-CASE",
-                                               "AND",
-                                               "OR",
-                                               "IN-PACKAGE",
-                                               "DEFPACKAGE"};
-    for (size_t i = 0; i < sizeof(formas_common_lisp) / sizeof(formas_common_lisp[0]); i++) {
-        SefValor forma =
-            sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, formas_common_lisp[i],
-                                    strlen(formas_common_lisp[i]), erro);
-        if (forma == NULL ||
-            !sef_pacote_exportar(runtime, runtime->pacote_common_lisp, forma, erro))
-            goto falhou;
-    }
+    if (!sef_formas_especiais_reconciliar(runtime, erro))
+        goto falhou;
     SefValor simbolo_pacote =
         sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, "*PACKAGE*", 9, erro);
     if (simbolo_pacote == NULL ||
@@ -302,6 +326,16 @@ falhou:
 void sef_runtime_destruir(SefRuntime *runtime) {
     if (runtime == NULL)
         return;
+    while (runtime->reinicios != NULL) {
+        SefReinicioDinamico *anterior = runtime->reinicios->anterior;
+        free(runtime->reinicios);
+        runtime->reinicios = anterior;
+    }
+    while (runtime->handlers != NULL) {
+        SefHandlerDinamico *anterior = runtime->handlers->anterior;
+        free(runtime->handlers);
+        runtime->handlers = anterior;
+    }
     SefRaiz *raiz = runtime->raizes;
     while (raiz != NULL) {
         SefRaiz *proxima = raiz->proxima;

@@ -36,7 +36,7 @@ not part of the public format.
 | functions and macros | `DEFUN`, `DEFMACRO`, `FLET`, `LABELS`, `MACROLET`, `&REST` |
 | composition | `COND`, `WHEN`, `UNLESS`, `AND`, `OR`, quasiquote, `,`, and `,@` |
 | control | `BLOCK`, `RETURN-FROM`, `RETURN`, `CATCH`, `THROW`, `UNWIND-PROTECT` |
-| conditions | `ERROR`, `HANDLER-CASE`, `IGNORE-ERRORS` |
+| conditions and restarts | `ERROR`, `SIGNAL`, `HANDLER-BIND`, `HANDLER-CASE`, `IGNORE-ERRORS`, `RESTART-CASE`, `INVOKE-RESTART`, discovery, and standard named-restart helpers |
 | multiple values | `VALUES`, `VALUES-LIST`, `MULTIPLE-VALUE-BIND`, `MULTIPLE-VALUE-LIST`, `MULTIPLE-VALUE-CALL`, `MULTIPLE-VALUE-PROG1`, `NTH-VALUE` |
 | lists | `CONS`, `CAR`, `CDR`, `FIRST`, `REST`, `LIST`, `APPEND`, `NCONC`, `NTH`, `NTHCDR`, `LAST` |
 | vectors | `VECTOR`, `MAKE-ARRAY`, `AREF`, `SVREF`, `VECTORP`, `ARRAYP` |
@@ -348,6 +348,39 @@ assignment through the implemented binding forms and `SET`.
 
 Packages, use relationships, and symbol identity are part of the image.
 
+## Conditions and named restarts
+
+The initial condition layer catches errors with `HANDLER-CASE` or
+`IGNORE-ERRORS`. `HANDLER-BIND` installs dynamically scoped functions called
+in the signaler's context by `SIGNAL` and `ERROR`. A handler can return to
+decline, or transfer control by choosing a recovery choice established with
+`RESTART-CASE`. `INVOKE-RESTART` runs every intervening `UNWIND-PROTECT`
+cleanup before entering the selected clause. Normal and restarted paths
+preserve their multiple values.
+
+```lisp
+(restart-case
+    (handler-bind ((error (lambda (condition)
+                            (invoke-restart 'use-value 42))))
+      (error "recoverable"))
+  (use-value (value)
+    (+ value 1))) ; => 43
+
+(restart-case
+    (list (find-restart 'retry)
+          (compute-restarts))
+  (retry () :retried)) ; => (RETRY (RETRY))
+```
+
+This is deliberately an initial protocol. Restart names are the temporary
+restart representation returned by `FIND-RESTART` and `COMPUTE-RESTARTS`;
+first-class restart objects, condition association, the full standard
+condition hierarchy and type specifiers, and the `:REPORT`, `:TEST`, and
+`:INTERACTIVE` clause options remain pending. `ABORT`, `CONTINUE`,
+`MUFFLE-WARNING`, `STORE-VALUE`, and `USE-VALUE` invoke an active restart of
+the corresponding name; their optional condition filtering is not available
+yet.
+
 ## Streams and files
 
 `*STANDARD-INPUT*`, `*STANDARD-OUTPUT*`, and `*ERROR-OUTPUT*` belong to the host
@@ -382,8 +415,8 @@ characters, hash tables, symbols, packages, environments, functions, macros,
 conditions, and restorable resources. Saving uses a temporary file and atomic
 replacement. C primitives are restored by name, never by address. The v9
 reader accepts v6, v7, and v8 images; loading performs targeted migrations that
-restore newly available primitives and canonical `NIL` package membership,
-while saving upgrades the result to v9.
+restore newly available primitives, exported special-form symbols, and
+canonical `NIL` package membership, while saving upgrades the result to v9.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
@@ -494,7 +527,7 @@ compiled functions, conditions, hash tables, and shared libraries.
 - Unicode operations without normalization, grapheme clusters, or case
   folding;
 - division always produces `FLOAT`;
-- incomplete conditions and restarts;
+- conditions without the complete hierarchy or first-class restart objects;
 - compilation limited to the i64 subset;
 - FFI without general floats, pointers, structs, and callbacks;
 - GUI without vector fonts, HiDPI, IME, and accessibility;

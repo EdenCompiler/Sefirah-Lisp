@@ -36,7 +36,7 @@ faz parte do formato público.
 | funções e macros | `DEFUN`, `DEFMACRO`, `FLET`, `LABELS`, `MACROLET`, `&REST` |
 | composição | `COND`, `WHEN`, `UNLESS`, `AND`, `OR`, quasiquote, `,` e `,@` |
 | controle | `BLOCK`, `RETURN-FROM`, `RETURN`, `CATCH`, `THROW`, `UNWIND-PROTECT` |
-| condições | `ERROR`, `HANDLER-CASE`, `IGNORE-ERRORS` |
+| condições e restarts | `ERROR`, `SIGNAL`, `HANDLER-BIND`, `HANDLER-CASE`, `IGNORE-ERRORS`, `RESTART-CASE`, `INVOKE-RESTART`, descoberta e auxiliares padrão de restarts nomeados |
 | valores múltiplos | `VALUES`, `VALUES-LIST`, `MULTIPLE-VALUE-BIND`, `MULTIPLE-VALUE-LIST`, `MULTIPLE-VALUE-CALL`, `MULTIPLE-VALUE-PROG1`, `NTH-VALUE` |
 | listas | `CONS`, `CAR`, `CDR`, `FIRST`, `REST`, `LIST`, `APPEND`, `NCONC`, `NTH`, `NTHCDR`, `LAST` |
 | vetores | `VECTOR`, `MAKE-ARRAY`, `AREF`, `SVREF`, `VECTORP`, `ARRAYP` |
@@ -353,6 +353,39 @@ atribuição pelas formas de binding implementadas e por `SET`.
 
 Packages, relações de uso e identidade dos símbolos fazem parte da imagem.
 
+## Condições e restarts nomeados
+
+A camada inicial de condições captura erros com `HANDLER-CASE` ou
+`IGNORE-ERRORS`. `HANDLER-BIND` instala funções com escopo dinâmico, chamadas no
+contexto do sinalizador por `SIGNAL` e `ERROR`. Um handler pode retornar para
+recusar ou transferir o controle ao escolher uma recuperação estabelecida com
+`RESTART-CASE`. `INVOKE-RESTART` executa todas as limpezas intermediárias de
+`UNWIND-PROTECT` antes de entrar na cláusula escolhida. Os caminhos normal e
+reiniciado preservam seus valores múltiplos.
+
+```lisp
+(restart-case
+    (handler-bind ((error (lambda (condicao)
+                            (invoke-restart 'usar-valor 42))))
+      (error "recuperavel"))
+  (usar-valor (valor)
+    (+ valor 1))) ; => 43
+
+(restart-case
+    (list (find-restart 'repetir)
+          (compute-restarts))
+  (repetir () :repetido)) ; => (REPETIR (REPETIR))
+```
+
+Este é propositalmente um protocolo inicial. Os nomes de restart são a
+representação temporária devolvida por `FIND-RESTART` e `COMPUTE-RESTARTS`;
+objetos restart de primeira classe, associação a condições, a hierarquia e os
+especificadores de tipo padrão completos e as opções de cláusula `:REPORT`,
+`:TEST` e `:INTERACTIVE` continuam pendentes. `ABORT`, `CONTINUE`,
+`MUFFLE-WARNING`, `STORE-VALUE` e `USE-VALUE` invocam um restart ativo com o
+nome correspondente; a filtragem pela condição opcional ainda não está
+disponível.
+
 ## Streams e arquivos
 
 `*STANDARD-INPUT*`, `*STANDARD-OUTPUT*` e `*ERROR-OUTPUT*` pertencem ao processo
@@ -388,7 +421,8 @@ condições e recursos restauráveis. A gravação usa arquivo temporário e
 substituição atômica. Primitivas C são restauradas pelo nome, nunca pelo
 endereço. O leitor v9 aceita imagens v6, v7 e v8; a abertura realiza migrações
 direcionadas que restauram primitivas novas e a associação canônica de `NIL` ao
-package, enquanto uma nova gravação atualiza o resultado para v9.
+package, além dos símbolos exportados de formas especiais novas, enquanto uma
+nova gravação atualiza o resultado para v9.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
@@ -500,7 +534,7 @@ funções compiladas, condições e bibliotecas compartilhadas.
 - arrays limitados a vetores simples unidimensionais;
 - operações Unicode sem normalização, grapheme clusters ou case folding;
 - divisão sempre produz `FLOAT`;
-- condições e restarts ainda incompletos;
+- condições sem a hierarquia completa ou objetos restart de primeira classe;
 - compilação limitada ao subconjunto i64;
 - FFI sem floats, ponteiros, structs e callbacks gerais;
 - GUI sem fontes vetoriais, HiDPI, IME e acessibilidade;

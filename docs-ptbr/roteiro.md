@@ -53,6 +53,11 @@ não significa que o marco inteiro esteja concluído.
 - [x] Namespaces distintos de valor/função e controle não local com limpeza.
 - [x] Objetos iniciais de condição e tratamento recuperável por
   `HANDLER-CASE`.
+- [x] Protocolo dinâmico de `HANDLER-BIND`/`SIGNAL` integrado aos restarts ativos.
+- [x] Protocolo inicial de restarts nomeados com descoberta dinâmica,
+  invocação, valores múltiplos e limpeza por `UNWIND-PROTECT`.
+- [x] Auxiliares nomeados `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`
+  e `USE-VALUE`.
 
 ### Compilador
 

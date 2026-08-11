@@ -82,6 +82,20 @@ transferências não locais preservam o conjunto completo. O mesmo analisador de
 forma completa atende ao REPL da CLI e ao ouvinte gráfico, evitando divergência
 no comportamento multilinha.
 
+Restarts nomeados dinâmicos reutilizam a pilha de controle não local. Cada
+quadro registra o limite da pilha de restarts ativo quando foi instalado. As
+transferências descartam registros internos antes do salto, enquanto quadros
+de limpeza executam primeiro; os dados da cláusula escolhida permanecem
+enraizados no estado de transferência até seu ambiente léxico ser reconstruído.
+Assim, um restart não retém um destino `setjmp` morto depois de `RETURN-FROM`,
+`THROW` ou retorno normal.
+
+Handlers dinâmicos usam uma pilha paralela no runtime. Os bindings de um mesmo
+`HANDLER-BIND` compartilham um limite externo; selecionar um handler mascara o
+grupo completo enquanto ele executa. Um handler que retorna recusa o tratamento
+e a busca prossegue nos grupos externos; um handler que invoca um restart segue
+as mesmas regras de limpeza e limites das demais transferências não locais.
+
 ## Sessão da IDE
 
 `sefirah_ide_nucleo` possui o buffer editável, entrada do ouvinte, transcrição,
@@ -165,9 +179,10 @@ carregador reconhece v6, v7, v8 e v9; uma imagem antiga carregada e salva
 novamente é emitida no formato corrente. Depois de validar o grafo, uma
 migração direcionada restaura a associação canônica de `COMMON-LISP:NIL`,
 remove conflitos locais legados de `NIL` nos packages que usam `COMMON-LISP` e
-reinstala por nome os membros ausentes do conjunto atual de primitivas.
-Definições Lisp de função já existentes são preservadas. Assim, um mundo antigo
-recebe novos built-ins sem serializar nem confiar em endereços C obsoletos.
+reinstala por nome os membros ausentes do conjunto atual de primitivas junto
+aos símbolos exportados de formas especiais. Definições Lisp de função já
+existentes são preservadas. Assim, um mundo antigo recebe novos built-ins sem
+serializar nem confiar em endereços C obsoletos.
 
 Recursos do processo seguem uma política explícita:
 

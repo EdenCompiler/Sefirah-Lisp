@@ -980,15 +980,14 @@ static SefValor primitiva_symbolp(SefRuntime *runtime, SefValor argumentos, SefE
     if (!quantidade(runtime, argumentos, 1, 1, "SYMBOLP", erro))
         return NULL;
     return sef_valor_e_simbolo_logico(runtime, car(argumentos)) ? runtime->verdadeiro
-                                                                 : runtime->nulo;
+                                                                : runtime->nulo;
 }
 
 static SefValor primitiva_keywordp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "KEYWORDP", erro))
         return NULL;
     SefValor valor = car(argumentos);
-    return valor->tipo == SEF_TIPO_SIMBOLO &&
-                   valor->como.simbolo.pacote == runtime->pacote_keyword
+    return valor->tipo == SEF_TIPO_SIMBOLO && valor->como.simbolo.pacote == runtime->pacote_keyword
                ? runtime->verdadeiro
                : runtime->nulo;
 }
@@ -1334,14 +1333,159 @@ static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErr
     if (!quantidade(runtime, argumentos, 1, 1, "ERROR", erro))
         return NULL;
     SefValor designador = car(argumentos);
+    SefValor condicao = designador;
     if (designador->tipo == SEF_TIPO_TEXTO) {
-        sef_erro_definir(erro, 0, 0, "%s", designador->como.texto.dados);
-    } else if (designador->tipo == SEF_TIPO_CONDICAO) {
-        sef_erro_definir(erro, 0, 0, "%s", designador->como.condicao.mensagem->como.texto.dados);
-    } else {
+        SefValor classe = sef_simbolo_internar(runtime, "ERROR", 5, erro);
+        condicao = classe == NULL
+                       ? NULL
+                       : sef_condicao_nova(runtime, classe, designador->como.texto.dados, erro);
+    } else if (designador->tipo != SEF_TIPO_CONDICAO) {
         sef_erro_definir(erro, 0, 0, "ERROR exige texto ou condicao");
+        return NULL;
+    }
+    if (condicao == NULL || !sef_condicao_sinalizar(runtime, condicao, erro))
+        return NULL;
+    sef_erro_definir(erro, 0, 0, "%s", condicao->como.condicao.mensagem->como.texto.dados);
+    return NULL;
+}
+
+static SefValor primitiva_signal(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "SIGNAL", erro))
+        return NULL;
+    SefValor designador = car(argumentos);
+    SefValor condicao = designador;
+    if (designador->tipo == SEF_TIPO_TEXTO) {
+        SefValor classe = sef_simbolo_internar(runtime, "CONDITION", 9, erro);
+        condicao = classe == NULL
+                       ? NULL
+                       : sef_condicao_nova(runtime, classe, designador->como.texto.dados, erro);
+    } else if (designador->tipo != SEF_TIPO_CONDICAO) {
+        sef_erro_definir(erro, 0, 0, "SIGNAL exige texto ou condicao");
+        return NULL;
+    }
+    if (condicao == NULL || !sef_condicao_sinalizar(runtime, condicao, erro))
+        return NULL;
+    return sef_valores_definir_um(runtime, runtime->nulo, erro) ? runtime->nulo : NULL;
+}
+
+static bool reinicio_condicao_suportada(SefRuntime *runtime, SefValor argumentos, const char *nome,
+                                        SefErro *erro) {
+    if (argumentos == runtime->nulo || cdr(argumentos) == runtime->nulo)
+        return true;
+    if (car(cdr(argumentos)) == runtime->nulo)
+        return true;
+    sef_erro_definir(erro, 0, 0, "%s ainda nao associa reinicios a uma condicao especifica", nome);
+    return false;
+}
+
+static SefReinicioDinamico *reinicio_encontrar(SefRuntime *runtime, SefValor designador) {
+    for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
+         reinicio = reinicio->anterior) {
+        if (reinicio->nome == designador)
+            return reinicio;
     }
     return NULL;
+}
+
+static SefValor primitiva_invoke_restart(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, (size_t)-1, "INVOKE-RESTART", erro))
+        return NULL;
+    return sef_reinicio_invocar(runtime, car(argumentos), cdr(argumentos), erro);
+}
+
+static SefValor primitiva_find_restart(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "FIND-RESTART", erro) ||
+        !reinicio_condicao_suportada(runtime, argumentos, "FIND-RESTART", erro))
+        return NULL;
+    SefValor designador = car(argumentos);
+    if (!sef_valor_e_simbolo_logico(runtime, designador)) {
+        sef_erro_definir(erro, 0, 0, "FIND-RESTART exige um simbolo ou NIL");
+        return NULL;
+    }
+    SefReinicioDinamico *reinicio = reinicio_encontrar(runtime, designador);
+    return reinicio == NULL ? runtime->nulo : reinicio->nome;
+}
+
+static SefValor primitiva_compute_restarts(SefRuntime *runtime, SefValor argumentos,
+                                           SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 0, 1, "COMPUTE-RESTARTS", erro))
+        return NULL;
+    if (argumentos != runtime->nulo && car(argumentos) != runtime->nulo) {
+        sef_erro_definir(erro, 0, 0, "COMPUTE-RESTARTS ainda nao filtra por condicao especifica");
+        return NULL;
+    }
+    SefValor invertida = runtime->nulo;
+    for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
+         reinicio = reinicio->anterior) {
+        invertida = sef_par_novo(runtime, reinicio->nome, invertida, erro);
+        if (invertida == NULL)
+            return NULL;
+    }
+    return sef_lista_inverter(runtime, invertida, erro);
+}
+
+static SefValor primitiva_restart_name(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "RESTART-NAME", erro))
+        return NULL;
+    SefValor reinicio = car(argumentos);
+    if (!sef_valor_e_simbolo_logico(runtime, reinicio)) {
+        sef_erro_definir(erro, 0, 0,
+                         "RESTART-NAME exige o simbolo que representa um reinicio inicial");
+        return NULL;
+    }
+    return reinicio;
+}
+
+static SefValor reinicio_padrao_invocar(SefRuntime *runtime, const char *nome,
+                                        SefValor argumentos_reinicio, SefValor condicao,
+                                        SefErro *erro) {
+    if (condicao != runtime->nulo) {
+        sef_erro_definir(erro, 0, 0, "%s ainda nao seleciona reinicio por condicao especifica",
+                         nome);
+        return NULL;
+    }
+    SefValor simbolo =
+        sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, nome, strlen(nome), erro);
+    return simbolo == NULL ? NULL
+                           : sef_reinicio_invocar(runtime, simbolo, argumentos_reinicio, erro);
+}
+
+static SefValor primitiva_abort(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 0, 1, "ABORT", erro))
+        return NULL;
+    SefValor condicao = argumentos == runtime->nulo ? runtime->nulo : car(argumentos);
+    return reinicio_padrao_invocar(runtime, "ABORT", runtime->nulo, condicao, erro);
+}
+
+static SefValor primitiva_continue(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 0, 1, "CONTINUE", erro))
+        return NULL;
+    SefValor condicao = argumentos == runtime->nulo ? runtime->nulo : car(argumentos);
+    return reinicio_padrao_invocar(runtime, "CONTINUE", runtime->nulo, condicao, erro);
+}
+
+static SefValor primitiva_muffle_warning(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 0, 1, "MUFFLE-WARNING", erro))
+        return NULL;
+    SefValor condicao = argumentos == runtime->nulo ? runtime->nulo : car(argumentos);
+    return reinicio_padrao_invocar(runtime, "MUFFLE-WARNING", runtime->nulo, condicao, erro);
+}
+
+static SefValor reinicio_com_valor_invocar(SefRuntime *runtime, SefValor argumentos,
+                                           const char *nome, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, nome, erro))
+        return NULL;
+    SefValor condicao = cdr(argumentos) == runtime->nulo ? runtime->nulo : car(cdr(argumentos));
+    SefValor valores = sef_par_novo(runtime, car(argumentos), runtime->nulo, erro);
+    return valores == NULL ? NULL : reinicio_padrao_invocar(runtime, nome, valores, condicao, erro);
+}
+
+static SefValor primitiva_store_value(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    return reinicio_com_valor_invocar(runtime, argumentos, "STORE-VALUE", erro);
+}
+
+static SefValor primitiva_use_value(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    return reinicio_com_valor_invocar(runtime, argumentos, "USE-VALUE", erro);
 }
 
 static bool instalar(SefRuntime *runtime, const char *nome, SefFuncaoNativa funcao,
@@ -1462,6 +1606,16 @@ static const struct {
                   {"COMPILE-EXTERNAL-I64", primitiva_compile_external_i64},
                   {"COMPILED-FUNCTION-P", primitiva_compiled_function_p},
                   {"ERROR", primitiva_error},
+                  {"SIGNAL", primitiva_signal},
+                  {"INVOKE-RESTART", primitiva_invoke_restart},
+                  {"FIND-RESTART", primitiva_find_restart},
+                  {"COMPUTE-RESTARTS", primitiva_compute_restarts},
+                  {"RESTART-NAME", primitiva_restart_name},
+                  {"ABORT", primitiva_abort},
+                  {"CONTINUE", primitiva_continue},
+                  {"MUFFLE-WARNING", primitiva_muffle_warning},
+                  {"STORE-VALUE", primitiva_store_value},
+                  {"USE-VALUE", primitiva_use_value},
                   {"MAKE-PACKAGE", primitiva_make_package},
                   {"FIND-PACKAGE", primitiva_find_package},
                   {"PACKAGE-NAME", primitiva_package_name},

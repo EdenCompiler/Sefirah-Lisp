@@ -303,13 +303,13 @@ int main(int argc, char **argv) {
     char rotulo_componente[64];
     SefValor componente_sdk = NULL;
     verificar(sef_valor_quantidade_componentes(runtime, vetor_sdk) == 3 &&
-                  sef_valor_componente(runtime, vetor_sdk, 2, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, vetor_sdk, 2, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "[2]") == 0 &&
                   sef_valor_como_inteiro(componente_sdk) == 42,
               "SDK inspecionou componente estrutural de vetor");
-    verificar(!sef_valor_componente(runtime, vetor_sdk, 3, &componente_sdk,
-                                    rotulo_componente, sizeof(rotulo_componente)),
+    verificar(!sef_valor_componente(runtime, vetor_sdk, 3, &componente_sdk, rotulo_componente,
+                                    sizeof(rotulo_componente)),
               "SDK rejeitou componente estrutural inexistente");
     SefValor vetor_criado = sef_vetor_criar(runtime, 2, sef_vetor_obter(vetor_sdk, 2), &erro);
     verificar(vetor_criado != NULL && sef_vetor_tamanho(vetor_criado) == 2 &&
@@ -317,47 +317,45 @@ int main(int argc, char **argv) {
               "SDK criou vetor inicializado");
     SefValor par_sdk = avaliar(runtime, "(cons 40 42)");
     verificar(sef_valor_quantidade_componentes(runtime, par_sdk) == 2 &&
-                  sef_valor_componente(runtime, par_sdk, 0, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, par_sdk, 0, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "PRIMEIRO") == 0 &&
                   sef_valor_como_inteiro(componente_sdk) == 40 &&
-                  sef_valor_componente(runtime, par_sdk, 1, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, par_sdk, 1, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "RESTO") == 0 &&
                   sef_valor_como_inteiro(componente_sdk) == 42,
               "SDK expôs os dois componentes de um par");
     SefValor nulo_sdk = avaliar(runtime, "nil");
     verificar(sef_valor_quantidade_componentes(runtime, nulo_sdk) == 1 &&
-                  sef_valor_componente(runtime, nulo_sdk, 0, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, nulo_sdk, 0, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "PACOTE") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "PACKAGE") == 0,
               "SDK preservou a identidade simbolica de NIL na introspeccao");
     SefValor funcao_sdk = avaliar(runtime, "#'(lambda (x) (+ x 1))");
     verificar(sef_valor_quantidade_componentes(runtime, funcao_sdk) == 3 &&
-                  sef_valor_componente(runtime, funcao_sdk, 2, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, funcao_sdk, 2, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "AMBIENTE") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "SEFIRAH::ENVIRONMENT") == 0 &&
                   sef_valor_quantidade_componentes(runtime, componente_sdk) >= 1,
               "SDK inspecionou funcao e seu ambiente lexico");
-    SefValor condicao_sdk =
-        avaliar(runtime, "(handler-case (error \"falha sdk\") (error (c) c))");
+    SefValor condicao_sdk = avaliar(runtime, "(handler-case (error \"falha sdk\") (error (c) c))");
     verificar(sef_valor_quantidade_componentes(runtime, condicao_sdk) == 2 &&
-                  sef_valor_componente(runtime, condicao_sdk, 1, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, condicao_sdk, 1, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "MENSAGEM") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "STRING") == 0,
               "SDK expôs classe e mensagem da condicao");
-    SefValor hash_sdk = avaliar(runtime,
-                                "(let ((h (make-hash-table))) "
-                                "(setf (gethash 'chave h) 42) h)");
+    SefValor hash_sdk = avaliar(runtime, "(let ((h (make-hash-table))) "
+                                         "(setf (gethash 'chave h) 42) h)");
     verificar(sef_valor_quantidade_componentes(runtime, hash_sdk) == 2 &&
-                  sef_valor_componente(runtime, hash_sdk, 0, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, hash_sdk, 0, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "CHAVE 1") == 0 &&
-                  sef_valor_componente(runtime, hash_sdk, 1, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  sef_valor_componente(runtime, hash_sdk, 1, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "VALOR 1") == 0 &&
                   sef_valor_como_inteiro(componente_sdk) == 42,
               "SDK inspecionou pares de chave e valor da hash table");
@@ -468,6 +466,86 @@ int main(int argc, char **argv) {
                     "(handler-case (error \"falha controlada\") "
                     "(error (condicao) (list (type-of condicao) condicao)))",
                     "(ERROR #<ERROR falha controlada>)");
+    verificar_texto(runtime,
+                    "(restart-case (invoke-restart 'use-value 42) "
+                    "(use-value (valor) (+ valor 1)))",
+                    "43");
+    verificar_texto(runtime,
+                    "(restart-case "
+                    "(list (find-restart 'a) (compute-restarts) "
+                    "(restart-name (find-restart 'a))) "
+                    "(a () :a) (b () :b))",
+                    "(A (A B) A)");
+    verificar_texto(runtime,
+                    "(multiple-value-list "
+                    "(restart-case (values 40 41) (substituir () 0)))",
+                    "(40 41)");
+    verificar_texto(runtime,
+                    "(multiple-value-list "
+                    "(restart-case (invoke-restart 'trocar 40 41) "
+                    "(trocar (a b) (values b a))))",
+                    "(41 40)");
+    verificar_texto(runtime,
+                    "(list (restart-case (use-value 44) (use-value (x) x)) "
+                    "(restart-case (store-value 45) (store-value (x) x)) "
+                    "(restart-case (continue) (continue () 46)) "
+                    "(restart-case (abort) (abort () 47)) "
+                    "(restart-case (muffle-warning) (muffle-warning () 48)))",
+                    "(44 45 46 47 48)");
+    verificar_texto(runtime,
+                    "(restart-case (restart-case (invoke-restart 'mesmo) "
+                    "(mesmo () 1)) (mesmo () 2))",
+                    "1");
+    verificar_texto(runtime,
+                    "(let ((limpo nil)) "
+                    "(list (restart-case "
+                    "(unwind-protect (invoke-restart 'usar 42) (setq limpo t)) "
+                    "(usar (valor) valor)) limpo))",
+                    "(42 T)");
+    verificar_texto(runtime,
+                    "(list (block fim "
+                    "(restart-case (return-from fim 42) (temporario () 0))) "
+                    "(find-restart 'temporario))",
+                    "(42 NIL)");
+    verificar_texto(runtime,
+                    "(handler-case (invoke-restart 'ausente) "
+                    "(error (condicao) :reinicio-ausente))",
+                    ":REINICIO-AUSENTE");
+    verificar_texto(runtime,
+                    "(restart-case "
+                    "(handler-bind ((error (lambda (condicao) "
+                    "(invoke-restart 'use-value 42)))) "
+                    "(error \"recuperavel\")) "
+                    "(use-value (valor) valor))",
+                    "42");
+    verificar_texto(runtime,
+                    "(defun escolher-valor-do-handler (condicao) "
+                    "(invoke-restart 'usar-designador 43)) "
+                    "(restart-case "
+                    "(handler-bind ((error 'escolher-valor-do-handler)) "
+                    "(error \"designador\")) "
+                    "(usar-designador (valor) valor))",
+                    "43");
+    verificar_texto(runtime,
+                    "(let ((visto nil)) "
+                    "(list (handler-bind "
+                    "((condition (lambda (c) (setq visto :primeiro))) "
+                    "(condition (lambda (c) (setq visto :segundo)))) "
+                    "(signal \"aviso\")) visto))",
+                    "(NIL :PRIMEIRO)");
+    verificar_texto(runtime,
+                    "(let ((visto nil)) "
+                    "(handler-bind ((condition (lambda (c) (setq visto :externo)))) "
+                    "(handler-bind ((condition (lambda (c) (setq visto :interno)))) "
+                    "(signal \"aviso\"))) visto)",
+                    ":EXTERNO");
+    verificar_texto(runtime,
+                    "(let ((vazou nil)) "
+                    "(block fim (handler-bind "
+                    "((condition (lambda (c) (setq vazou t)))) "
+                    "(return-from fim 42))) "
+                    "(signal \"fora\") vazou)",
+                    "NIL");
     SefValor transiente = avaliar(runtime, "(list 'objeto 'retido 42)");
     SefRaiz *raiz = transiente == NULL ? NULL : sef_raiz_criar(runtime, transiente, &erro);
     verificar(raiz != NULL, "handle de raiz foi criado");
