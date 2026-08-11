@@ -95,9 +95,10 @@ same cleanup and stack-boundary rules as every other non-local transfer.
 ## IDE session
 
 `sefirah_ide_nucleo` owns the editable buffer, listener input, transcript,
-inspector, definition browser, incremental-installation history, current path,
-and runtime. It can execute, load, save, snapshot, and restore without a window,
-which makes behavior testable on CI. `sefirah_ide` only lays out the panels,
+inspector, definition browser, condition history, incremental-installation
+history, current path, and runtime. It can execute, load, save, snapshot, and
+restore without a window, which makes behavior testable on CI. `sefirah_ide`
+only lays out the panels,
 draws the state, and translates X11/Win32/Cocoa events into session actions.
 
 Inside the session engine, `historico.c` owns the bounded editor timeline and
@@ -112,6 +113,14 @@ objects without exposing the private object union to the IDE. World restoration
 opens the replacement image before releasing those roots and the old runtime,
 so a damaged or absent snapshot does not destroy the active world. Presentation
 code sees only formatted session state and never reaches into runtime internals.
+
+The runtime keeps the last unhandled condition rooted until the next evaluation
+and exposes it as a borrowed SDK value. The session converts that value into its
+own bounded set of public roots, so later collections cannot invalidate the
+debugger history. Restoring another world releases all condition and inspector
+roots before destroying the old runtime. Restart frames are intentionally not
+retained after unwinding; a future interactive debugger must suspend evaluation
+instead of storing dead `setjmp` destinations.
 
 ## Compiler flow
 

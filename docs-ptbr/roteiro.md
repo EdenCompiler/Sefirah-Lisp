@@ -152,9 +152,10 @@ não significa que o marco inteiro esteja concluído.
 - [x] Definição do símbolo no cursor e navegação estrutural de callers/referências.
 - [x] Gravação e restauração do mundo Lisp pela IDE.
 - [x] Inspetor recursivo e enraizado no GC para grafos de objetos compostos.
+- [x] Histórico limitado e enraizado no GC de condições não tratadas ligado ao inspetor.
 - [ ] Seleção e edição estrutural.
 - [ ] Navegador de código multifonte e consciente do runtime.
-- [ ] Debugger, profiler e navegação por condições/restarts.
+- [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração completa da sessão de desktop.
 - [ ] IDE recompila o compilador e a si própria.

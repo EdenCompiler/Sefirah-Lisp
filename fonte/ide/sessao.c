@@ -10,6 +10,7 @@
 #include <string.h>
 
 #define SEF_LIMITE_ARQUIVO_IDE (64L * 1024L * 1024L)
+#define SEF_LIMITE_CONDICOES_IDE 32u
 
 typedef struct TextoIde {
     char *dados;
@@ -22,6 +23,14 @@ typedef struct PassoInspecaoIde {
     char rotulo[64];
 } PassoInspecaoIde;
 
+typedef struct DiagnosticoIde {
+    char origem[64];
+    char mensagem[512];
+    size_t linha;
+    size_t coluna;
+    SefRaiz *condicao;
+} DiagnosticoIde;
+
 struct SefSessaoIde {
     SefRuntime *runtime;
     TextoIde editor;
@@ -29,6 +38,7 @@ struct SefSessaoIde {
     TextoIde transcricao;
     TextoIde inspetor;
     TextoIde navegador;
+    TextoIde depurador;
     TextoIde estado;
     TextoIde caminho;
     TextoIde caminho_imagem;
@@ -45,6 +55,9 @@ struct SefSessaoIde {
     uint64_t *formas_executadas;
     size_t quantidade_formas_executadas;
     size_t capacidade_formas_executadas;
+    DiagnosticoIde diagnosticos[SEF_LIMITE_CONDICOES_IDE];
+    size_t quantidade_diagnosticos;
+    size_t diagnostico_selecionado;
 };
 
 static bool texto_reservar(TextoIde *texto, size_t necessario, SefErro *erro) {
@@ -184,6 +197,80 @@ static bool codigo_vazio(const char *codigo) {
     return true;
 }
 
+static bool atualizar_depurador(SefSessaoIde *sessao, SefErro *erro) {
+    if (sessao->quantidade_diagnosticos == 0)
+        return texto_definir(
+            &sessao->depurador,
+            "CONDICOES: 0\n\nNenhuma condicao nao tratada.\nShift+F9/F10 navega pelo historico.",
+            erro);
+    if (sessao->diagnostico_selecionado >= sessao->quantidade_diagnosticos)
+        sessao->diagnostico_selecionado = sessao->quantidade_diagnosticos - 1;
+    DiagnosticoIde *diagnostico = &sessao->diagnosticos[sessao->diagnostico_selecionado];
+    char tipo[96] = "SEM OBJETO CONDITION";
+    if (diagnostico->condicao != NULL) {
+        SefValor classe = NULL;
+        char rotulo[32];
+        if (sef_valor_componente(sessao->runtime, sef_raiz_valor(diagnostico->condicao), 0, &classe,
+                                 rotulo, sizeof(rotulo))) {
+            char *nome_classe = sef_valor_para_texto(sessao->runtime, classe, true, erro);
+            if (nome_classe == NULL)
+                return false;
+            snprintf(tipo, sizeof(tipo), "%s", nome_classe);
+            sef_texto_liberar(nome_classe);
+        } else {
+            snprintf(tipo, sizeof(tipo), "%s",
+                     sef_valor_nome_tipo(sef_raiz_valor(diagnostico->condicao)));
+        }
+    }
+    if (!texto_formatar(&sessao->depurador, erro,
+                        "CONDICOES: %zu\nSELECIONADA: %zu/%zu\nORIGEM: %s\nTIPO: %s\n"
+                        "POSICAO: %zu:%zu\nMENSAGEM: %s",
+                        sessao->quantidade_diagnosticos, sessao->diagnostico_selecionado + 1,
+                        sessao->quantidade_diagnosticos, diagnostico->origem, tipo,
+                        diagnostico->linha, diagnostico->coluna, diagnostico->mensagem))
+        return false;
+    if (diagnostico->condicao != NULL)
+        return texto_acrescentar(
+            &sessao->depurador,
+            "\n\nENTER inspeciona a condicao.\nRestarts ativos encerraram com a avaliacao.", erro);
+    return texto_acrescentar(&sessao->depurador,
+                             "\n\nEste diagnostico nao possui objeto Lisp inspecionavel.", erro);
+}
+
+static bool registrar_diagnostico(SefSessaoIde *sessao, const char *origem, const SefErro *causa,
+                                  SefValor condicao, SefErro *erro) {
+    if (sessao->quantidade_diagnosticos == SEF_LIMITE_CONDICOES_IDE) {
+        sef_raiz_liberar(sessao->diagnosticos[0].condicao);
+        memmove(sessao->diagnosticos, sessao->diagnosticos + 1,
+                (SEF_LIMITE_CONDICOES_IDE - 1) * sizeof(sessao->diagnosticos[0]));
+        sessao->quantidade_diagnosticos--;
+    }
+    DiagnosticoIde diagnostico = {0};
+    snprintf(diagnostico.origem, sizeof(diagnostico.origem), "%s", origem);
+    snprintf(diagnostico.mensagem, sizeof(diagnostico.mensagem), "%s", causa->mensagem);
+    diagnostico.linha = causa->linha;
+    diagnostico.coluna = causa->coluna;
+    if (condicao != NULL) {
+        SefErro erro_raiz;
+        diagnostico.condicao = sef_raiz_criar(sessao->runtime, condicao, &erro_raiz);
+        if (diagnostico.condicao == NULL) {
+            sef_erro_definir(erro, 0, 0, "%s", erro_raiz.mensagem);
+            return false;
+        }
+    }
+    sessao->diagnosticos[sessao->quantidade_diagnosticos++] = diagnostico;
+    sessao->diagnostico_selecionado = sessao->quantidade_diagnosticos - 1;
+    return atualizar_depurador(sessao, erro);
+}
+
+static void liberar_diagnosticos(SefSessaoIde *sessao) {
+    for (size_t i = 0; i < sessao->quantidade_diagnosticos; i++)
+        sef_raiz_liberar(sessao->diagnosticos[i].condicao);
+    memset(sessao->diagnosticos, 0, sizeof(sessao->diagnosticos));
+    sessao->quantidade_diagnosticos = 0;
+    sessao->diagnostico_selecionado = 0;
+}
+
 static bool registrar_erro(SefSessaoIde *sessao, const char *origem, const SefErro *causa,
                            SefErro *erro) {
     if (!texto_formatar(&sessao->estado, erro, "%s: %s", origem, causa->mensagem))
@@ -193,7 +280,8 @@ static bool registrar_erro(SefSessaoIde *sessao, const char *origem, const SefEr
     return tamanho > 0 && (size_t)tamanho < sizeof(cabecalho) &&
            texto_acrescentar(&sessao->transcricao, cabecalho, erro) &&
            texto_acrescentar(&sessao->transcricao, causa->mensagem, erro) &&
-           texto_acrescentar(&sessao->transcricao, "\n", erro);
+           texto_acrescentar(&sessao->transcricao, "\n", erro) &&
+           registrar_diagnostico(sessao, origem, causa, NULL, erro);
 }
 
 static void liberar_caminho_inspecao(SefSessaoIde *sessao) {
@@ -258,8 +346,7 @@ static bool atualizar_inspetor(SefSessaoIde *sessao, SefErro *erro) {
     char *representacao = sef_valor_para_texto(sessao->runtime, selecionado, true, erro);
     if (representacao == NULL)
         return false;
-    size_t quantidade_componentes =
-        sef_valor_quantidade_componentes(sessao->runtime, selecionado);
+    size_t quantidade_componentes = sef_valor_quantidade_componentes(sessao->runtime, selecionado);
     if (quantidade_componentes == 0)
         sessao->componente_inspecao = 0;
     else if (sessao->componente_inspecao >= quantidade_componentes)
@@ -267,23 +354,22 @@ static bool atualizar_inspetor(SefSessaoIde *sessao, SefErro *erro) {
     bool atualizou = texto_formatar(
         &sessao->inspetor, erro,
         "OBJETOS: %zu\nRAIZ: %zu/%zu\nPROFUNDIDADE: %zu\nTIPO: %s\nVALOR: %s\nCOMPONENTES: %zu",
-        quantidade, sessao->objeto_selecionado + 1, quantidade,
-        sessao->profundidade_inspecao, sef_valor_nome_tipo(selecionado), representacao,
-        quantidade_componentes);
+        quantidade, sessao->objeto_selecionado + 1, quantidade, sessao->profundidade_inspecao,
+        sef_valor_nome_tipo(selecionado), representacao, quantidade_componentes);
     sef_texto_liberar(representacao);
     if (atualizou && sessao->profundidade_inspecao > 0) {
         atualizou = texto_acrescentar(&sessao->inspetor, "\nCAMINHO: RAIZ", erro);
         for (size_t i = 0; atualizou && i < sessao->profundidade_inspecao; i++) {
-            atualizou = texto_acrescentar(&sessao->inspetor, " > ", erro) &&
-                        texto_acrescentar(&sessao->inspetor,
-                                          sessao->caminho_inspecao[i].rotulo, erro);
+            atualizou =
+                texto_acrescentar(&sessao->inspetor, " > ", erro) &&
+                texto_acrescentar(&sessao->inspetor, sessao->caminho_inspecao[i].rotulo, erro);
         }
     }
     for (size_t i = 0; atualizou && i < quantidade_componentes; i++) {
         SefValor componente = NULL;
         char rotulo[64];
         if (!sef_valor_componente(sessao->runtime, selecionado, i, &componente, rotulo,
-                                 sizeof(rotulo))) {
+                                  sizeof(rotulo))) {
             sef_erro_definir(erro, 0, 0, "componente invalido durante inspecao");
             return false;
         }
@@ -291,8 +377,8 @@ static bool atualizar_inspetor(SefSessaoIde *sessao, SefErro *erro) {
         if (texto == NULL)
             return false;
         char prefixo[96];
-        int tamanho = snprintf(prefixo, sizeof(prefixo), "\n%c %s: ",
-                               i == sessao->componente_inspecao ? '>' : ' ', rotulo);
+        int tamanho = snprintf(prefixo, sizeof(prefixo),
+                               "\n%c %s: ", i == sessao->componente_inspecao ? '>' : ' ', rotulo);
         atualizou = tamanho > 0 && (size_t)tamanho < sizeof(prefixo) &&
                     texto_acrescentar(&sessao->inspetor, prefixo, erro) &&
                     texto_acrescentar(&sessao->inspetor, texto, erro);
@@ -330,8 +416,8 @@ static bool atualizar_navegador(SefSessaoIde *sessao, const SefFormaEstruturalId
         if (formas[i].definicao)
             definicoes++;
     if (!texto_formatar(&sessao->navegador, erro,
-                        "DEFINICOES: %zu\nFORMAS DE TOPO: %zu\nMUNDO: %s\n",
-                        definicoes, quantidade, sessao->caminho_imagem.dados))
+                        "DEFINICOES: %zu\nFORMAS DE TOPO: %zu\nMUNDO: %s\n", definicoes, quantidade,
+                        sessao->caminho_imagem.dados))
         return false;
     if (definicoes == 0)
         return texto_acrescentar(&sessao->navegador, "\n(nenhuma definicao nomeada)", erro);
@@ -339,9 +425,9 @@ static bool atualizar_navegador(SefSessaoIde *sessao, const SefFormaEstruturalId
         if (!formas[i].definicao)
             continue;
         char linha[180];
-        int tamanho = snprintf(linha, sizeof(linha), "\n%c L%zu  %-10s %s",
-                               i == selecionada ? '>' : ' ', formas[i].linha,
-                               formas[i].categoria, formas[i].nome);
+        int tamanho =
+            snprintf(linha, sizeof(linha), "\n%c L%zu  %-10s %s", i == selecionada ? '>' : ' ',
+                     formas[i].linha, formas[i].categoria, formas[i].nome);
         if (tamanho <= 0 || (size_t)tamanho >= sizeof(linha) ||
             !texto_acrescentar(&sessao->navegador, linha, erro))
             return false;
@@ -349,13 +435,14 @@ static bool atualizar_navegador(SefSessaoIde *sessao, const SefFormaEstruturalId
     return true;
 }
 
-static bool atualizar_navegador_referencias(
-    SefSessaoIde *sessao, const SefFormaEstruturalIde *formas, size_t quantidade_formas,
-    const SefReferenciaEstruturalIde *referencias, size_t quantidade_referencias,
-    size_t selecionada, size_t nome_inicio, size_t nome_fim, SefErro *erro) {
+static bool atualizar_navegador_referencias(SefSessaoIde *sessao,
+                                            const SefFormaEstruturalIde *formas,
+                                            size_t quantidade_formas,
+                                            const SefReferenciaEstruturalIde *referencias,
+                                            size_t quantidade_referencias, size_t selecionada,
+                                            size_t nome_inicio, size_t nome_fim, SefErro *erro) {
     size_t tamanho_nome = nome_fim - nome_inicio;
-    if (!texto_formatar(&sessao->navegador, erro,
-                        "REFERENCIAS: %zu\nSIMBOLO: %.*s\nMUNDO: %s\n",
+    if (!texto_formatar(&sessao->navegador, erro, "REFERENCIAS: %zu\nSIMBOLO: %.*s\nMUNDO: %s\n",
                         quantidade_referencias, (int)tamanho_nome,
                         sessao->editor.dados + nome_inicio, sessao->caminho_imagem.dados))
         return false;
@@ -478,7 +565,9 @@ static bool executar_codigo(SefSessaoIde *sessao, const char *codigo, const char
     if (valor == NULL) {
         if (!texto_acrescentar(&sessao->transcricao, "ERRO: ", erro) ||
             !texto_acrescentar(&sessao->transcricao, avaliacao.mensagem, erro) ||
-            !texto_acrescentar(&sessao->transcricao, "\n", erro))
+            !texto_acrescentar(&sessao->transcricao, "\n", erro) ||
+            !registrar_diagnostico(sessao, origem, &avaliacao,
+                                   sef_runtime_ultima_condicao(sessao->runtime), erro))
             return false;
         texto_formatar(&sessao->estado, erro, "%s: %s", origem, avaliacao.mensagem);
         if (!erro->ocorreu)
@@ -505,6 +594,10 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
         !texto_definir(&sessao->inspetor, "OBJETOS: 0\nSELECIONADO: (AUSENTE)", erro) ||
         !texto_definir(&sessao->navegador,
                        "DEFINICOES: 0\nFORMAS DE TOPO: 0\n\nF8 navega pelo codigo", erro) ||
+        !texto_definir(&sessao->depurador,
+                       "CONDICOES: 0\n\nNenhuma condicao nao tratada.\n"
+                       "Shift+F9/F10 navega pelo historico.",
+                       erro) ||
         !texto_definir(&sessao->estado, "Novo arquivo", erro) ||
         !texto_definir(&sessao->caminho, "programa.lisp", erro) ||
         !atualizar_caminho_imagem(sessao, erro)) {
@@ -524,6 +617,7 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     if (sessao == NULL)
         return;
     liberar_objetos_inspecao(sessao);
+    liberar_diagnosticos(sessao);
     sef_historico_texto_destruir(sessao->historico_ouvinte);
     sef_historico_editor_destruir(sessao->historico_editor);
     sef_runtime_destruir(sessao->runtime);
@@ -532,6 +626,7 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     texto_liberar(&sessao->transcricao);
     texto_liberar(&sessao->inspetor);
     texto_liberar(&sessao->navegador);
+    texto_liberar(&sessao->depurador);
     texto_liberar(&sessao->estado);
     texto_liberar(&sessao->caminho);
     texto_liberar(&sessao->caminho_imagem);
@@ -545,9 +640,8 @@ const char *sef_sessao_ide_transcricao(const SefSessaoIde *sessao) {
     return sessao->transcricao.dados;
 }
 const char *sef_sessao_ide_inspetor(const SefSessaoIde *sessao) { return sessao->inspetor.dados; }
-const char *sef_sessao_ide_navegador(const SefSessaoIde *sessao) {
-    return sessao->navegador.dados;
-}
+const char *sef_sessao_ide_navegador(const SefSessaoIde *sessao) { return sessao->navegador.dados; }
+const char *sef_sessao_ide_depurador(const SefSessaoIde *sessao) { return sessao->depurador.dados; }
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao) { return sessao->estado.dados; }
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao) { return sessao->caminho.dados; }
 size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao) {
@@ -828,8 +922,7 @@ bool sef_sessao_ide_executar_alteracoes(SefSessaoIde *sessao, SefErro *erro) {
         codigo[tamanho] = '\0';
         bool executou = executar_codigo(sessao, codigo, "ALTERACAO", true, erro);
         free(codigo);
-        if (!executou ||
-            !registrar_assinatura_executada(sessao, formas[i].assinatura, erro)) {
+        if (!executou || !registrar_assinatura_executada(sessao, formas[i].assinatura, erro)) {
             sef_ide_catalogo_liberar(formas);
             return false;
         }
@@ -850,8 +943,8 @@ bool sef_sessao_ide_executar_alteracoes(SefSessaoIde *sessao, SefErro *erro) {
                           executadas);
 }
 
-bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao,
-                                      SefMovimentoDefinicaoIde movimento, SefErro *erro) {
+bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao, SefMovimentoDefinicaoIde movimento,
+                                      SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL) {
         sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
@@ -873,8 +966,7 @@ bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao,
         if (movimento == SEF_DEFINICAO_PROXIMA && escolhida == SIZE_MAX &&
             formas[i].inicio_nome > sessao->cursor_editor)
             escolhida = i;
-        if (movimento == SEF_DEFINICAO_ANTERIOR &&
-            formas[i].inicio_nome < sessao->cursor_editor)
+        if (movimento == SEF_DEFINICAO_ANTERIOR && formas[i].inicio_nome < sessao->cursor_editor)
             escolhida = i;
     }
     if (escolhida == SIZE_MAX)
@@ -904,7 +996,7 @@ bool sef_sessao_ide_ir_para_definicao(SefSessaoIde *sessao, SefErro *erro) {
     size_t nome_inicio = 0;
     size_t nome_fim = 0;
     if (!sef_ide_atomo_no_cursor(sessao->editor.dados, sessao->cursor_editor, &nome_inicio,
-                                &nome_fim))
+                                 &nome_fim))
         return texto_definir(&sessao->estado, "Nenhum simbolo no cursor", erro);
     SefFormaEstruturalIde *formas = NULL;
     size_t quantidade = 0;
@@ -925,21 +1017,20 @@ bool sef_sessao_ide_ir_para_definicao(SefSessaoIde *sessao, SefErro *erro) {
         if (!atualizou)
             return false;
         return texto_formatar(&sessao->estado, erro, "Definicao nao encontrada: %.*s",
-                              (int)(nome_fim - nome_inicio),
-                              sessao->editor.dados + nome_inicio);
+                              (int)(nome_fim - nome_inicio), sessao->editor.dados + nome_inicio);
     }
     sessao->cursor_editor = formas[escolhida].inicio_nome;
-    bool atualizou = atualizar_navegador(sessao, formas, quantidade, escolhida, erro) &&
-                     texto_formatar(&sessao->estado, erro,
-                                    "Definicao localizada: %s (%s, linha %zu)",
-                                    formas[escolhida].nome, formas[escolhida].categoria,
-                                    formas[escolhida].linha);
+    bool atualizou =
+        atualizar_navegador(sessao, formas, quantidade, escolhida, erro) &&
+        texto_formatar(&sessao->estado, erro, "Definicao localizada: %s (%s, linha %zu)",
+                       formas[escolhida].nome, formas[escolhida].categoria,
+                       formas[escolhida].linha);
     sef_ide_catalogo_liberar(formas);
     return atualizou;
 }
 
-bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao,
-                                      SefMovimentoReferenciaIde movimento, SefErro *erro) {
+bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao, SefMovimentoReferenciaIde movimento,
+                                       SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL) {
         sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
@@ -948,7 +1039,7 @@ bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao,
     size_t nome_inicio = 0;
     size_t nome_fim = 0;
     if (!sef_ide_atomo_no_cursor(sessao->editor.dados, sessao->cursor_editor, &nome_inicio,
-                                &nome_fim))
+                                 &nome_fim))
         return texto_definir(&sessao->estado, "Nenhum simbolo no cursor", erro);
     SefFormaEstruturalIde *formas = NULL;
     size_t quantidade_formas = 0;
@@ -957,8 +1048,8 @@ bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao,
     SefReferenciaEstruturalIde *referencias = NULL;
     size_t quantidade_referencias = 0;
     if (!sef_ide_catalogar_referencias(sessao->editor.dados, nome_inicio, nome_fim, formas,
-                                      quantidade_formas, &referencias,
-                                      &quantidade_referencias, erro)) {
+                                       quantidade_formas, &referencias, &quantidade_referencias,
+                                       erro)) {
         sef_ide_catalogo_liberar(formas);
         return false;
     }
@@ -967,30 +1058,80 @@ bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao,
         if (movimento == SEF_REFERENCIA_PROXIMA && escolhida == SIZE_MAX &&
             referencias[i].inicio > sessao->cursor_editor)
             escolhida = i;
-        if (movimento == SEF_REFERENCIA_ANTERIOR &&
-            referencias[i].inicio < sessao->cursor_editor)
+        if (movimento == SEF_REFERENCIA_ANTERIOR && referencias[i].inicio < sessao->cursor_editor)
             escolhida = i;
     }
     if (escolhida == SIZE_MAX && quantidade_referencias > 0)
         escolhida = movimento == SEF_REFERENCIA_PROXIMA ? 0 : quantidade_referencias - 1;
-    bool atualizou = atualizar_navegador_referencias(
-        sessao, formas, quantidade_formas, referencias, quantidade_referencias, escolhida,
-        nome_inicio, nome_fim, erro);
+    bool atualizou = atualizar_navegador_referencias(sessao, formas, quantidade_formas, referencias,
+                                                     quantidade_referencias, escolhida, nome_inicio,
+                                                     nome_fim, erro);
     if (atualizou && escolhida == SIZE_MAX)
-        atualizou = texto_formatar(&sessao->estado, erro, "Nenhuma referencia para %.*s",
-                                   (int)(nome_fim - nome_inicio),
-                                   sessao->editor.dados + nome_inicio);
+        atualizou =
+            texto_formatar(&sessao->estado, erro, "Nenhuma referencia para %.*s",
+                           (int)(nome_fim - nome_inicio), sessao->editor.dados + nome_inicio);
     if (atualizou && escolhida != SIZE_MAX) {
         sessao->cursor_editor = referencias[escolhida].inicio;
-        atualizou = texto_formatar(&sessao->estado, erro, "Referencia %zu/%zu: %.*s (linha %zu)",
-                                   escolhida + 1, quantidade_referencias,
-                                   (int)(nome_fim - nome_inicio),
-                                   sessao->editor.dados + nome_inicio,
-                                   referencias[escolhida].linha);
+        atualizou =
+            texto_formatar(&sessao->estado, erro, "Referencia %zu/%zu: %.*s (linha %zu)",
+                           escolhida + 1, quantidade_referencias, (int)(nome_fim - nome_inicio),
+                           sessao->editor.dados + nome_inicio, referencias[escolhida].linha);
     }
     sef_ide_referencias_liberar(referencias);
     sef_ide_catalogo_liberar(formas);
     return atualizou;
+}
+
+bool sef_sessao_ide_navegar_condicao(SefSessaoIde *sessao, SefMovimentoCondicaoIde movimento,
+                                     SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    if (sessao->quantidade_diagnosticos == 0)
+        return texto_definir(&sessao->estado, "Nenhuma condicao no historico", erro);
+    if (movimento == SEF_CONDICAO_ANTERIOR) {
+        sessao->diagnostico_selecionado = sessao->diagnostico_selecionado == 0
+                                              ? sessao->quantidade_diagnosticos - 1
+                                              : sessao->diagnostico_selecionado - 1;
+    } else {
+        sessao->diagnostico_selecionado =
+            (sessao->diagnostico_selecionado + 1) % sessao->quantidade_diagnosticos;
+    }
+    return atualizar_depurador(sessao, erro) &&
+           texto_formatar(&sessao->estado, erro, "Condicao %zu/%zu selecionada",
+                          sessao->diagnostico_selecionado + 1, sessao->quantidade_diagnosticos);
+}
+
+bool sef_sessao_ide_inspecionar_condicao(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    if (sessao->quantidade_diagnosticos == 0)
+        return texto_definir(&sessao->estado, "Nenhuma condicao para inspecionar", erro);
+    DiagnosticoIde *diagnostico = &sessao->diagnosticos[sessao->diagnostico_selecionado];
+    if (diagnostico->condicao == NULL)
+        return texto_definir(&sessao->estado, "Diagnostico selecionado nao possui objeto CONDITION",
+                             erro);
+    SefRaiz **objetos = calloc(1, sizeof(*objetos));
+    if (objetos == NULL) {
+        sef_erro_definir(erro, 0, 0, "memoria insuficiente para inspecionar condicao");
+        return false;
+    }
+    objetos[0] = sef_raiz_criar(sessao->runtime, sef_raiz_valor(diagnostico->condicao), erro);
+    if (objetos[0] == NULL) {
+        free(objetos);
+        return false;
+    }
+    liberar_objetos_inspecao(sessao);
+    sessao->objetos_inspecao = objetos;
+    sessao->quantidade_objetos_inspecao = 1;
+    return atualizar_inspetor(sessao, erro) &&
+           texto_formatar(&sessao->estado, erro, "Condicao %zu aberta no inspetor",
+                          sessao->diagnostico_selecionado + 1);
 }
 
 bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde movimento,
@@ -1011,8 +1152,7 @@ bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde
 }
 
 bool sef_sessao_ide_inspetor_mover_componente(SefSessaoIde *sessao,
-                                              SefMovimentoComponenteIde movimento,
-                                              SefErro *erro) {
+                                              SefMovimentoComponenteIde movimento, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL) {
         sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
@@ -1047,7 +1187,7 @@ bool sef_sessao_ide_inspetor_entrar(SefSessaoIde *sessao, SefErro *erro) {
     SefValor componente = NULL;
     char rotulo[64];
     if (!sef_valor_componente(sessao->runtime, atual, sessao->componente_inspecao, &componente,
-                             rotulo, sizeof(rotulo))) {
+                              rotulo, sizeof(rotulo))) {
         sef_erro_definir(erro, 0, 0, "nao foi possivel abrir componente do inspetor");
         return false;
     }
@@ -1055,17 +1195,15 @@ bool sef_sessao_ide_inspetor_entrar(SefSessaoIde *sessao, SefErro *erro) {
     if (raiz == NULL)
         return false;
     if (sessao->profundidade_inspecao == sessao->capacidade_caminho_inspecao) {
-        size_t capacidade = sessao->capacidade_caminho_inspecao == 0
-                                ? 8
-                                : sessao->capacidade_caminho_inspecao * 2;
+        size_t capacidade =
+            sessao->capacidade_caminho_inspecao == 0 ? 8 : sessao->capacidade_caminho_inspecao * 2;
         if (capacidade < sessao->capacidade_caminho_inspecao ||
             capacidade > SIZE_MAX / sizeof(*sessao->caminho_inspecao)) {
             sef_raiz_liberar(raiz);
             sef_erro_definir(erro, 0, 0, "caminho do inspetor excedeu o limite");
             return false;
         }
-        PassoInspecaoIde *passos =
-            realloc(sessao->caminho_inspecao, capacidade * sizeof(*passos));
+        PassoInspecaoIde *passos = realloc(sessao->caminho_inspecao, capacidade * sizeof(*passos));
         if (passos == NULL) {
             sef_raiz_liberar(raiz);
             sef_erro_definir(erro, 0, 0, "memoria insuficiente para caminho do inspetor");
@@ -1191,8 +1329,7 @@ bool sef_sessao_ide_imagem_salvar(SefSessaoIde *sessao, SefErro *erro) {
             *erro = causa;
         return false;
     }
-    return texto_formatar(&sessao->estado, erro, "Mundo salvo: %s",
-                          sessao->caminho_imagem.dados);
+    return texto_formatar(&sessao->estado, erro, "Mundo salvo: %s", sessao->caminho_imagem.dados);
 }
 
 bool sef_sessao_ide_imagem_restaurar(SefSessaoIde *sessao, SefErro *erro) {
@@ -1210,10 +1347,12 @@ bool sef_sessao_ide_imagem_restaurar(SefSessaoIde *sessao, SefErro *erro) {
         return false;
     }
     liberar_objetos_inspecao(sessao);
+    liberar_diagnosticos(sessao);
     sef_runtime_destruir(sessao->runtime);
     sessao->runtime = restaurado;
     sessao->quantidade_formas_executadas = 0;
     if (!texto_definir(&sessao->inspetor, "OBJETOS: 0\nMUNDO RESTAURADO", erro) ||
+        !atualizar_depurador(sessao, erro) ||
         !texto_formatar(&sessao->estado, erro, "Mundo restaurado: %s",
                         sessao->caminho_imagem.dados))
         return false;

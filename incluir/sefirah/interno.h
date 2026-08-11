@@ -199,6 +199,7 @@ struct SefRuntime {
     SefValor entrada_padrao;
     SefValor saida_padrao;
     SefValor erro_padrao;
+    SefValor ultima_condicao;
 
     SefQuadroControle *controle;
     SefReinicioDinamico *reinicios;

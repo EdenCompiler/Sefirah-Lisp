@@ -150,9 +150,10 @@ not mean the entire milestone is complete.
 - [x] Symbol-at-point definition lookup and structural caller/reference navigation.
 - [x] Save and restore the live Lisp world from the IDE.
 - [x] Recursive, GC-rooted inspector for compound object graphs.
+- [x] Bounded, GC-rooted unhandled-condition history connected to the inspector.
 - [ ] Selection and structural editing.
 - [ ] Multi-file and runtime-aware code browser.
-- [ ] Debugger, profiler, and condition/restart navigation.
+- [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and full desktop-session restoration.
 - [ ] IDE recompiles the compiler and itself.

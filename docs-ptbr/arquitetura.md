@@ -99,8 +99,9 @@ as mesmas regras de limpeza e limites das demais transferências não locais.
 ## Sessão da IDE
 
 `sefirah_ide_nucleo` possui o buffer editável, entrada do ouvinte, transcrição,
-inspetor, navegador de definições, histórico de instalação incremental, caminho
-atual e runtime. Ele executa, abre, grava, captura e restaura sem uma janela, o
+inspetor, navegador de definições, histórico de condições, histórico de
+instalação incremental, caminho atual e runtime. Ele executa, abre, grava,
+captura e restaura sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
 painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.
 
@@ -117,6 +118,15 @@ union privada dos objetos. A restauração abre a imagem substituta antes de
 liberar essas raízes e o runtime antigo; assim, um snapshot ausente ou danificado
 não destrói o mundo ativo. O código de apresentação enxerga somente o estado
 formatado da sessão e nunca acessa os detalhes internos do runtime.
+
+O runtime mantém a última condição não tratada enraizada até a próxima
+avaliação e a expõe como valor emprestado do SDK. A sessão converte esse valor
+em seu próprio conjunto limitado de raízes públicas, impedindo que coletas
+posteriores invalidem o histórico do depurador. Restaurar outro mundo libera
+todas as raízes de condições e inspeção antes de destruir o runtime anterior.
+Quadros de restart não são retidos depois do desenrolamento; um depurador
+interativo futuro deverá suspender a avaliação, em vez de armazenar destinos
+`setjmp` mortos.
 
 ## Fluxo do compilador
 

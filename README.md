@@ -39,7 +39,7 @@ the roadmap.
 | Graphics | Custom RGB surface, CPU rasterization, and bitmap font |
 | GUI | Component tree, layout, themes, focus, hit testing, and actions |
 | Platform | X11, Win32, and Cocoa/CoreGraphics raster windows with keyboard, shortcuts, and pointer events |
-| IDE | Editable `.lisp` buffer, incremental structural evaluation, source browser, recursive live-object inspector, world snapshots, undo/redo, listener history, and file load/save on Linux, Windows, and macOS |
+| IDE | Editable `.lisp` buffer, incremental structural evaluation, source browser, recursive live-object inspector, rooted condition history, world snapshots, undo/redo, listener history, and file load/save on Linux, Windows, and macOS |
 | Delivery | CI builds, tests, installs, and audits the public SDK on Linux, Windows, and macOS |
 
 ## Highlights
@@ -204,19 +204,21 @@ a recursive multiple-value object inspector, linear undo/redo, structural form
 evaluation, an indexed definition browser, incremental installation of changed
 top-level forms, symbol-at-point definition lookup, structural caller/reference
 navigation, restorable world snapshots, and `.lisp` file load/save. Tab or a
-pointer click changes focus among the editor, inspector, and listener;
+pointer click changes focus among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
 F7 runs only forms changed since their last successful installation; F8 and
 Shift+F8 navigate named definitions; F9/F10 save and restore the live Lisp
-world beside the current source as `.imagem`; F11 jumps to the definition of
+world beside the current source as `.imagem`; Shift+F9/Shift+F10 navigate the
+bounded history of unhandled conditions; F11 jumps to the definition of
 the symbol at the cursor; and F12/Shift+F12 cycle its references. Ctrl+Z/Ctrl+Y
 undo and redo; Ctrl+S saves; and Ctrl+O reloads the current path. Arrow, Home,
 and End move the editor cursor. In the listener, Up and Down browse submitted
 events. In the inspector, Up/Down select an object component, Enter opens it,
 Backspace returns to its parent, and Left/Right switch between returned roots.
 The complete navigation path remains rooted in the garbage collector. Clicking
-the definition browser advances to the next definition. On macOS, Command can
-replace Ctrl.
+the definition browser advances to the next definition. In the debugger,
+Up/Down select a condition and Enter opens its Lisp object in the recursive
+inspector. On macOS, Command can replace Ctrl.
 
 ## Architecture
 
@@ -280,7 +282,8 @@ X11/Win32/Cocoa, and the compiler keeps its IR independent of object writers.
 - the GUI lacks vector fonts, HiDPI, IME, accessibility, and complete desktop
   integration;
 - Wayland, complete IME composition, and distribution packages remain pending;
-- structural rewriting, arbitrary file dialogs, debugger, profiler, and
+- structural rewriting, arbitrary file dialogs, interactive restart selection,
+  profiler, and
   selective out-of-order transactional history are not complete.
 
 Detailed, verifiable status is in the [implementation roadmap](docs-en/roadmap.md).
@@ -332,7 +335,7 @@ nativa permanecem no roteiro.
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
 | GUI | Árvore de componentes, layout, temas, foco, hit-testing e ações |
 | Plataforma | Janelas raster X11, Win32 e Cocoa/CoreGraphics com teclado, atalhos e eventos de ponteiro |
-| IDE | Buffer `.lisp` editável, avaliação estrutural incremental, navegador de fontes, inspetor recursivo de objetos vivos, snapshots do mundo, desfazer/refazer, histórico do ouvinte e abertura/gravação em Linux, Windows e macOS |
+| IDE | Buffer `.lisp` editável, avaliação estrutural incremental, navegador de fontes, inspetor recursivo de objetos vivos, histórico enraizado de condições, snapshots do mundo, desfazer/refazer, histórico do ouvinte e abertura/gravação em Linux, Windows e macOS |
 | Entrega | A CI compila, testa, instala e audita o SDK público em Linux, Windows e macOS |
 
 ## Destaques
@@ -500,18 +503,21 @@ estrutural de formas, navegador indexado de definições, instalação increment
 das formas de topo alteradas, localização da definição do símbolo no cursor,
 navegação estrutural de callers/referências, snapshots restauráveis do mundo e
 abertura/gravação de `.lisp`. Tab ou clique alterna o foco entre editor,
-inspetor e ouvinte; F5 ou Ctrl+Enter
+inspetor, depurador e ouvinte; F5 ou Ctrl+Enter
 executa o buffer; F6 executa a forma completa no cursor; F7 executa somente as
 formas alteradas desde a última instalação bem-sucedida; F8 e Shift+F8 navegam
 pelas definições nomeadas; F9/F10 salvam e restauram o mundo Lisp ao lado do
-fonte como `.imagem`; F11 vai à definição do símbolo no cursor; e
+fonte como `.imagem`; Shift+F9/Shift+F10 navegam pelo histórico limitado de
+condições não tratadas; F11 vai à definição do símbolo no cursor; e
 F12/Shift+F12 percorrem suas referências. Ctrl+Z/Ctrl+Y desfazem e refazem;
 Ctrl+S salva; e Ctrl+O recarrega o caminho atual. Setas, Home e End movem o
 cursor do editor. No ouvinte, Cima e Baixo percorrem os eventos enviados. No
 inspetor, Cima/Baixo selecionam um componente, Enter o abre, Backspace volta ao
 pai e Esquerda/Direita alternam entre as raízes devolvidas. O caminho completo
 permanece enraizado no coletor de lixo. Clicar no navegador avança para a
-próxima definição. No macOS, Command pode substituir Ctrl.
+próxima definição. No depurador, Cima/Baixo selecionam uma condição e Enter
+abre seu objeto Lisp no inspetor recursivo. No macOS, Command pode substituir
+Ctrl.
 
 ## Arquitetura
 
@@ -575,7 +581,8 @@ compilador mantém a IR independente dos gravadores de objetos.
 - a GUI ainda não possui fontes vetoriais, HiDPI, IME, acessibilidade ou
   integração desktop completa;
 - Wayland, composição IME completa e pacotes de distribuição continuam pendentes;
-- reescrita estrutural, diálogos de arquivo arbitrário, debugger, profiler e
+- reescrita estrutural, diálogos de arquivo arbitrário, seleção interativa de
+  restarts, profiler e
   histórico transacional seletivo fora de ordem ainda não estão completos.
 
 O estado detalhado e verificável está no

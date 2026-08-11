@@ -23,6 +23,8 @@ SefRuntime *sef_runtime_criar(SefErro *erro);
 void sef_runtime_destruir(SefRuntime *runtime);
 
 SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefErro *erro);
+/* Valor emprestado da ultima condicao nao tratada; pode ser NULL. */
+SefValor sef_runtime_ultima_condicao(const SefRuntime *runtime);
 SefEstadoCodigo sef_runtime_estado_codigo(const char *codigo, SefErro *erro);
 bool sef_runtime_executar_arquivo(SefRuntime *runtime, const char *caminho, SefValor *ultimo,
                                   SefErro *erro);

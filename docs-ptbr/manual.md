@@ -458,9 +458,9 @@ sefirah_ide
 sefirah_ide caminho/para/programa.lisp
 ```
 
-Tab, Shift+Tab ou clique alterna entre editor, inspetor e ouvinte. Enter insere
-linha no editor, abre o componente selecionado no inspetor ou envia uma forma
-completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
+Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
+Enter insere linha no editor, abre o componente ou a condição selecionada ou
+envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
 F6 encontra e executa somente a forma completa de nível superior no cursor.
 Ctrl+Z e Ctrl+Y percorrem a linha do tempo linear e limitada do editor. Ctrl+S
 salva e Ctrl+O recarrega o caminho atual. F7 avalia somente as formas de topo
@@ -481,7 +481,20 @@ Recursos locais do processo, como streams abertas e bibliotecas compartilhadas,
 mantêm as restrições do formato de imagem descritas acima. Trata-se de um
 snapshot do mundo, ainda não da restauração completa da sessão de desktop.
 
-As ferramentas à direita reúnem navegador de fontes e inspetor. O navegador
+As ferramentas à direita reúnem navegador de fontes, inspetor e depurador
+inicial. Cada condição de avaliação não tratada é retida por uma raiz pública do
+GC em um histórico limitado a 32 entradas. Shift+F9/Shift+F10 ou Cima/Baixo com
+foco no depurador navegam por esse histórico; Enter abre o objeto condição
+selecionado no inspetor geral. Falhas internas do avaliador e leitor recebem
+condições `ERROR` sintetizadas, enquanto diagnósticos de sintaxe e I/O externo
+permanecem entradas rotuladas sem objeto Lisp.
+
+Restarts dinâmicos pertencem à pilha da avaliação e deixam corretamente de
+existir quando ela é desenrolada. O painel não finge, portanto, que uma falha já
+encerrada ainda possui restarts invocáveis. A seleção interativa de restart
+exige continuação suspensível do avaliador/depurador e permanece pendente.
+
+O navegador
 mostra o catálogo de definições ou as referências/callers do símbolo
 selecionado, marca a ocorrência atual e move o cursor do editor diretamente até
 ela. O inspetor enraíza no coletor de lixo todos os valores da última avaliação,
@@ -491,8 +504,8 @@ componentes rotulados de pares, vetores, funções, ambientes lexicais, condiç�
 símbolos, packages e hash tables. Cima/Baixo selecionam um componente, Enter o
 abre, Backspace volta ao pai e Esquerda/Direita alternam as raízes; cada nó do
 caminho possui uma raiz explícita no GC. O motor da sessão, os históricos, o
-analisador estrutural e o inspetor possuem testes automatizados sem janela. No
-macOS, Command pode substituir Ctrl nos atalhos.
+analisador estrutural, o histórico do depurador e o inspetor possuem testes
+automatizados sem janela. No macOS, Command pode substituir Ctrl nos atalhos.
 
 Essas ferramentas recuperam de propósito uma parte pequena e prática do fluxo
 das Lisp machines: o Programmer's Assistant do Interlisp mantinha eventos que

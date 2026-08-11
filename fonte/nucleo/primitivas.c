@@ -1345,6 +1345,7 @@ static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErr
     }
     if (condicao == NULL || !sef_condicao_sinalizar(runtime, condicao, erro))
         return NULL;
+    runtime->ultima_condicao = condicao;
     sef_erro_definir(erro, 0, 0, "%s", condicao->como.condicao.mensagem->como.texto.dados);
     return NULL;
 }

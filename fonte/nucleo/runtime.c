@@ -192,6 +192,7 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria) {
     marcar(runtime->entrada_padrao);
     marcar(runtime->saida_padrao);
     marcar(runtime->erro_padrao);
+    marcar(runtime->ultima_condicao);
     marcar(runtime->valor_transferencia);
     marcar(runtime->parametros_transferencia);
     marcar(runtime->corpo_transferencia);
@@ -398,12 +399,29 @@ void sef_raiz_liberar(SefRaiz *raiz) {
     free(raiz);
 }
 
+static void registrar_condicao_nao_tratada(SefRuntime *runtime, const SefErro *erro) {
+    if (runtime == NULL || runtime->ultima_condicao != NULL || erro == NULL || !erro->ocorreu)
+        return;
+    SefErro erro_condicao;
+    sef_erro_limpar(&erro_condicao);
+    SefValor classe =
+        sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, "ERROR", 5, &erro_condicao);
+    if (classe != NULL)
+        runtime->ultima_condicao =
+            sef_condicao_nova(runtime, classe, erro->mensagem, &erro_condicao);
+}
+
+SefValor sef_runtime_ultima_condicao(const SefRuntime *runtime) {
+    return runtime == NULL ? NULL : runtime->ultima_condicao;
+}
+
 SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefErro *erro) {
     sef_erro_limpar(erro);
     if (runtime == NULL || codigo == NULL) {
         sef_erro_definir(erro, 0, 0, "runtime ou codigo ausente");
         return NULL;
     }
+    runtime->ultima_condicao = NULL;
     if (!sef_valores_definir(runtime, NULL, 0, erro))
         return NULL;
 
@@ -413,14 +431,19 @@ SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefE
     for (;;) {
         bool encontrou = false;
         SefValor forma = sef_ler_forma(&leitor, &encontrou, erro);
-        if (erro != NULL && erro->ocorreu)
+        if (erro != NULL && erro->ocorreu) {
+            registrar_condicao_nao_tratada(runtime, erro);
             return NULL;
+        }
         if (!encontrou)
             break;
         ultimo = sef_avaliar(runtime, forma, runtime->ambiente_global, erro);
-        if (ultimo == NULL)
+        if (ultimo == NULL) {
+            registrar_condicao_nao_tratada(runtime, erro);
             return NULL;
+        }
     }
+    runtime->ultima_condicao = NULL;
     sef_runtime_coletar(runtime, ultimo);
     return ultimo;
 }

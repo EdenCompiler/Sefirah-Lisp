@@ -348,6 +348,15 @@ int main(int argc, char **argv) {
                   strcmp(rotulo_componente, "MENSAGEM") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "STRING") == 0,
               "SDK expôs classe e mensagem da condicao");
+    SefValor falha_condicao = sef_runtime_avaliar_texto(runtime, "(error \"nao tratada\")", &erro);
+    sef_runtime_coletar(runtime, NULL);
+    SefValor ultima_condicao = sef_runtime_ultima_condicao(runtime);
+    verificar(falha_condicao == NULL && erro.ocorreu && ultima_condicao != NULL &&
+                  strcmp(sef_valor_nome_tipo(ultima_condicao), "CONDITION") == 0,
+              "runtime reteve a identidade da ultima condicao nao tratada");
+    verificar_texto(runtime, "(+ 40 2)", "42");
+    verificar(sef_runtime_ultima_condicao(runtime) == NULL,
+              "avaliacao concluida limpou a condicao nao tratada anterior");
     SefValor hash_sdk = avaliar(runtime, "(let ((h (make-hash-table))) "
                                          "(setf (gethash 'chave h) 42) h)");
     verificar(sef_valor_quantidade_componentes(runtime, hash_sdk) == 2 &&

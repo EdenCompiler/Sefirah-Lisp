@@ -451,10 +451,10 @@ sefirah_ide
 sefirah_ide path/to/program.lisp
 ```
 
-Tab, Shift+Tab, or a pointer click switches among editor, inspector, and
-listener. Enter inserts a line in the editor, opens the selected inspector
-component, or submits a complete form in the listener. F5 or
-Ctrl+Enter runs the whole buffer; F6 finds and runs only the complete top-level
+Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
+and listener. Enter inserts a line in the editor, opens the selected inspector
+component or debugger condition, or submits a complete form in the listener.
+F5 or Ctrl+Enter runs the whole buffer; F6 finds and runs only the complete top-level
 form at the cursor. Ctrl+Z and Ctrl+Y traverse the editor's bounded linear
 timeline. F7 evaluates only top-level forms whose contents changed since their
 last successful evaluation. F8 visits the next named definition and Shift+F8
@@ -474,7 +474,20 @@ untouched. Process-local resources such as open streams and shared libraries
 retain the image-format restrictions described above. This is a world snapshot,
 not yet a complete desktop-session restoration facility.
 
-The right-hand tools contain the source browser and inspector. The browser can
+The right-hand tools contain the source browser, inspector, and initial
+debugger. Every unhandled evaluation condition is retained through a public GC
+root in a bounded 32-entry history. Shift+F9/Shift+F10 or Up/Down while the
+debugger is focused navigate that history; Enter opens the selected condition
+object in the general inspector. Internal evaluator and reader failures are
+represented by synthesized `ERROR` conditions, while syntax and external I/O
+diagnostics remain labeled entries without a Lisp object.
+
+Dynamic restarts belong to the evaluation stack and correctly cease to exist
+when evaluation unwinds. The panel therefore does not pretend that a completed
+failure still has invokable restarts. Interactive restart selection requires a
+suspendable evaluator/debugger continuation and remains pending.
+
+The browser can
 show the definition catalog or the references/callers for the selected symbol,
 mark the current match, and move the editor cursor directly to it. The inspector
 roots every value from the latest evaluation in the garbage
@@ -484,8 +497,8 @@ components of pairs, vectors, functions, lexical environments, conditions,
 symbols, packages, and hash tables. Up/Down select a component, Enter opens it,
 Backspace returns to its parent, and Left/Right switch roots; every path node is
 held by an explicit GC root. The session engine, histories, structural scanner,
-and inspector are covered by headless automated tests. On macOS, Command can
-replace Ctrl for the shortcuts.
+debugger history, and inspector are covered by headless automated tests. On
+macOS, Command can replace Ctrl for the shortcuts.
 
 These facilities deliberately recover a small, practical part of the Lisp
 machine workflow: Interlisp's Programmer's Assistant kept replayable events and
