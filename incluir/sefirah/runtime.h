@@ -32,6 +32,7 @@ bool sef_runtime_imagem_salvar(SefRuntime *runtime, const char *caminho, SefErro
 SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro);
 
 char *sef_valor_para_texto(SefRuntime *runtime, SefValor valor, bool legivel, SefErro *erro);
+const char *sef_valor_nome_tipo(SefValor valor);
 void sef_texto_liberar(char *texto);
 
 size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria);

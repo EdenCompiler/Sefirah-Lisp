@@ -115,6 +115,8 @@ element-types especializados e vetores ajustáveis permanecem pendentes.
 No SDK C, `sef_vetor_criar`, `sef_vetor_tamanho`, `sef_vetor_obter` e
 `sef_vetor_definir` operam sobre o mesmo objeto coletado. Um valor mantido pelo
 hospedeiro entre avaliações deve continuar protegido por `SefRaiz`.
+`sef_valor_nome_tipo` expõe o nome de tipo estável usado para diagnóstico pelas
+ferramentas residentes sem revelar o layout privado do objeto.
 
 ## Caracteres Unicode e strings
 
@@ -394,7 +396,8 @@ e `:sair` encerra a sessão.
 A IDE gráfica está dividida entre um motor de sessão independente da plataforma
 e a apresentação em janela. Ela oferece buffer `.lisp` editável, ouvinte
 multilinha, transcrição persistente, inspetor de resultados, avaliação do
-buffer inteiro e abertura/gravação de arquivo:
+buffer inteiro, avaliação estrutural de formas, desfazer/refazer linear e
+abertura/gravação de arquivo:
 
 ```bash
 sefirah_ide
@@ -402,10 +405,29 @@ sefirah_ide caminho/para/programa.lisp
 ```
 
 Tab ou clique alterna entre editor e ouvinte. Enter insere linha no editor e
-envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o editor, Ctrl+S
+envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
+F6 encontra e executa somente a forma completa de nível superior no cursor.
+Ctrl+Z e Ctrl+Y percorrem a linha do tempo linear e limitada do editor. Ctrl+S
 salva e Ctrl+O recarrega o caminho atual. Setas, Home e End movem o cursor do
-editor com consciência de UTF-8. O motor da sessão possui testes automatizados
-sem janela. No macOS, Command pode substituir Ctrl nesses atalhos.
+editor com consciência de UTF-8. No ouvinte, Cima e Baixo recuperam até 128
+eventos enviados, inclusive formas multilinha.
+
+O inspetor enraíza no coletor de lixo todos os valores da última avaliação,
+mostra seu tipo e representação legível e expõe o resultado de valores
+múltiplos como uma prateleira viva de objetos. Um clique no inspetor seleciona
+o próximo objeto. O motor da sessão, os históricos, o analisador estrutural e o
+inspetor possuem testes automatizados sem janela. No macOS, Command pode
+substituir Ctrl nos atalhos.
+
+Essas ferramentas recuperam de propósito uma parte pequena e prática do fluxo
+das Lisp machines: o Programmer's Assistant do Interlisp mantinha eventos que
+podiam ser repetidos e seus editores operavam sobre estruturas Lisp, enquanto o
+Genera conectava Listener e Inspector ao mesmo mundo vivo. O Sefirah mantém
+essas ideias atrás de uma API de sessão portátil, sem acoplá-las a um backend de
+janela. Consulte a
+[linha do tempo do Interlisp](https://interlisp.org/history/timeline/) e o
+[guia do usuário do Genera](https://www.bitsavers.org/pdf/symbolics/software/genera_8/Genera_User_s_Guide.pdf)
+para conhecer os sistemas históricos que motivam essa direção.
 
 ## GUI própria
 
@@ -438,7 +460,7 @@ funções compiladas, condições e bibliotecas compartilhadas.
 - compilação limitada ao subconjunto i64;
 - FFI sem floats, ponteiros, structs e callbacks gerais;
 - GUI sem fontes vetoriais, HiDPI, IME e acessibilidade;
-- IDE sem seleção, edição estrutural, seletor de arquivo, debugger,
-  profiler e histórico transacional.
+- IDE sem seleção, reescrita estrutural, seletor de arquivo, debugger,
+  profiler ou desfazer seletivo/fora de ordem no estilo Interlisp.
 
 Consulte o [roteiro para 1.0](roteiro.md) para os próximos marcos.

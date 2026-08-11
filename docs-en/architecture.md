@@ -86,6 +86,12 @@ window, which makes behavior testable on CI. `sefirah_ide` only lays out the
 panels, draws the state, and translates X11/Win32/Cocoa events into session
 actions.
 
+Inside the session engine, `historico.c` owns the bounded editor timeline and
+listener event history, while `estrutura.c` locates a complete top-level Lisp
+form around the cursor. The inspector retains returned objects through public
+GC roots; presentation code sees only formatted session state and never reaches
+into runtime internals.
+
 ## Compiler flow
 
 `COMPILE` lowers a compatible function to a 64-bit integer SSA IR. The IR is

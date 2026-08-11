@@ -202,6 +202,8 @@ int main(int argc, char **argv) {
     SefValor valores_sdk = avaliar(runtime, "(values 40 41 42)");
     verificar(valores_sdk != NULL && sef_runtime_quantidade_valores(runtime) == 3,
               "SDK informou tres valores retornados");
+    verificar(strcmp(sef_valor_nome_tipo(valores_sdk), "INTEGER") == 0,
+              "SDK informou o tipo do valor para ferramentas residentes");
     verificar(sef_runtime_valor(runtime, 0) == valores_sdk &&
                   sef_valor_como_inteiro(sef_runtime_valor(runtime, 2)) == 42,
               "SDK preservou o valor primario e consultou os secundarios");

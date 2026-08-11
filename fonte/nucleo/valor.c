@@ -538,6 +538,30 @@ SefValor sef_lista_inverter(SefRuntime *runtime, SefValor lista, SefErro *erro) 
     return resultado;
 }
 
+const char *sef_valor_nome_tipo(SefValor valor) {
+    static const char *nomes[] = {"NULL",
+                                  "INTEGER",
+                                  "FLOAT",
+                                  "STRING",
+                                  "SYMBOL",
+                                  "CONS",
+                                  "COMPILED-FUNCTION",
+                                  "FUNCTION",
+                                  "SEFIRAH::ENVIRONMENT",
+                                  "CONDITION",
+                                  "PACKAGE",
+                                  "STREAM",
+                                  "SEFIRAH::SHARED-LIBRARY",
+                                  "VECTOR",
+                                  "CHARACTER",
+                                  "HASH-TABLE"};
+    if (valor == NULL)
+        return "INVALID";
+    if (valor->tipo == SEF_TIPO_FUNCAO && valor->como.funcao.compilada_i64 != NULL)
+        return "COMPILED-FUNCTION";
+    return nomes[valor->tipo];
+}
+
 bool sef_valor_e_inteiro(SefValor valor) {
     return valor != NULL && valor->tipo == SEF_TIPO_INTEIRO;
 }

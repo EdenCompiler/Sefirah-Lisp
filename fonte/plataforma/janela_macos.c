@@ -146,6 +146,8 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
     }
     if (codigo == 96 || (comando && (codigo == 36 || codigo == 76))) {
         evento.tipo = SEF_EVENTO_EXECUTAR;
+    } else if (codigo == 97) {
+        evento.tipo = SEF_EVENTO_EXECUTAR_FORMA;
     } else if (codigo == 36 || codigo == 76) {
         evento.tipo = SEF_EVENTO_ENTER;
     } else if (codigo == 51) {
@@ -178,6 +180,12 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
         reconhecido = true;
     } else if (comando && texto_igual_ascii(atalho, 'o')) {
         evento.tipo = SEF_EVENTO_ABRIR;
+        reconhecido = true;
+    } else if (comando && texto_igual_ascii(atalho, 'z')) {
+        evento.tipo = SEF_EVENTO_DESFAZER;
+        reconhecido = true;
+    } else if (comando && texto_igual_ascii(atalho, 'y')) {
+        evento.tipo = SEF_EVENTO_REFAZER;
         reconhecido = true;
     }
 

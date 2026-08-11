@@ -137,10 +137,12 @@ não significa que o marco inteiro esteja concluído.
 - [x] Buffer `.lisp` editável inicial com avaliação integral e abertura/gravação.
 - [x] Ouvinte multilinha, transcrição persistente e inspetor inicial de resultados.
 - [x] Movimento e inserção por cursor com consciência de UTF-8 no editor textual.
+- [x] Avaliação da forma de nível superior no cursor e eventos navegáveis do ouvinte.
+- [x] Desfazer/refazer linear limitado e inspetor de valores múltiplos enraizado no GC.
 - [ ] Seleção e edição estrutural.
 - [ ] Inspetor geral de objetos e navegador de código.
 - [ ] Debugger, profiler e navegação por condições/restarts.
-- [ ] DWIM reversível e histórico transacional.
+- [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração de sessão.
 - [ ] IDE recompila o compilador e a si própria.
 

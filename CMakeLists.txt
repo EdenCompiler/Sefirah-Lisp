@@ -94,7 +94,11 @@ endif()
 add_executable(sefirah fonte/cli/principal.c)
 target_link_libraries(sefirah PRIVATE sefirah_nucleo)
 
-add_library(sefirah_ide_nucleo fonte/ide/sessao.c)
+add_library(sefirah_ide_nucleo
+    fonte/ide/historico.c
+    fonte/ide/estrutura.c
+    fonte/ide/sessao.c
+)
 target_include_directories(sefirah_ide_nucleo PUBLIC incluir)
 target_link_libraries(sefirah_ide_nucleo PUBLIC sefirah_nucleo)
 

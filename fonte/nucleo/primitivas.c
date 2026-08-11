@@ -840,28 +840,10 @@ static SefValor primitiva_finish_output(SefRuntime *runtime, SefValor argumentos
 static SefValor primitiva_type_of(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "TYPE-OF", erro))
         return NULL;
-    static const char *nomes[] = {"NULL",
-                                  "INTEGER",
-                                  "FLOAT",
-                                  "STRING",
-                                  "SYMBOL",
-                                  "CONS",
-                                  "COMPILED-FUNCTION",
-                                  "FUNCTION",
-                                  "SEFIRAH::ENVIRONMENT",
-                                  NULL,
-                                  "PACKAGE",
-                                  "STREAM",
-                                  "SEFIRAH::SHARED-LIBRARY",
-                                  "VECTOR",
-                                  "CHARACTER",
-                                  "HASH-TABLE"};
     SefValor valor = car(argumentos);
     if (valor->tipo == SEF_TIPO_CONDICAO)
         return valor->como.condicao.classe;
-    if (valor->tipo == SEF_TIPO_FUNCAO && valor->como.funcao.compilada_i64 != NULL)
-        return sef_simbolo_internar(runtime, "COMPILED-FUNCTION", 17, erro);
-    const char *nome = nomes[valor->tipo];
+    const char *nome = sef_valor_nome_tipo(valor);
     return sef_simbolo_internar(runtime, nome, strlen(nome), erro);
 }
 

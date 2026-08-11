@@ -1,5 +1,7 @@
 #include "ide/ide.h"
 
+#include "apoio.h"
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -24,6 +26,11 @@ struct SefSessaoIde {
     TextoIde estado;
     TextoIde caminho;
     size_t cursor_editor;
+    SefHistoricoTextoIde *historico_ouvinte;
+    SefHistoricoEditorIde *historico_editor;
+    SefRaiz **objetos_inspecao;
+    size_t quantidade_objetos_inspecao;
+    size_t objeto_selecionado;
 };
 
 static bool texto_reservar(TextoIde *texto, size_t necessario, SefErro *erro) {
@@ -158,17 +165,75 @@ static bool registrar_erro(SefSessaoIde *sessao, const char *origem, const SefEr
            texto_acrescentar(&sessao->transcricao, "\n", erro);
 }
 
-static bool atualizar_inspetor(SefSessaoIde *sessao, SefErro *erro) {
+static void liberar_objetos_inspecao(SefSessaoIde *sessao) {
+    for (size_t i = 0; i < sessao->quantidade_objetos_inspecao; i++)
+        sef_raiz_liberar(sessao->objetos_inspecao[i]);
+    free(sessao->objetos_inspecao);
+    sessao->objetos_inspecao = NULL;
+    sessao->quantidade_objetos_inspecao = 0;
+    sessao->objeto_selecionado = 0;
+}
+
+static bool capturar_objetos_inspecao(SefSessaoIde *sessao, SefErro *erro) {
     size_t quantidade = sef_runtime_quantidade_valores(sessao->runtime);
-    if (quantidade == 0)
-        return texto_definir(&sessao->inspetor, "VALORES: 0\nPRIMARIO: (AUSENTE)", erro);
-    char *primario =
-        sef_valor_para_texto(sessao->runtime, sef_runtime_valor(sessao->runtime, 0), true, erro);
-    if (primario == NULL)
+    SefRaiz **objetos = quantidade == 0 ? NULL : calloc(quantidade, sizeof(*objetos));
+    if (quantidade > 0 && objetos == NULL) {
+        sef_erro_definir(erro, 0, 0, "memoria insuficiente para a prateleira de objetos");
         return false;
-    bool atualizou =
-        texto_formatar(&sessao->inspetor, erro, "VALORES: %zu\nPRIMARIO: %s", quantidade, primario);
-    sef_texto_liberar(primario);
+    }
+    for (size_t i = 0; i < quantidade; i++) {
+        objetos[i] = sef_raiz_criar(sessao->runtime, sef_runtime_valor(sessao->runtime, i), erro);
+        if (objetos[i] == NULL) {
+            for (size_t j = 0; j < i; j++)
+                sef_raiz_liberar(objetos[j]);
+            free(objetos);
+            return false;
+        }
+    }
+    liberar_objetos_inspecao(sessao);
+    sessao->objetos_inspecao = objetos;
+    sessao->quantidade_objetos_inspecao = quantidade;
+    return true;
+}
+
+static bool atualizar_inspetor(SefSessaoIde *sessao, SefErro *erro) {
+    size_t quantidade = sessao->quantidade_objetos_inspecao;
+    if (quantidade == 0)
+        return texto_formatar(&sessao->inspetor, erro,
+                              "OBJETOS: 0\nSELECIONADO: (AUSENTE)\nEVENTOS DO OUVINTE: %zu",
+                              sef_historico_texto_quantidade(sessao->historico_ouvinte));
+    if (sessao->objeto_selecionado >= quantidade)
+        sessao->objeto_selecionado = 0;
+    SefValor selecionado = sef_raiz_valor(sessao->objetos_inspecao[sessao->objeto_selecionado]);
+    char *representacao = sef_valor_para_texto(sessao->runtime, selecionado, true, erro);
+    if (representacao == NULL)
+        return false;
+    bool atualizou = texto_formatar(
+        &sessao->inspetor, erro,
+        "OBJETOS: %zu\nSELECIONADO: %zu/%zu\nTIPO: %s\nVALOR: %s\n\nPRATELEIRA VIVA:", quantidade,
+        sessao->objeto_selecionado + 1, quantidade, sef_valor_nome_tipo(selecionado),
+        representacao);
+    sef_texto_liberar(representacao);
+    for (size_t i = 0; atualizou && i < quantidade; i++) {
+        char *texto = sef_valor_para_texto(sessao->runtime,
+                                           sef_raiz_valor(sessao->objetos_inspecao[i]), true, erro);
+        if (texto == NULL)
+            return false;
+        char prefixo[48];
+        int tamanho = snprintf(prefixo, sizeof(prefixo),
+                               "\n%c %zu: ", i == sessao->objeto_selecionado ? '>' : ' ', i + 1);
+        atualizou = tamanho > 0 && (size_t)tamanho < sizeof(prefixo) &&
+                    texto_acrescentar(&sessao->inspetor, prefixo, erro) &&
+                    texto_acrescentar(&sessao->inspetor, texto, erro);
+        sef_texto_liberar(texto);
+    }
+    if (atualizou) {
+        char rodape[96];
+        int tamanho = snprintf(rodape, sizeof(rodape), "\n\nEVENTOS DO OUVINTE: %zu",
+                               sef_historico_texto_quantidade(sessao->historico_ouvinte));
+        atualizou = tamanho > 0 && (size_t)tamanho < sizeof(rodape) &&
+                    texto_acrescentar(&sessao->inspetor, rodape, erro);
+    }
     return atualizou;
 }
 
@@ -230,7 +295,7 @@ static bool executar_codigo(SefSessaoIde *sessao, const char *codigo, const char
             *erro = avaliacao;
         return false;
     }
-    if (!imprimir_valores(sessao, erro) ||
+    if (!capturar_objetos_inspecao(sessao, erro) || !imprimir_valores(sessao, erro) ||
         !texto_formatar(&sessao->estado, erro, "%s concluido", origem))
         return false;
     return true;
@@ -247,9 +312,15 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
     if (sessao->runtime == NULL || !texto_definir(&sessao->editor, "", erro) ||
         !texto_definir(&sessao->ouvinte, "", erro) ||
         !texto_definir(&sessao->transcricao, "", erro) ||
-        !texto_definir(&sessao->inspetor, "VALORES: 0\nPRIMARIO: (AUSENTE)", erro) ||
+        !texto_definir(&sessao->inspetor, "OBJETOS: 0\nSELECIONADO: (AUSENTE)", erro) ||
         !texto_definir(&sessao->estado, "Novo arquivo", erro) ||
         !texto_definir(&sessao->caminho, "programa.lisp", erro)) {
+        sef_sessao_ide_destruir(sessao);
+        return NULL;
+    }
+    sessao->historico_ouvinte = sef_historico_texto_criar(erro);
+    sessao->historico_editor = sef_historico_editor_criar("", 0, erro);
+    if (sessao->historico_ouvinte == NULL || sessao->historico_editor == NULL) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
     }
@@ -259,6 +330,9 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
 void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     if (sessao == NULL)
         return;
+    liberar_objetos_inspecao(sessao);
+    sef_historico_texto_destruir(sessao->historico_ouvinte);
+    sef_historico_editor_destruir(sessao->historico_editor);
     sef_runtime_destruir(sessao->runtime);
     texto_liberar(&sessao->editor);
     texto_liberar(&sessao->ouvinte);
@@ -290,7 +364,8 @@ bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, Sef
     if (!texto_definir(&sessao->editor, codigo, erro))
         return false;
     sessao->cursor_editor = sessao->editor.tamanho;
-    return true;
+    return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
+                                          sessao->cursor_editor, erro);
 }
 
 bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {
@@ -303,7 +378,8 @@ bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefE
     if (!texto_inserir_n(&sessao->editor, sessao->cursor_editor, texto, tamanho, erro))
         return false;
     sessao->cursor_editor += tamanho;
-    return true;
+    return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
+                                          sessao->cursor_editor, erro);
 }
 
 void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
@@ -314,6 +390,10 @@ void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
             sessao->editor.tamanho - sessao->cursor_editor + 1);
     sessao->editor.tamanho -= sessao->cursor_editor - inicio;
     sessao->cursor_editor = inicio;
+    SefErro descarte;
+    sef_erro_limpar(&descarte);
+    sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
+                                   sessao->cursor_editor, &descarte);
 }
 
 static size_t inicio_linha(const TextoIde *texto, size_t posicao) {
@@ -390,18 +470,49 @@ bool sef_sessao_ide_editor_nova_linha(SefSessaoIde *sessao, SefErro *erro) {
     return sef_sessao_ide_editor_inserir(sessao, "\n", erro);
 }
 
+static bool restaurar_editor(SefSessaoIde *sessao, bool desfazer, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    const char *texto = NULL;
+    size_t cursor = 0;
+    bool encontrou = desfazer
+                         ? sef_historico_editor_desfazer(sessao->historico_editor, &texto, &cursor)
+                         : sef_historico_editor_refazer(sessao->historico_editor, &texto, &cursor);
+    if (!encontrou)
+        return texto_definir(&sessao->estado, desfazer ? "Nada para desfazer" : "Nada para refazer",
+                             erro);
+    if (!texto_definir(&sessao->editor, texto, erro))
+        return false;
+    sessao->cursor_editor = cursor;
+    return texto_definir(&sessao->estado, desfazer ? "Edicao desfeita" : "Edicao refeita", erro);
+}
+
+bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro) {
+    return restaurar_editor(sessao, true, erro);
+}
+
+bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro) {
+    return restaurar_editor(sessao, false, erro);
+}
+
 bool sef_sessao_ide_ouvinte_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL || texto == NULL) {
         sef_erro_definir(erro, 0, 0, "sessao ou texto ausente no ouvinte");
         return false;
     }
+    sef_historico_texto_ir_ao_fim(sessao->historico_ouvinte);
     return texto_acrescentar(&sessao->ouvinte, texto, erro);
 }
 
 void sef_sessao_ide_ouvinte_apagar(SefSessaoIde *sessao) {
-    if (sessao != NULL)
+    if (sessao != NULL) {
+        sef_historico_texto_ir_ao_fim(sessao->historico_ouvinte);
         texto_apagar_utf8(&sessao->ouvinte);
+    }
 }
 
 bool sef_sessao_ide_ouvinte_enviar(SefSessaoIde *sessao, SefErro *erro) {
@@ -414,11 +525,33 @@ bool sef_sessao_ide_ouvinte_enviar(SefSessaoIde *sessao, SefErro *erro) {
     if (estado == SEF_CODIGO_INCOMPLETO) {
         return texto_definir(&sessao->estado, "Ouvinte aguardando continuacao", erro);
     }
+    size_t tamanho_evento = sessao->ouvinte.tamanho;
+    while (tamanho_evento > 0 && (sessao->ouvinte.dados[tamanho_evento - 1] == '\n' ||
+                                  sessao->ouvinte.dados[tamanho_evento - 1] == '\r'))
+        tamanho_evento--;
+    if (!sef_historico_texto_registrar(sessao->historico_ouvinte, sessao->ouvinte.dados,
+                                       tamanho_evento, erro))
+        return false;
     bool executou = executar_codigo(sessao, sessao->ouvinte.dados, "OUVINTE", true, erro);
     SefErro descarte;
     sef_erro_limpar(&descarte);
     texto_definir(&sessao->ouvinte, "", &descarte);
     return executou && !erro->ocorreu;
+}
+
+bool sef_sessao_ide_ouvinte_mover_historico(SefSessaoIde *sessao,
+                                            SefMovimentoHistoricoIde movimento, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    const char *texto = movimento == SEF_HISTORICO_ANTERIOR
+                            ? sef_historico_texto_anterior(sessao->historico_ouvinte)
+                            : sef_historico_texto_proximo(sessao->historico_ouvinte);
+    if (texto == NULL)
+        return true;
+    return texto_definir(&sessao->ouvinte, texto, erro) && atualizar_inspetor(sessao, erro);
 }
 
 bool sef_sessao_ide_executar_editor(SefSessaoIde *sessao, SefErro *erro) {
@@ -428,6 +561,46 @@ bool sef_sessao_ide_executar_editor(SefSessaoIde *sessao, SefErro *erro) {
         return false;
     }
     return executar_codigo(sessao, sessao->editor.dados, "EDITOR", false, erro);
+}
+
+bool sef_sessao_ide_executar_forma_no_cursor(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "sessao da IDE ausente");
+        return false;
+    }
+    size_t inicio = 0;
+    size_t fim = 0;
+    if (!sef_ide_forma_no_cursor(sessao->editor.dados, sessao->cursor_editor, &inicio, &fim)) {
+        sef_erro_definir(erro, 0, 0, "nenhuma forma Lisp completa no cursor");
+        return false;
+    }
+    char *forma = malloc(fim - inicio + 1);
+    if (forma == NULL) {
+        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao copiar forma do editor");
+        return false;
+    }
+    memcpy(forma, sessao->editor.dados + inicio, fim - inicio);
+    forma[fim - inicio] = '\0';
+    bool executou = executar_codigo(sessao, forma, "FORMA NO CURSOR", true, erro);
+    free(forma);
+    return executou;
+}
+
+bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde movimento,
+                                   SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || sessao->quantidade_objetos_inspecao == 0)
+        return true;
+    if (movimento == SEF_INSPETOR_ANTERIOR) {
+        sessao->objeto_selecionado = sessao->objeto_selecionado == 0
+                                         ? sessao->quantidade_objetos_inspecao - 1
+                                         : sessao->objeto_selecionado - 1;
+    } else {
+        sessao->objeto_selecionado =
+            (sessao->objeto_selecionado + 1) % sessao->quantidade_objetos_inspecao;
+    }
+    return atualizar_inspetor(sessao, erro);
 }
 
 bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {
@@ -499,6 +672,9 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
                  texto_formatar(&sessao->estado, erro, "Aberto: %s", caminho);
     if (abriu)
         sessao->cursor_editor = lidos;
+    if (abriu)
+        abriu = sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
+                                               sessao->cursor_editor, erro);
     free(dados);
     return abriu;
 }

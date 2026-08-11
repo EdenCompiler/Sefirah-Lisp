@@ -89,6 +89,13 @@ inspetor, caminho atual e runtime. Ele executa, abre e grava sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
 painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.
 
+Dentro do motor de sessão, `historico.c` mantém a linha do tempo limitada do
+editor e o histórico de eventos do ouvinte, enquanto `estrutura.c` localiza uma
+forma Lisp completa de nível superior ao redor do cursor. O inspetor retém os
+objetos devolvidos por meio de raízes públicas do GC; o código de apresentação
+enxerga somente o estado formatado da sessão e nunca acessa os detalhes internos
+do runtime.
+
 ## Fluxo do compilador
 
 `COMPILE` baixa uma função compatível para uma IR SSA de inteiros de 64 bits. A

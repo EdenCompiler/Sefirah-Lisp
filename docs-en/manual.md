@@ -112,6 +112,8 @@ specialized element types, and adjustable vectors remain pending.
 In the C SDK, `sef_vetor_criar`, `sef_vetor_tamanho`, `sef_vetor_obter`, and
 `sef_vetor_definir` operate on the same collected object. A value retained by
 the host across evaluations must stay protected by `SefRaiz`.
+`sef_valor_nome_tipo` exposes the stable diagnostic type name used by resident
+tools without exposing the private object layout.
 
 ## Unicode characters and strings
 
@@ -388,7 +390,7 @@ and prints every returned value. `:ajuda` lists commands and `:sair` exits.
 The graphical IDE is split into a platform-independent session engine and a
 window presentation. It provides an editable `.lisp` buffer, multiline
 listener, persistent transcript, result inspector, whole-buffer evaluation,
-and file load/save:
+structural form evaluation, linear undo/redo, and file load/save:
 
 ```bash
 sefirah_ide
@@ -397,10 +399,27 @@ sefirah_ide path/to/program.lisp
 
 Tab or a pointer click switches between editor and listener. Enter inserts a
 line in the editor and submits a complete form in the listener. F5 or
-Ctrl+Enter runs the editor, Ctrl+S saves, and Ctrl+O reloads the current path.
-Arrow, Home, and End keys move the UTF-8-aware editor cursor. The session
-engine is covered by headless automated tests. On macOS, Command can replace
-Ctrl for these shortcuts.
+Ctrl+Enter runs the whole buffer; F6 finds and runs only the complete top-level
+form at the cursor. Ctrl+Z and Ctrl+Y traverse the editor's bounded linear
+timeline. Ctrl+S saves and Ctrl+O reloads the current path. Arrow, Home, and End
+move the UTF-8-aware editor cursor. In the listener, Up and Down recover up to
+128 submitted events, including multiline forms.
+
+The inspector roots every value from the latest evaluation in the garbage
+collector, shows its type and readable representation, and exposes the whole
+multiple-value result as a live object shelf. Click the inspector to select the
+next object. The session engine, histories, structural scanner, and inspector
+are covered by headless automated tests. On macOS, Command can replace Ctrl for
+the shortcuts.
+
+These facilities deliberately recover a small, practical part of the Lisp
+machine workflow: Interlisp's Programmer's Assistant kept replayable events and
+its editors operated on Lisp structure, while Genera connected its Listener and
+Inspector to the same live world. Sefirah keeps those ideas behind a portable
+session API instead of coupling them to a window backend. See the
+[Interlisp timeline](https://interlisp.org/history/timeline/) and the
+[Genera User's Guide](https://www.bitsavers.org/pdf/symbolics/software/genera_8/Genera_User_s_Guide.pdf)
+for the historical systems that motivate this direction.
 
 ## Custom GUI
 
@@ -434,7 +453,7 @@ compiled functions, conditions, hash tables, and shared libraries.
 - compilation limited to the i64 subset;
 - FFI without general floats, pointers, structs, and callbacks;
 - GUI without vector fonts, HiDPI, IME, and accessibility;
-- IDE without selection, structural editing, file chooser, debugger,
-  profiler, and transactional history.
+- IDE without selection, structural rewriting, file chooser, debugger,
+  profiler, or Interlisp-style selective/out-of-order undo.
 
 See the [1.0 roadmap](roadmap.md) for the next milestones.

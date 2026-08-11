@@ -61,6 +61,12 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                     if (tecla == XK_F5 ||
                         (controle && (tecla == XK_Return || tecla == XK_KP_Enter))) {
                         evento_sefirah.tipo = SEF_EVENTO_EXECUTAR;
+                    } else if (tecla == XK_F6) {
+                        evento_sefirah.tipo = SEF_EVENTO_EXECUTAR_FORMA;
+                    } else if (controle && (tecla == XK_z || tecla == XK_Z)) {
+                        evento_sefirah.tipo = SEF_EVENTO_DESFAZER;
+                    } else if (controle && (tecla == XK_y || tecla == XK_Y)) {
+                        evento_sefirah.tipo = SEF_EVENTO_REFAZER;
                     } else if (controle && (tecla == XK_s || tecla == XK_S)) {
                         evento_sefirah.tipo = SEF_EVENTO_SALVAR;
                     } else if (controle && (tecla == XK_o || tecla == XK_O)) {

@@ -25,7 +25,7 @@ int main(void) {
     verificar(sef_sessao_ide_executar_editor(sessao, &erro), "IDE executou o editor");
     verificar(strstr(sef_sessao_ide_transcricao(sessao), "42\n") != NULL,
               "transcricao recebeu o resultado do editor");
-    verificar(strstr(sef_sessao_ide_inspetor(sessao), "PRIMARIO: 42") != NULL,
+    verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 42") != NULL,
               "inspetor acompanhou o valor avaliado");
 
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(let ((x 40))", &erro) &&
@@ -43,8 +43,25 @@ int main(void) {
               "ouvinte aceitou valores multiplos");
     verificar(strstr(sef_sessao_ide_transcricao(sessao), "40\n41\n42\n") != NULL,
               "ouvinte mostrou todos os valores");
-    verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALORES: 3") != NULL,
-              "inspetor contou valores multiplos");
+    verificar(strstr(sef_sessao_ide_inspetor(sessao), "OBJETOS: 3") != NULL,
+              "inspetor reteve valores multiplos");
+    verificar(sef_sessao_ide_inspetor_mover(sessao, SEF_INSPETOR_PROXIMO, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "SELECIONADO: 2/3") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 41") != NULL,
+              "inspetor navegou pela prateleira de objetos vivos");
+
+    verificar(sef_sessao_ide_ouvinte_mover_historico(sessao, SEF_HISTORICO_ANTERIOR, &erro) &&
+                  strcmp(sef_sessao_ide_ouvinte(sessao), "(values 40 41 42)") == 0,
+              "ouvinte recuperou o evento anterior");
+    verificar(sef_sessao_ide_ouvinte_mover_historico(sessao, SEF_HISTORICO_ANTERIOR, &erro) &&
+                  strstr(sef_sessao_ide_ouvinte(sessao), "(let ((x 40))") != NULL &&
+                  strstr(sef_sessao_ide_ouvinte(sessao), "(+ x 2))") != NULL,
+              "historico preservou um evento multilinha");
+    verificar(sef_sessao_ide_ouvinte_mover_historico(sessao, SEF_HISTORICO_PROXIMO, &erro) &&
+                  strcmp(sef_sessao_ide_ouvinte(sessao), "(values 40 41 42)") == 0 &&
+                  sef_sessao_ide_ouvinte_mover_historico(sessao, SEF_HISTORICO_PROXIMO, &erro) &&
+                  strlen(sef_sessao_ide_ouvinte(sessao)) == 0,
+              "ouvinte percorreu o historico ate o fim");
 
     verificar(sef_sessao_ide_editor_inserir(sessao, "; ação", &erro), "editor inseriu texto UTF-8");
     sef_sessao_ide_editor_apagar(sessao);
@@ -71,6 +88,26 @@ int main(void) {
     verificar(strcmp(sef_sessao_ide_editor(sessao), "abc\ndef") == 0 &&
                   sef_sessao_ide_cursor_editor(sessao) == 1,
               "editor apagou antes do cursor e preservou o restante");
+
+    verificar(sef_sessao_ide_editor_definir(sessao, "abc", &erro) &&
+                  sef_sessao_ide_editor_inserir(sessao, "X", &erro) &&
+                  sef_sessao_ide_editor_desfazer(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), "abc") == 0,
+              "linha do tempo desfez uma edicao");
+    verificar(sef_sessao_ide_editor_refazer(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), "abcX") == 0,
+              "linha do tempo refez uma edicao");
+    verificar(sef_sessao_ide_editor_desfazer(sessao, &erro) &&
+                  sef_sessao_ide_editor_inserir(sessao, "Y", &erro) &&
+                  sef_sessao_ide_editor_refazer(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), "abcY") == 0,
+              "nova edicao descartou o ramo antigo de refazer");
+
+    verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
+                  sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),
+              "editor avaliou somente a forma completa no cursor");
+    verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 15") != NULL,
+              "avaliacao estrutural atualizou o inspetor");
 
     sef_sessao_ide_destruir(sessao);
     if (falhas == 0)

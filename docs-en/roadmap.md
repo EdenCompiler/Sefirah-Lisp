@@ -135,10 +135,12 @@ not mean the entire milestone is complete.
   load/save.
 - [x] Multiline listener, persistent transcript, and initial result inspector.
 - [x] UTF-8-aware cursor movement and insertion in the text editor.
+- [x] Top-level form evaluation at the cursor and navigable listener events.
+- [x] Bounded linear undo/redo and a GC-rooted multiple-value inspector.
 - [ ] Selection and structural editing.
 - [ ] General object inspector and code browser.
 - [ ] Debugger, profiler, and condition/restart navigation.
-- [ ] Reversible DWIM and transactional history.
+- [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and session restoration.
 - [ ] IDE recompiles the compiler and itself.
 

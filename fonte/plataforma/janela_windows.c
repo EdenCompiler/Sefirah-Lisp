@@ -45,13 +45,21 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
         DestroyWindow(janela);
         return 0;
     } else if (mensagem == WM_KEYDOWN && estado != NULL && estado->ao_evento != NULL &&
-               (wparam == VK_F5 || ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
-                                    (wparam == VK_RETURN || wparam == 'S' || wparam == 'O')))) {
+               (wparam == VK_F5 || wparam == VK_F6 ||
+                ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
+                 (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'Z' ||
+                  wparam == 'Y')))) {
         SefEventoJanela evento = {0};
         if (wparam == 'S')
             evento.tipo = SEF_EVENTO_SALVAR;
         else if (wparam == 'O')
             evento.tipo = SEF_EVENTO_ABRIR;
+        else if (wparam == 'Z')
+            evento.tipo = SEF_EVENTO_DESFAZER;
+        else if (wparam == 'Y')
+            evento.tipo = SEF_EVENTO_REFAZER;
+        else if (wparam == VK_F6)
+            evento.tipo = SEF_EVENTO_EXECUTAR_FORMA;
         else
             evento.tipo = SEF_EVENTO_EXECUTAR;
         if (estado->ao_evento(&evento, estado->dados))

@@ -152,10 +152,10 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                              (SefRetangulo){0, 30, superficie->largura, superficie->altura - 66},
                              &estado->tema);
 
-    desenhar_painel(superficie, estado->editor.limites, "EDITOR  [F5 EXECUTA]",
+    desenhar_painel(superficie, estado->editor.limites, "EDITOR  [F5 TUDO] [F6 FORMA]",
                     estado->foco == FOCO_EDITOR);
-    desenhar_painel(superficie, estado->inspetor.limites, "INSPETOR", false);
-    desenhar_painel(superficie, estado->ouvinte.limites, "OUVINTE  [ENTER ENVIA]",
+    desenhar_painel(superficie, estado->inspetor.limites, "INSPETOR  [CLIQUE AVANCA]", false);
+    desenhar_painel(superficie, estado->ouvinte.limites, "OUVINTE  [ENTER ENVIA] [CIMA HIST.]",
                     estado->foco == FOCO_OUVINTE);
     desenhar_editor(superficie, estado->editor.limites, estado->sessao);
     desenhar_texto_limitado(superficie, estado->inspetor.limites,
@@ -220,6 +220,17 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_EXECUTAR:
         sef_sessao_ide_executar_editor(estado->sessao, &erro);
         break;
+    case SEF_EVENTO_EXECUTAR_FORMA:
+        sef_sessao_ide_executar_forma_no_cursor(estado->sessao, &erro);
+        break;
+    case SEF_EVENTO_DESFAZER:
+        if (estado->foco == FOCO_EDITOR)
+            sef_sessao_ide_editor_desfazer(estado->sessao, &erro);
+        break;
+    case SEF_EVENTO_REFAZER:
+        if (estado->foco == FOCO_EDITOR)
+            sef_sessao_ide_editor_refazer(estado->sessao, &erro);
+        break;
     case SEF_EVENTO_SALVAR:
         sef_sessao_ide_salvar(estado->sessao, sef_sessao_ide_caminho(estado->sessao), &erro);
         break;
@@ -237,10 +248,14 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_CURSOR_CIMA:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_CIMA);
+        else
+            sef_sessao_ide_ouvinte_mover_historico(estado->sessao, SEF_HISTORICO_ANTERIOR, &erro);
         break;
     case SEF_EVENTO_CURSOR_BAIXO:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_mover_cursor(estado->sessao, SEF_CURSOR_BAIXO);
+        else
+            sef_sessao_ide_ouvinte_mover_historico(estado->sessao, SEF_HISTORICO_PROXIMO, &erro);
         break;
     case SEF_EVENTO_CURSOR_INICIO:
         if (estado->foco == FOCO_EDITOR)
@@ -253,6 +268,8 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_PONTEIRO_PRESSIONAR:
         if (ponto_dentro(estado->editor.limites, evento->x, evento->y))
             estado->foco = FOCO_EDITOR;
+        else if (ponto_dentro(estado->inspetor.limites, evento->x, evento->y))
+            sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_PROXIMO, &erro);
         else if (ponto_dentro(estado->ouvinte.limites, evento->x, evento->y))
             estado->foco = FOCO_OUVINTE;
         break;
