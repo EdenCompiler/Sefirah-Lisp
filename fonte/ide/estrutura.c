@@ -81,8 +81,27 @@ static bool analisar_forma(const char *codigo, size_t tamanho, size_t *posicao) 
     }
 
     size_t inicio = *posicao;
-    while (*posicao < tamanho && !delimitador((unsigned char)codigo[*posicao]))
-        (*posicao)++;
+    bool entre_barras = false;
+    bool escape = false;
+    while (*posicao < tamanho) {
+        caractere = (unsigned char)codigo[*posicao];
+        if (escape) {
+            escape = false;
+            (*posicao)++;
+        } else if (caractere == '\\') {
+            escape = true;
+            (*posicao)++;
+        } else if (caractere == '|') {
+            entre_barras = !entre_barras;
+            (*posicao)++;
+        } else if (!entre_barras && delimitador(caractere)) {
+            break;
+        } else {
+            (*posicao)++;
+        }
+    }
+    if (entre_barras || escape)
+        return false;
     return *posicao > inicio;
 }
 

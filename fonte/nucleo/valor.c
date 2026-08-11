@@ -159,6 +159,76 @@ static char *copiar_nome_maiusculo(const char *nome, size_t tamanho) {
     return copia;
 }
 
+static char *copiar_nome_exato(const char *nome, size_t tamanho) {
+    char *copia = malloc(tamanho + 1);
+    if (copia == NULL)
+        return NULL;
+    memcpy(copia, nome, tamanho);
+    copia[tamanho] = '\0';
+    return copia;
+}
+
+typedef struct NomeSimboloLido {
+    char *dados;
+    size_t tamanho;
+    size_t separador_pacote;
+    size_t quantidade_separadores;
+} NomeSimboloLido;
+
+static bool normalizar_nome_simbolo_lido(const char *nome, size_t tamanho, NomeSimboloLido *saida,
+                                         SefErro *erro) {
+    saida->dados = malloc(tamanho + 1);
+    saida->tamanho = 0;
+    saida->separador_pacote = SIZE_MAX;
+    saida->quantidade_separadores = 0;
+    if (saida->dados == NULL) {
+        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao normalizar nome de simbolo");
+        return false;
+    }
+    bool entre_barras = false;
+    for (size_t i = 0; i < tamanho; i++) {
+        unsigned char caractere = (unsigned char)nome[i];
+        if (caractere == '\\') {
+            if (++i >= tamanho) {
+                free(saida->dados);
+                saida->dados = NULL;
+                sef_erro_definir(erro, 0, 0, "escape incompleto no nome do simbolo");
+                return false;
+            }
+            saida->dados[saida->tamanho++] = nome[i];
+            continue;
+        }
+        if (caractere == '|') {
+            entre_barras = !entre_barras;
+            continue;
+        }
+        if (!entre_barras && caractere == ':') {
+            if (saida->separador_pacote == SIZE_MAX) {
+                saida->separador_pacote = saida->tamanho;
+                saida->quantidade_separadores = 1;
+            } else if (saida->quantidade_separadores == 1 &&
+                       saida->tamanho == saida->separador_pacote + 1) {
+                saida->quantidade_separadores = 2;
+            } else {
+                free(saida->dados);
+                saida->dados = NULL;
+                sef_erro_definir(erro, 0, 0, "separador de package invalido no simbolo");
+                return false;
+            }
+        }
+        saida->dados[saida->tamanho++] =
+            (char)(!entre_barras && caractere < 128 ? toupper(caractere) : caractere);
+    }
+    if (entre_barras) {
+        free(saida->dados);
+        saida->dados = NULL;
+        sef_erro_definir(erro, 0, 0, "simbolo sem barra vertical de fechamento");
+        return false;
+    }
+    saida->dados[saida->tamanho] = '\0';
+    return true;
+}
+
 static bool vetor_valores_crescer(SefValor **valores, size_t *capacidade, size_t minimo,
                                   SefErro *erro) {
     if (*capacidade >= minimo)
@@ -305,21 +375,31 @@ static SefValor pacote_buscar_simbolo(SefValor pacote, const char *nome, size_t 
     return NULL;
 }
 
-SefValor sef_pacote_localizar_simbolo(SefValor pacote, const char *nome, size_t tamanho,
-                                      bool incluir_herdados) {
-    char *normalizado = copiar_nome_maiusculo(nome, tamanho);
-    if (normalizado == NULL)
-        return NULL;
-    SefValor encontrado = pacote_buscar_simbolo(pacote, normalizado, tamanho);
+SefValor sef_pacote_localizar_simbolo_com_estado(SefValor pacote, const char *nome, size_t tamanho,
+                                                 bool incluir_herdados,
+                                                 SefEstadoSimboloPacote *estado) {
+    if (estado != NULL)
+        *estado = SEF_SIMBOLO_AUSENTE;
+    SefValor encontrado = pacote_buscar_simbolo(pacote, nome, tamanho);
+    if (encontrado != NULL && estado != NULL)
+        *estado = sef_pacote_simbolo_exportado(pacote, encontrado) ? SEF_SIMBOLO_EXTERNO
+                                                                   : SEF_SIMBOLO_INTERNO;
     for (size_t i = 0;
          encontrado == NULL && incluir_herdados && i < pacote->como.pacote.quantidade_usados; i++) {
         SefValor usado = pacote->como.pacote.usados[i];
-        SefValor candidato = pacote_buscar_simbolo(usado, normalizado, tamanho);
-        if (candidato != NULL && sef_pacote_simbolo_exportado(usado, candidato))
+        SefValor candidato = pacote_buscar_simbolo(usado, nome, tamanho);
+        if (candidato != NULL && sef_pacote_simbolo_exportado(usado, candidato)) {
             encontrado = candidato;
+            if (estado != NULL)
+                *estado = SEF_SIMBOLO_HERDADO;
+        }
     }
-    free(normalizado);
     return encontrado;
+}
+
+SefValor sef_pacote_localizar_simbolo(SefValor pacote, const char *nome, size_t tamanho,
+                                      bool incluir_herdados) {
+    return sef_pacote_localizar_simbolo_com_estado(pacote, nome, tamanho, incluir_herdados, NULL);
 }
 
 SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const char *nome,
@@ -328,15 +408,18 @@ SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const cha
         sef_erro_definir(erro, 0, 0, "pacote invalido ao internar simbolo");
         return NULL;
     }
-    char *normalizado = copiar_nome_maiusculo(nome, tamanho);
-    if (normalizado == NULL) {
+    char *copia = copiar_nome_exato(nome, tamanho);
+    if (copia == NULL) {
         sef_erro_definir(erro, 0, 0, "memoria insuficiente ao internar simbolo");
         return NULL;
     }
 
-    SefValor existente = pacote_buscar_simbolo(pacote, normalizado, tamanho);
+    SefValor existente = pacote_buscar_simbolo(pacote, copia, tamanho);
     if (existente != NULL) {
-        free(normalizado);
+        free(copia);
+        if (pacote == runtime->pacote_keyword &&
+            !sef_pacote_exportar(runtime, pacote, existente, erro))
+            return NULL;
         return existente;
     }
     if (!vetor_valores_crescer(&runtime->simbolos, &runtime->capacidade_simbolos,
@@ -344,21 +427,23 @@ SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const cha
         !vetor_valores_crescer(&pacote->como.pacote.simbolos,
                                &pacote->como.pacote.capacidade_simbolos,
                                pacote->como.pacote.quantidade_simbolos + 1, erro)) {
-        free(normalizado);
+        free(copia);
         return NULL;
     }
 
     SefValor simbolo = sef_objeto_novo(runtime, SEF_TIPO_SIMBOLO, erro);
     if (simbolo == NULL) {
-        free(normalizado);
+        free(copia);
         return NULL;
     }
-    simbolo->como.simbolo.nome = normalizado;
+    simbolo->como.simbolo.nome = copia;
     simbolo->como.simbolo.tamanho = tamanho;
     simbolo->como.simbolo.pacote = pacote;
     runtime->bytes_aproximados += tamanho + 1;
     runtime->simbolos[runtime->quantidade_simbolos++] = simbolo;
     pacote->como.pacote.simbolos[pacote->como.pacote.quantidade_simbolos++] = simbolo;
+    if (pacote == runtime->pacote_keyword && !sef_pacote_exportar(runtime, pacote, simbolo, erro))
+        return NULL;
     return simbolo;
 }
 
@@ -368,39 +453,51 @@ SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tama
         sef_erro_definir(erro, 0, 0, "nao existe pacote atual");
         return NULL;
     }
-    if (tamanho > 1 && nome[0] == ':')
-        return sef_simbolo_internar_em(runtime, runtime->pacote_keyword, nome + 1, tamanho - 1,
-                                       erro);
+    NomeSimboloLido nome_lido;
+    if (!normalizar_nome_simbolo_lido(nome, tamanho, &nome_lido, erro))
+        return NULL;
+    char *normalizado = nome_lido.dados;
+    tamanho = nome_lido.tamanho;
+    if (nome_lido.separador_pacote == 0 && nome_lido.quantidade_separadores == 1) {
+        SefValor simbolo = sef_simbolo_internar_em(runtime, runtime->pacote_keyword,
+                                                   normalizado + 1, tamanho - 1, erro);
+        free(normalizado);
+        return simbolo;
+    }
 
-    const char *dois_pontos = memchr(nome, ':', tamanho);
-    if (dois_pontos != NULL) {
-        size_t tamanho_pacote = (size_t)(dois_pontos - nome);
-        size_t separadores = dois_pontos + 1 < nome + tamanho && dois_pontos[1] == ':' ? 2 : 1;
+    if (nome_lido.separador_pacote != SIZE_MAX) {
+        size_t tamanho_pacote = nome_lido.separador_pacote;
+        size_t separadores = nome_lido.quantidade_separadores;
         size_t inicio_nome = tamanho_pacote + separadores;
-        SefValor pacote = sef_pacote_encontrar(runtime, nome, tamanho_pacote);
-        if (pacote == NULL || inicio_nome >= tamanho) {
+        SefValor pacote = sef_pacote_encontrar(runtime, normalizado, tamanho_pacote);
+        if (pacote == NULL || inicio_nome > tamanho) {
+            free(normalizado);
             sef_erro_definir(erro, 0, 0, "designador de simbolo com pacote invalido");
             return NULL;
         }
-        SefValor simbolo =
-            sef_pacote_localizar_simbolo(pacote, nome + inicio_nome, tamanho - inicio_nome, false);
+        SefValor simbolo = sef_pacote_localizar_simbolo(pacote, normalizado + inicio_nome,
+                                                        tamanho - inicio_nome, false);
         if (separadores == 1) {
             if (simbolo == NULL || !sef_pacote_simbolo_exportado(pacote, simbolo)) {
+                free(normalizado);
                 sef_erro_definir(erro, 0, 0, "simbolo nao e externo no pacote indicado");
                 return NULL;
             }
+            free(normalizado);
             return simbolo;
         }
-        return simbolo != NULL ? simbolo
-                               : sef_simbolo_internar_em(runtime, pacote, nome + inicio_nome,
-                                                         tamanho - inicio_nome, erro);
+        if (simbolo == NULL)
+            simbolo = sef_simbolo_internar_em(runtime, pacote, normalizado + inicio_nome,
+                                              tamanho - inicio_nome, erro);
+        free(normalizado);
+        return simbolo;
     }
 
-    char *normalizado = copiar_nome_maiusculo(nome, tamanho);
-    if (normalizado == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao internar simbolo");
-        return NULL;
+    if (tamanho == 3 && memcmp(normalizado, "NIL", 3) == 0) {
+        free(normalizado);
+        return runtime->nulo;
     }
+
     SefValor encontrado = pacote_buscar_simbolo(runtime->pacote_atual, normalizado, tamanho);
     for (size_t i = 0;
          encontrado == NULL && i < runtime->pacote_atual->como.pacote.quantidade_usados; i++) {
@@ -409,10 +506,11 @@ SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tama
         if (candidato != NULL && sef_pacote_simbolo_exportado(usado, candidato))
             encontrado = candidato;
     }
+    if (encontrado == NULL)
+        encontrado =
+            sef_simbolo_internar_em(runtime, runtime->pacote_atual, normalizado, tamanho, erro);
     free(normalizado);
-    return encontrado != NULL
-               ? encontrado
-               : sef_simbolo_internar_em(runtime, runtime->pacote_atual, nome, tamanho, erro);
+    return encontrado;
 }
 
 SefValor sef_par_novo(SefRuntime *runtime, SefValor primeiro, SefValor resto, SefErro *erro) {

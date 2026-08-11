@@ -121,8 +121,27 @@ SefEstadoCodigo sef_runtime_estado_codigo(const char *codigo, SefErro *erro) {
         }
 
         prefixos_pendentes = 0;
-        while (!delimitador((unsigned char)*cursor))
-            avancar(&cursor, &posicao);
+        bool entre_barras = false;
+        bool escape_simbolo = false;
+        while (*cursor != '\0') {
+            caractere = (unsigned char)*cursor;
+            if (escape_simbolo) {
+                escape_simbolo = false;
+                avancar(&cursor, &posicao);
+            } else if (caractere == '\\') {
+                escape_simbolo = true;
+                avancar(&cursor, &posicao);
+            } else if (caractere == '|') {
+                entre_barras = !entre_barras;
+                avancar(&cursor, &posicao);
+            } else if (!entre_barras && delimitador(caractere)) {
+                break;
+            } else {
+                avancar(&cursor, &posicao);
+            }
+        }
+        if (entre_barras || escape_simbolo)
+            return SEF_CODIGO_INCOMPLETO;
     }
 
     return em_texto || escape || profundidade > 0 || prefixos_pendentes > 0 ? SEF_CODIGO_INCOMPLETO

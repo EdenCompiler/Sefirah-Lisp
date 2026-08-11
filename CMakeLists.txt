@@ -175,6 +175,7 @@ install(FILES
     docs-ptbr/manual.md
     docs-ptbr/arquitetura.md
     docs-ptbr/compilador.md
+    docs-ptbr/conformidade.md
     docs-ptbr/roteiro.md
     DESTINATION ${CMAKE_INSTALL_DOCDIR}/docs-ptbr
 )
@@ -182,6 +183,7 @@ install(FILES
     docs-en/manual.md
     docs-en/architecture.md
     docs-en/compiler.md
+    docs-en/conformance.md
     docs-en/roadmap.md
     DESTINATION ${CMAKE_INSTALL_DOCDIR}/docs-en
 )

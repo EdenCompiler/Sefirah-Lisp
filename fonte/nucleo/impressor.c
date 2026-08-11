@@ -1,5 +1,6 @@
 #include "sefirah/interno.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -142,6 +143,40 @@ static bool imprimir_caractere(TextoDinamico *texto, uint32_t codigo, bool legiv
     return anexar(texto, "#\\", erro) && anexar_n(texto, codificado, tamanho, erro);
 }
 
+static bool nome_simbolo_precisa_escape(const char *nome, size_t tamanho) {
+    if (tamanho == 0 || (tamanho == 3 && memcmp(nome, "NIL", 3) == 0))
+        return true;
+    unsigned char primeiro = (unsigned char)nome[0];
+    if (isdigit(primeiro) || primeiro == '.' || primeiro == '#' ||
+        ((primeiro == '+' || primeiro == '-') && tamanho > 1 &&
+         (isdigit((unsigned char)nome[1]) || nome[1] == '.')))
+        return true;
+    for (size_t i = 0; i < tamanho; i++) {
+        unsigned char caractere = (unsigned char)nome[i];
+        if ((caractere < 128 && islower(caractere)) || isspace(caractere) || caractere == '(' ||
+            caractere == ')' || caractere == ';' || caractere == '\'' || caractere == '"' ||
+            caractere == '`' || caractere == ',' || caractere == ':' || caractere == '|' ||
+            caractere == '\\')
+            return true;
+    }
+    return false;
+}
+
+static bool imprimir_nome_simbolo(TextoDinamico *texto, const char *nome, size_t tamanho,
+                                  bool legivel, SefErro *erro) {
+    if (!legivel || !nome_simbolo_precisa_escape(nome, tamanho))
+        return anexar_n(texto, nome, tamanho, erro);
+    if (!anexar(texto, "|", erro))
+        return false;
+    for (size_t i = 0; i < tamanho; i++) {
+        if ((nome[i] == '|' || nome[i] == '\\') && !anexar(texto, "\\", erro))
+            return false;
+        if (!anexar_n(texto, nome + i, 1, erro))
+            return false;
+    }
+    return anexar(texto, "|", erro);
+}
+
 static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor valor, bool legivel,
                            int profundidade, SefErro *erro) {
     if (profundidade > 512) {
@@ -164,18 +199,22 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
     case SEF_TIPO_SIMBOLO:
         if (valor->como.simbolo.pacote == runtime->pacote_keyword)
             return anexar(texto, ":", erro) &&
-                   anexar_n(texto, valor->como.simbolo.nome, valor->como.simbolo.tamanho, erro);
+                   imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
+                                         valor->como.simbolo.tamanho, legivel, erro);
         if (valor->como.simbolo.pacote == runtime->pacote_atual ||
             sef_pacote_usa(runtime->pacote_atual, valor->como.simbolo.pacote))
-            return anexar_n(texto, valor->como.simbolo.nome, valor->como.simbolo.tamanho, erro);
+            return imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
+                                         valor->como.simbolo.tamanho, legivel, erro);
         if (valor->como.simbolo.pacote == NULL)
             return anexar(texto, "#:", erro) &&
-                   anexar_n(texto, valor->como.simbolo.nome, valor->como.simbolo.tamanho, erro);
+                   imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
+                                         valor->como.simbolo.tamanho, legivel, erro);
         return anexar(texto, valor->como.simbolo.pacote->como.pacote.nome, erro) &&
                anexar(texto,
                       sef_pacote_simbolo_exportado(valor->como.simbolo.pacote, valor) ? ":" : "::",
                       erro) &&
-               anexar_n(texto, valor->como.simbolo.nome, valor->como.simbolo.tamanho, erro);
+               imprimir_nome_simbolo(texto, valor->como.simbolo.nome, valor->como.simbolo.tamanho,
+                                     legivel, erro);
     case SEF_TIPO_PAR:
         return imprimir_lista(texto, runtime, valor, legivel, profundidade, erro);
     case SEF_TIPO_NATIVA:

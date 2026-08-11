@@ -115,8 +115,31 @@ static SefValor ler_atomo(SefLeitor *leitor, SefErro *erro) {
     const char *inicio = leitor->atual;
     size_t linha = leitor->linha;
     size_t coluna = leitor->coluna;
-    while (!delimitador(atual(leitor)))
-        avancar(leitor);
+    bool entre_barras = false;
+    bool escape = false;
+    while (atual(leitor) != '\0') {
+        char caractere = atual(leitor);
+        if (escape) {
+            escape = false;
+            avancar(leitor);
+        } else if (caractere == '\\') {
+            escape = true;
+            avancar(leitor);
+        } else if (caractere == '|') {
+            entre_barras = !entre_barras;
+            avancar(leitor);
+        } else if (!entre_barras && delimitador(caractere)) {
+            break;
+        } else {
+            avancar(leitor);
+        }
+    }
+    if (entre_barras || escape) {
+        sef_erro_definir(erro, linha, coluna,
+                         entre_barras ? "simbolo sem barra vertical de fechamento"
+                                      : "escape incompleto no nome do simbolo");
+        return NULL;
+    }
     size_t tamanho = (size_t)(leitor->atual - inicio);
     if (tamanho == 0) {
         sef_erro_definir(erro, linha, coluna, "atomo vazio");

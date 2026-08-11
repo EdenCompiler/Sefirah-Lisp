@@ -102,6 +102,11 @@ int main(int argc, char **argv) {
               "analisador distinguiu caractere, texto e parenteses");
     verificar(sef_runtime_estado_codigo("' ; comentario\n", &erro) == SEF_CODIGO_INCOMPLETO,
               "analisador preservou prefixo de leitura pendente");
+    verificar(sef_runtime_estado_codigo("|nome com espaco", &erro) == SEF_CODIGO_INCOMPLETO &&
+                  sef_runtime_estado_codigo("|nome com espaco|", &erro) == SEF_CODIGO_COMPLETO,
+              "analisador acompanhou barras verticais de simbolo");
+    verificar(sef_runtime_estado_codigo("simbolo\\", &erro) == SEF_CODIGO_INCOMPLETO,
+              "analisador reconheceu escape de simbolo pendente");
     verificar(sef_runtime_estado_codigo("(list ')", &erro) == SEF_CODIGO_INVALIDO,
               "analisador rejeitou prefixo sem forma dentro de lista");
     verificar(sef_runtime_estado_codigo(")", &erro) == SEF_CODIGO_INVALIDO && erro.ocorreu,
@@ -400,6 +405,50 @@ int main(int argc, char **argv) {
                     "(packagep *package*) :chave)",
                     "(NIL T :CHAVE)");
     verificar_texto(runtime, "(intern \"PRIVADO\" \"ALPHA\")", "ALPHA::PRIVADO");
+    verificar_texto(runtime,
+                    "(list (multiple-value-list (find-symbol \"AUSENTE\" \"ALPHA\")) "
+                    "(multiple-value-list (find-symbol \"PRIVADO\" \"ALPHA\")) "
+                    "(multiple-value-list (find-symbol \"RESPOSTA-DO-PACOTE\" \"ALPHA\")) "
+                    "(multiple-value-list (find-symbol \"CAR\" \"COMMON-LISP-USER\")))",
+                    "((NIL NIL) (ALPHA::PRIVADO :INTERNAL) "
+                    "(ALPHA:RESPOSTA-DO-PACOTE :EXTERNAL) (CAR :INHERITED))");
+    verificar_texto(runtime,
+                    "(list (multiple-value-list (intern \"NOVO-STATUS\" \"ALPHA\")) "
+                    "(multiple-value-list (intern \"NOVO-STATUS\" \"ALPHA\")) "
+                    "(multiple-value-list (intern \"CAR\" \"COMMON-LISP-USER\")))",
+                    "((ALPHA::NOVO-STATUS NIL) (ALPHA::NOVO-STATUS :INTERNAL) "
+                    "(CAR :INHERITED))");
+    verificar_texto(runtime,
+                    "(list (multiple-value-list (intern \"STATUS-KEY\" \"KEYWORD\")) "
+                    "(multiple-value-list (intern \"STATUS-KEY\" \"KEYWORD\")) "
+                    "(multiple-value-list (find-symbol \"STATUS-KEY\" \"KEYWORD\")))",
+                    "((:STATUS-KEY NIL) (:STATUS-KEY :EXTERNAL) (:STATUS-KEY :EXTERNAL))");
+    verificar_texto(runtime,
+                    "(let ((simbolo (intern \"Nome-Misto\" \"ALPHA\"))) "
+                    "(list (symbol-name simbolo) "
+                    "(multiple-value-list (find-symbol \"Nome-Misto\" \"ALPHA\")) "
+                    "(multiple-value-list (find-symbol \"NOME-MISTO\" \"ALPHA\"))))",
+                    "(\"Nome-Misto\" (ALPHA::|Nome-Misto| :INTERNAL) (NIL NIL))");
+    verificar_texto(runtime,
+                    "(list '|Nome Misto| 'simbolo\\ com\\ espaco "
+                    "'|barra\\|e\\\\escape| :|Chave Mista|)",
+                    "(|Nome Misto| |SIMBOLO COM ESPACO| |barra\\|e\\\\escape| "
+                    ":|Chave Mista|)");
+    SefValor simbolo_escapado = avaliar(runtime, "'|Nome \\| com \\\\ escape|");
+    char *simbolo_impresso = sef_valor_para_texto(runtime, simbolo_escapado, true, &erro);
+    verificar(simbolo_impresso != NULL, "impressor produziu simbolo escapado legivel");
+    if (simbolo_impresso != NULL) {
+        char codigo_relido[256];
+        int tamanho_relido =
+            snprintf(codigo_relido, sizeof(codigo_relido), "(quote %s)", simbolo_impresso);
+        SefValor simbolo_relido =
+            tamanho_relido > 0 && (size_t)tamanho_relido < sizeof(codigo_relido)
+                ? sef_runtime_avaliar_texto(runtime, codigo_relido, &erro)
+                : NULL;
+        verificar(simbolo_relido != NULL && simbolo_relido == simbolo_escapado,
+                  "simbolo escapado sobreviveu ao ciclo imprimir e ler");
+        sef_texto_liberar(simbolo_impresso);
+    }
     SefValor privado = sef_runtime_avaliar_texto(runtime, "alpha:privado", &erro);
     verificar(privado == NULL && erro.ocorreu, "dois-pontos simples rejeita simbolo interno");
     verificar_texto(runtime,
@@ -569,13 +618,19 @@ int main(int argc, char **argv) {
                     ":if-exists :supersede)) "
                     "(write-string \"linha 42\" fluxo-saida) "
                     "(terpri fluxo-saida) (finish-output fluxo-saida) "
+                    "(write-string \"ultima linha\" fluxo-saida) "
                     "(close fluxo-saida)",
                     "T");
     verificar_texto(runtime,
                     "(define fluxo-entrada (open \"teste-stream-sefirah.txt\")) "
-                    "(list (read-line fluxo-entrada) (read-line fluxo-entrada) "
+                    "(list (multiple-value-list (read-line fluxo-entrada)) "
+                    "(multiple-value-list (read-line fluxo-entrada)) "
+                    "(multiple-value-list (read-line fluxo-entrada nil :fim t)) "
+                    "(handler-case (read-line fluxo-entrada) "
+                    "(error (condicao) :fim-sinalizado)) "
                     "(close fluxo-entrada))",
-                    "(\"linha 42\" NIL T)");
+                    "((\"linha 42\" NIL) (\"ultima linha\" T) (:FIM T) "
+                    ":FIM-SINALIZADO T)");
     verificar_texto(runtime,
                     "(define fluxo-imagem "
                     "(open \"teste-stream-imagem.txt\" :direction :output))",

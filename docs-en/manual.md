@@ -318,6 +318,11 @@ Available forms and functions:
 - `USE-PACKAGE`, `EXPORT`, `INTERN`, and `FIND-SYMBOL`;
 - `SYMBOL-NAME`, `SYMBOL-PACKAGE`, and `LIST-ALL-PACKAGES`.
 
+`INTERN` and `FIND-SYMBOL` return the ANSI secondary status value:
+`:INTERNAL`, `:EXTERNAL`, `:INHERITED`, or `NIL`. A newly created symbol has
+status `NIL`; a later lookup reports its actual status. Symbols in `KEYWORD`
+are external and self-evaluating.
+
 ```lisp
 (defpackage :calculations
   (:use :common-lisp)
@@ -353,9 +358,11 @@ systems.
 ```
 
 `:DIRECTION` accepts `:INPUT`, `:OUTPUT`, and `:IO`. For output, `:IF-EXISTS`
-accepts `:SUPERSEDE`, `:APPEND`, or `:ERROR`. The current `READ-LINE` returns
-`NIL` at end of file; its Common Lisp secondary EOF indicator is still
-pending.
+accepts `:SUPERSEDE`, `:APPEND`, or `:ERROR`. `READ-LINE` accepts its four ANSI
+optional arguments and returns `(line, missing-newline-p)`. At immediate EOF,
+`eof-error-p` defaults to true; when false, the supplied `eof-value` and true
+are returned. The initial condition system currently signals a general
+`ERROR`, rather than the more specific `END-OF-FILE` condition.
 
 ## Persistent image
 
@@ -436,7 +443,9 @@ the custom raster surface after each state-changing event.
 
 The reader uppercases ASCII names, recognizes `;` comments, dotted lists,
 `#(...)` vectors, `#\` characters, quote, function quote, quasiquote with
-`,`/`,@`, and simple string escapes.
+`,`/`,@`, vertical-bar symbol names, single symbol escapes, and simple string
+escapes. The readable printer adds `|...|` and escapes when a symbol name would
+otherwise lose case or be parsed as syntax.
 
 Opaque objects have readable diagnostic representations, including streams,
 compiled functions, conditions, hash tables, and shared libraries.

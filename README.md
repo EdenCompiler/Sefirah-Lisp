@@ -248,6 +248,7 @@ X11/Win32/Cocoa, and the compiler keeps its IR independent of object writers.
 | Bootstrap manual | [manual](docs-en/manual.md) | [manual](docs-ptbr/manual.md) |
 | Architecture | [architecture](docs-en/architecture.md) | [arquitetura](docs-ptbr/arquitetura.md) |
 | Compiler | [compiler](docs-en/compiler.md) | [compilador](docs-ptbr/compilador.md) |
+| ANSI conformance | [conformance](docs-en/conformance.md) | [conformidade](docs-ptbr/conformidade.md) |
 | 1.0 roadmap | [roadmap](docs-en/roadmap.md) | [roteiro](docs-ptbr/roteiro.md) |
 
 ## Current limitations
@@ -522,6 +523,7 @@ compilador mantém a IR independente dos gravadores de objetos.
 | Manual do bootstrap | [manual](docs-en/manual.md) | [manual](docs-ptbr/manual.md) |
 | Arquitetura | [architecture](docs-en/architecture.md) | [arquitetura](docs-ptbr/arquitetura.md) |
 | Compilador | [compiler](docs-en/compiler.md) | [compilador](docs-ptbr/compilador.md) |
+| Conformidade ANSI | [conformance](docs-en/conformance.md) | [conformidade](docs-ptbr/conformidade.md) |
 | Roteiro para 1.0 | [roadmap](docs-en/roadmap.md) | [roteiro](docs-ptbr/roteiro.md) |
 
 ## Limitações atuais

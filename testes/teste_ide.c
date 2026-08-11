@@ -108,6 +108,11 @@ int main(void) {
               "editor avaliou somente a forma completa no cursor");
     verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 15") != NULL,
               "avaliacao estrutural atualizou o inspetor");
+    verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n'|Nome com espaço|",
+                                            &erro) &&
+                  sef_sessao_ide_executar_forma_no_cursor(sessao, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: |Nome com espaço|") != NULL,
+              "avaliacao estrutural aceitou simbolo escapado com espacos");
 
     sef_sessao_ide_destruir(sessao);
     if (falhas == 0)

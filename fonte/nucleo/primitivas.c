@@ -771,9 +771,17 @@ static SefValor primitiva_write_string(SefRuntime *runtime, SefValor argumentos,
 }
 
 static SefValor primitiva_read_line(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
-    if (!quantidade(runtime, argumentos, 0, 1, "READ-LINE", erro))
+    if (!quantidade(runtime, argumentos, 0, 4, "READ-LINE", erro))
         return NULL;
     SefValor stream = argumentos == runtime->nulo ? runtime->entrada_padrao : car(argumentos);
+    SefValor restantes = argumentos == runtime->nulo ? runtime->nulo : cdr(argumentos);
+    bool erro_no_fim = restantes == runtime->nulo || car(restantes) != runtime->nulo;
+    SefValor valor_no_fim = runtime->nulo;
+    if (restantes != runtime->nulo) {
+        restantes = cdr(restantes);
+        if (restantes != runtime->nulo)
+            valor_no_fim = car(restantes);
+    }
     if (exigir_stream_aberto(stream, "READ-LINE", erro) == NULL)
         return NULL;
 
@@ -805,13 +813,21 @@ static SefValor primitiva_read_line(SefRuntime *runtime, SefValor argumentos, Se
     }
     if (caractere == EOF && tamanho == 0) {
         free(linha);
-        return runtime->nulo;
+        if (erro_no_fim) {
+            sef_erro_definir(erro, 0, 0, "fim de arquivo em READ-LINE");
+            return NULL;
+        }
+        SefValor valores[2] = {valor_no_fim, runtime->verdadeiro};
+        return sef_valores_definir(runtime, valores, 2, erro) ? valor_no_fim : NULL;
     }
     if (tamanho > 0 && linha[tamanho - 1] == '\r')
         tamanho--;
     SefValor resultado = sef_texto_novo(runtime, linha, tamanho, erro);
     free(linha);
-    return resultado;
+    if (resultado == NULL)
+        return NULL;
+    SefValor valores[2] = {resultado, caractere == EOF ? runtime->verdadeiro : runtime->nulo};
+    return sef_valores_definir(runtime, valores, 2, erro) ? resultado : NULL;
 }
 
 static SefValor primitiva_terpri(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -1097,6 +1113,15 @@ static SefValor primitiva_export(SefRuntime *runtime, SefValor argumentos, SefEr
     return runtime->verdadeiro;
 }
 
+static SefValor estado_simbolo_para_lisp(SefRuntime *runtime, SefEstadoSimboloPacote estado,
+                                         SefErro *erro) {
+    if (estado == SEF_SIMBOLO_AUSENTE)
+        return runtime->nulo;
+    static const char *nomes[] = {NULL, "INTERNAL", "EXTERNAL", "INHERITED"};
+    const char *nome = nomes[estado];
+    return sef_simbolo_internar_em(runtime, runtime->pacote_keyword, nome, strlen(nome), erro);
+}
+
 static SefValor primitiva_intern(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 2, "INTERN", erro))
         return NULL;
@@ -1110,7 +1135,18 @@ static SefValor primitiva_intern(SefRuntime *runtime, SefValor argumentos, SefEr
             sef_erro_definir(erro, 0, 0, "INTERN exige nome textual");
         return NULL;
     }
-    return sef_simbolo_internar_em(runtime, pacote, nome, tamanho, erro);
+    SefEstadoSimboloPacote estado = SEF_SIMBOLO_AUSENTE;
+    SefValor simbolo =
+        sef_pacote_localizar_simbolo_com_estado(pacote, nome, tamanho, true, &estado);
+    if (simbolo == NULL)
+        simbolo = sef_simbolo_internar_em(runtime, pacote, nome, tamanho, erro);
+    if (simbolo == NULL)
+        return NULL;
+    SefValor estado_lisp = estado_simbolo_para_lisp(runtime, estado, erro);
+    if (estado_lisp == NULL)
+        return NULL;
+    SefValor valores[2] = {simbolo, estado_lisp};
+    return sef_valores_definir(runtime, valores, 2, erro) ? simbolo : NULL;
 }
 
 static SefValor primitiva_find_symbol(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -1123,8 +1159,15 @@ static SefValor primitiva_find_symbol(SefRuntime *runtime, SefValor argumentos, 
                           : pacote_designador(runtime, car(cdr(argumentos)), erro);
     if (nome == NULL || pacote == NULL)
         return NULL;
-    SefValor simbolo = sef_pacote_localizar_simbolo(pacote, nome, tamanho, true);
-    return simbolo == NULL ? runtime->nulo : simbolo;
+    SefEstadoSimboloPacote estado = SEF_SIMBOLO_AUSENTE;
+    SefValor simbolo =
+        sef_pacote_localizar_simbolo_com_estado(pacote, nome, tamanho, true, &estado);
+    SefValor estado_lisp = estado_simbolo_para_lisp(runtime, estado, erro);
+    if (estado_lisp == NULL)
+        return NULL;
+    SefValor resultado = simbolo == NULL ? runtime->nulo : simbolo;
+    SefValor valores[2] = {resultado, estado_lisp};
+    return sef_valores_definir(runtime, valores, 2, erro) ? resultado : NULL;
 }
 
 static SefValor primitiva_symbol_name(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {

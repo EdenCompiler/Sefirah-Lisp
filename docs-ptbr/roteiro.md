@@ -92,9 +92,11 @@ não significa que o marco inteiro esteja concluído.
   `MAPCAR`/`MAPC` sobre múltiplas listas.
 - [x] Tabelas hash `EQL` com `GETHASH`, `SETF`, remoção, GC e persistência.
 - [x] Valores múltiplos iniciais de Common Lisp com binding, coleta, chamadas,
-  propagação não local e indicador de presença de `GETHASH`.
+  propagação não local, presença de `GETHASH`, estado de package e indicador de
+  quebra de linha de `READ-LINE`.
 - [x] Leitura retrocompatível de imagens v6/v7/v8 e emissão do formato v9.
-- [ ] Cobertura ANSI Common Lisp acompanhada por relatório de conformidade.
+- [x] Relatório inicial explícito de conformidade ANSI e desvios conhecidos.
+- [ ] Cobertura completa dos símbolos e da semântica ANSI Common Lisp.
 - [ ] CLOS e MOP documentada.
 - [ ] Condições e restarts completos integrados ao compilador.
 - [ ] Threads, sincronização e interação segura com GC/FFI.

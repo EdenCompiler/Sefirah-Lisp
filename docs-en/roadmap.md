@@ -89,9 +89,11 @@ not mean the entire milestone is complete.
   multi-list `MAPCAR`/`MAPC`.
 - [x] `EQL` hash tables with `GETHASH`, `SETF`, removal, GC, and persistence.
 - [x] Initial Common Lisp multiple values with binding, collection, calls,
-  non-local propagation, and the `GETHASH` presence flag.
+  non-local propagation, `GETHASH` presence, package status, and `READ-LINE`
+  newline flags.
 - [x] Backward-compatible v6/v7/v8 image loading and v9 emission.
-- [ ] ANSI Common Lisp coverage with a conformance report.
+- [x] Initial explicit ANSI conformance report with known deviations.
+- [ ] Complete ANSI Common Lisp symbol and semantic coverage.
 - [ ] Documented CLOS and MOP.
 - [ ] Complete conditions and restarts integrated with the compiler.
 - [ ] Threads, synchronization, and safe GC/FFI interaction.

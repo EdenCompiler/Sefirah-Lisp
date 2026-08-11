@@ -43,6 +43,13 @@ typedef enum SefEstadoEntradaHash {
     SEF_ENTRADA_HASH_REMOVIDA
 } SefEstadoEntradaHash;
 
+typedef enum SefEstadoSimboloPacote {
+    SEF_SIMBOLO_AUSENTE,
+    SEF_SIMBOLO_INTERNO,
+    SEF_SIMBOLO_EXTERNO,
+    SEF_SIMBOLO_HERDADO
+} SefEstadoSimboloPacote;
+
 typedef struct SefEntradaHash {
     SefValor chave;
     SefValor valor;
@@ -209,6 +216,9 @@ bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
 bool sef_pacote_simbolo_exportado(SefValor pacote, SefValor simbolo);
 SefValor sef_pacote_localizar_simbolo(SefValor pacote, const char *nome, size_t tamanho,
                                       bool incluir_herdados);
+SefValor sef_pacote_localizar_simbolo_com_estado(SefValor pacote, const char *nome, size_t tamanho,
+                                                 bool incluir_herdados,
+                                                 SefEstadoSimboloPacote *estado);
 SefValor sef_par_novo(SefRuntime *runtime, SefValor primeiro, SefValor resto, SefErro *erro);
 SefValor sef_nativa_nova(SefRuntime *runtime, const char *nome, SefFuncaoNativa funcao,
                          SefErro *erro);

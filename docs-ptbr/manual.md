@@ -322,6 +322,11 @@ Formas e funções disponíveis:
 - `USE-PACKAGE`, `EXPORT`, `INTERN` e `FIND-SYMBOL`;
 - `SYMBOL-NAME`, `SYMBOL-PACKAGE` e `LIST-ALL-PACKAGES`.
 
+`INTERN` e `FIND-SYMBOL` devolvem o valor secundário de estado definido pelo
+ANSI: `:INTERNAL`, `:EXTERNAL`, `:INHERITED` ou `NIL`. Um símbolo recém-criado
+tem estado `NIL`; uma consulta posterior informa seu estado real. Símbolos de
+`KEYWORD` são externos e se autoavaliam.
+
 ```lisp
 (defpackage :calculos
   (:use :common-lisp)
@@ -357,9 +362,11 @@ três sistemas.
 ```
 
 `:DIRECTION` aceita `:INPUT`, `:OUTPUT` e `:IO`. Para saída, `:IF-EXISTS`
-aceita `:SUPERSEDE`, `:APPEND` ou `:ERROR`. O `READ-LINE` atual devolve `NIL` no
-fim do arquivo; seu indicador secundário de EOF de Common Lisp ainda está
-pendente.
+aceita `:SUPERSEDE`, `:APPEND` ou `:ERROR`. `READ-LINE` aceita seus quatro
+argumentos opcionais ANSI e devolve `(linha, missing-newline-p)`. Em EOF
+imediato, `eof-error-p` é verdadeiro por padrão; quando falso, são devolvidos o
+`eof-value` fornecido e verdadeiro. O sistema inicial de condições ainda
+sinaliza um `ERROR` geral, em vez da condição mais específica `END-OF-FILE`.
 
 ## Imagem persistente
 
@@ -444,7 +451,10 @@ própria depois de cada evento que altera o estado.
 
 O leitor converte nomes ASCII para maiúsculas, reconhece comentários iniciados
 por `;`, listas pontuadas, vetores `#(...)`, caracteres `#\`, quote, function
-quote, quasiquote com `,`/`,@` e escapes simples em strings.
+quote, quasiquote com `,`/`,@`, nomes de símbolos entre barras verticais,
+escapes individuais de símbolo e escapes simples em strings. O impressor
+legível adiciona `|...|` e escapes quando o nome perderia caixa ou seria lido
+como sintaxe.
 
 Objetos opacos possuem representações legíveis para diagnóstico, como streams,
 funções compiladas, condições e bibliotecas compartilhadas.
