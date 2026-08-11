@@ -41,8 +41,11 @@ static void erro_definir(SefErro *erro, const char *mensagem) {
     erro->ocorreu = true;
     erro->linha = 0;
     erro->coluna = 0;
-    strncpy(erro->mensagem, mensagem, sizeof(erro->mensagem) - 1);
-    erro->mensagem[sizeof(erro->mensagem) - 1] = '\0';
+    size_t tamanho = strlen(mensagem);
+    if (tamanho >= sizeof(erro->mensagem))
+        tamanho = sizeof(erro->mensagem) - 1;
+    memcpy(erro->mensagem, mensagem, tamanho);
+    erro->mensagem[tamanho] = '\0';
 }
 
 void sef_codigo_nativo_iniciar(SefCodigoNativo *codigo) {

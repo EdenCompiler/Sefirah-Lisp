@@ -104,6 +104,7 @@ target_link_libraries(sefirah_ide PRIVATE sefirah_ide_nucleo sefirah_plataforma)
 
 foreach(alvo sefirah_compilador sefirah_nucleo sefirah_graficos sefirah_plataforma sefirah_ide_nucleo sefirah sefirah_ide)
     if(MSVC)
+        target_compile_definitions(${alvo} PRIVATE _CRT_SECURE_NO_WARNINGS)
         target_compile_options(${alvo} PRIVATE /W4 /utf-8)
         if(SEFIRAH_AVISOS_COMO_ERROS)
             target_compile_options(${alvo} PRIVATE /WX)

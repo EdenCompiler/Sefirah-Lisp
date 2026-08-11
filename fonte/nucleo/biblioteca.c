@@ -52,7 +52,8 @@ SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro 
     if (handle == NULL)
         return NULL;
     SefRecursoBiblioteca *recurso = calloc(1, sizeof(*recurso));
-    char *copia = malloc(strlen(caminho) + 1u);
+    size_t tamanho_caminho = strlen(caminho);
+    char *copia = malloc(tamanho_caminho + 1u);
     if (recurso == NULL || copia == NULL) {
         free(recurso);
         free(copia);
@@ -60,7 +61,7 @@ SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro 
         sef_erro_definir(erro, 0, 0, "memoria insuficiente para biblioteca compartilhada");
         return NULL;
     }
-    strcpy(copia, caminho);
+    memcpy(copia, caminho, tamanho_caminho + 1u);
     recurso->handle = handle;
     recurso->caminho = copia;
     recurso->referencias = 1;

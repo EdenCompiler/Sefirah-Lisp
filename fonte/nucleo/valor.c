@@ -465,12 +465,13 @@ SefValor sef_stream_novo(SefRuntime *runtime, FILE *arquivo, const char *caminho
     if (stream == NULL)
         return NULL;
     if (caminho != NULL) {
-        stream->como.stream.caminho = malloc(strlen(caminho) + 1);
+        size_t tamanho_caminho = strlen(caminho);
+        stream->como.stream.caminho = malloc(tamanho_caminho + 1);
         if (stream->como.stream.caminho == NULL) {
             sef_erro_definir(erro, 0, 0, "memoria insuficiente para caminho de stream");
             return NULL;
         }
-        strcpy(stream->como.stream.caminho, caminho);
+        memcpy(stream->como.stream.caminho, caminho, tamanho_caminho + 1);
     }
     stream->como.stream.arquivo = arquivo;
     stream->como.stream.possui_arquivo = possui_arquivo;

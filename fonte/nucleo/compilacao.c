@@ -250,14 +250,15 @@ static SefFuncaoCompilada *compilar_funcao_i64(SefRuntime *runtime, const char *
         sef_erro_definir(erro, 0, 0, "memoria insuficiente para funcao compilada");
         return NULL;
     }
-    compilada->nome = malloc(strlen(nome) + 1);
+    size_t tamanho_nome = strlen(nome);
+    compilada->nome = malloc(tamanho_nome + 1);
     if (compilada->nome == NULL) {
         free(parametros);
         free(compilada);
         sef_erro_definir(erro, 0, 0, "memoria insuficiente para nome compilado");
         return NULL;
     }
-    strcpy(compilada->nome, nome);
+    memcpy(compilada->nome, nome, tamanho_nome + 1);
     sef_funcao_ir_iniciar(&compilada->ir, compilada->nome, quantidade_parametros, 0);
     sef_codigo_nativo_iniciar(&compilada->codigo);
     uint32_t entrada;
