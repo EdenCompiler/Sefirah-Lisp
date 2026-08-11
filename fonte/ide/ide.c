@@ -1,4 +1,4 @@
-#include "ide.h"
+#include "ide/ide.h"
 
 #include "sefirah/gui.h"
 #include "sefirah/janela.h"

@@ -49,10 +49,11 @@ add_library(sefirah_nucleo
     fonte/nucleo/primitivas.c
     fonte/nucleo/runtime.c
     fonte/nucleo/sequencias.c
+    fonte/nucleo/tabela_hash.c
     fonte/nucleo/utf8.c
     fonte/nucleo/valor.c
 )
-target_include_directories(sefirah_nucleo PUBLIC incluir PRIVATE fonte/nucleo)
+target_include_directories(sefirah_nucleo PUBLIC incluir)
 target_link_libraries(sefirah_nucleo PRIVATE sefirah_compilador ${CMAKE_DL_LIBS})
 
 add_library(sefirah_graficos
@@ -92,6 +93,7 @@ add_executable(sefirah fonte/cli/principal.c)
 target_link_libraries(sefirah PRIVATE sefirah_nucleo)
 
 add_executable(sefirah_ide fonte/ide/principal.c fonte/ide/ide.c)
+target_include_directories(sefirah_ide PRIVATE incluir)
 target_link_libraries(sefirah_ide PRIVATE sefirah_nucleo sefirah_plataforma)
 
 foreach(alvo sefirah_compilador sefirah_nucleo sefirah_graficos sefirah_plataforma sefirah sefirah_ide)
@@ -152,5 +154,19 @@ install(TARGETS sefirah sefirah_ide sefirah_nucleo sefirah_compilador sefirah_gr
 )
 install(DIRECTORY incluir/sefirah DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.h")
-install(FILES docs/manual.md docs/arquitetura.md docs/compilador.md docs/roteiro.md
-    DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(DIRECTORY incluir/ide DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h")
+install(FILES
+    docs-ptbr/manual.md
+    docs-ptbr/arquitetura.md
+    docs-ptbr/compilador.md
+    docs-ptbr/roteiro.md
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}/docs-ptbr
+)
+install(FILES
+    docs-en/manual.md
+    docs-en/architecture.md
+    docs-en/compiler.md
+    docs-en/roadmap.md
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}/docs-en
+)

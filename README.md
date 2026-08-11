@@ -1,4 +1,266 @@
+<a id="english"></a>
+
+# Sefirah Lisp — a live Lisp environment for personal computers
+
+**English** · [Português do Brasil](#português-do-brasil)
+
+Sefirah Lisp is a Common Lisp implementation under construction, inspired by
+Interlisp and Lisp Machines. Its goal is to bring the language, compiler,
+persistent image, custom graphics system, and development tools together in a
+readable platform for desktop applications on Windows, Linux, and macOS.
+
+**Current version: 0.0.1 — executable bootstrap on the way to 1.0**
+
+[![Integration](https://github.com/EdenCompiler/Sefirah-Lisp/actions/workflows/ci.yml/badge.svg)](https://github.com/EdenCompiler/Sefirah-Lisp/actions/workflows/ci.yml)
+![C](https://img.shields.io/badge/C-17-informational)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+## What the current bootstrap means
+
+The repository already delivers an executable vertical path: reader,
+evaluator, lexical environments, packages, initial conditions, streams,
+garbage collection, persistent images, SSA compilation for x86-64/AArch64,
+ELF/COFF/Mach-O objects, an initial FFI, CPU rasterizer, custom GUI, and native
+windows.
+
+This is not Sefirah 1.0 yet and must not be presented as a complete ANSI Common
+Lisp implementation. CLOS, the numeric tower, complete restarts, a self-hosted
+compiler, a complete IDE, accessibility, and native distribution remain on
+the roadmap.
+
+| Subsystem | Current state |
+| --- | --- |
+| Language | Common Lisp subset with functions, macros, Unicode characters, vectors, hash tables, packages, and non-local control |
+| Runtime | Object heap, mark-and-sweep GC, explicit roots, streams, and v9 binary images |
+| Compiler | i64 SSA IR, reference interpreter, W^X x86-64/AArch64 JIT, and relocatable objects |
+| FFI | Explicit shared libraries and C i64 calls with one or two inputs |
+| Graphics | Custom RGB surface, CPU rasterization, and bitmap font |
+| GUI | Component tree, layout, themes, focus, hit testing, and actions |
+| Platform | X11, Win32, and Cocoa/CoreGraphics bridge; macOS integration remains partial |
+| IDE | Graphical listener on X11/Win32; editor and inspector remain demonstrators |
+
+## Highlights
+
+- modular C17 code with readable PT-BR identifiers and documentation in
+  English and PT-BR;
+- program files exclusively use `.lisp`; `.sef` is not a public format;
+- public language symbols use English to converge with ANSI Common Lisp;
+- separate value/function cells, macros, quasiquote, packages, and non-local
+  control with cleanup;
+- simple `#(...)` vectors, one-dimensional arrays, `AREF`/`SVREF`, and basic
+  `SETF` mutation;
+- `CHARACTER` objects, `#\` literals, code-point-indexed UTF-8 strings, and
+  uniform `ELT` access;
+- `EQL` hash tables with `GETHASH`, `SETF`, removal, GC, and persistence;
+- `COPY-SEQ`, `REVERSE`, `SUBSEQ`, and `FILL` shared by lists, vectors, and
+  strings;
+- list composition, destructive operations, search, navigation, and
+  multi-list mapping;
+- `DEFUN` → SSA IR → x86-64/AArch64 compilation integrated with `COMPILE`;
+- W^X JIT pages and System V, Microsoft x64, and AAPCS64 ABI support;
+- direct ELF64, COFF, and Mach-O object generation for x86-64 and ARM64;
+- `.so`, `.dylib`, and `.dll` objects with explicit closing and safe retention
+  by compiled functions;
+- persistent images with atomic saving and an explicit external-resource
+  policy;
+- a GUI drawn by Sefirah itself rather than native widgets;
+- declared CI for Linux, Windows, and macOS.
+
+## Building
+
+Minimum requirements are CMake 3.24, a C17 compiler, and platform
+dependencies. On Linux, the current window backend requires X11 development
+headers.
+
+```bash
+cmake -S . -B construir \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DSEFIRAH_AVISOS_COMO_ERROS=ON
+cmake --build construir --parallel
+ctest --test-dir construir --output-on-failure
+```
+
+Install the executables, modular libraries, SDK headers, and both documentation
+languages:
+
+```bash
+cmake --install construir --prefix instalar
+```
+
+On Windows, use Visual Studio or another C17 compiler accepted by CMake. On
+macOS, the backend links AppKit, Foundation, and CoreGraphics.
+
+## Quick tour
+
+### Evaluation and REPL
+
+```bash
+./construir/sefirah avaliar "(+ 20 22)"
+./construir/sefirah executar exemplos/inicio.lisp
+./construir/sefirah repl
+```
+
+```lisp
+(defun factorial (n)
+  (if (< n 2)
+      1
+      (* n (factorial (- n 1)))))
+
+(factorial 6) ; => 720
+```
+
+Vectors and hash tables are heap objects, participate in GC, and survive a
+live image:
+
+```lisp
+(let ((settings (make-hash-table)))
+  (setf (gethash 'theme settings) :dark)
+  (gethash 'theme settings)) ; => :DARK
+```
+
+### Native compilation
+
+The i64 subset can be installed in the current process or written as a
+relocatable object:
+
+```lisp
+(defun calculate (x y)
+  (if (< x y)
+      (+ (* x 2) y)
+      (- x y)))
+
+(compile 'calculate)
+(calculate 10 22) ; => 42
+```
+
+```bash
+./construir/sefirah compilar-elf exemplos/nativo.lisp calcular_nativo calcular.o
+./construir/sefirah compilar-coff exemplos/nativo.lisp calcular_nativo calcular.obj
+./construir/sefirah compilar-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
+```
+
+The C files under `exemplos/integracao-c/` demonstrate consumption of the C17
+SDK and generated objects. They are deliberately integration examples, not
+Sefirah source files.
+
+### Shared libraries
+
+```lisp
+(defun call-double (value)
+  (external-i64 "dobrar_i64" value))
+
+(define calculations (open-shared-library "./libcalculos.so"))
+(compile-external-i64 'call-double calculations)
+(close-shared-library calculations)
+
+; The compiled function retains its own resource reference.
+(call-double 21) ; => 42
+```
+
+Use a `.dll` on Windows or a `.dylib` on macOS. The native handle unloads only
+after the object and all compiled functions release it.
+
+### Live image
+
+```bash
+./construir/sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
+./construir/sefirah imagem abrir desenvolvimento.imagem "(fatorial 6)"
+./construir/sefirah imagem abrir desenvolvimento.imagem
+```
+
+The v9 image preserves the portable Lisp graph, including vectors, characters,
+and hash tables, but not JIT bytes or process handles. The reader still accepts
+v6, v7, and v8. File streams and shared libraries must be closed before saving.
+
+### GUI and IDE
+
+```bash
+./construir/sefirah_ide
+```
+
+Sefirah rasterizes the composition over `SefSuperficie`. Panels, labels,
+buttons, and fields use the same component tree, flexible layout, theme, focus,
+and action dispatch exposed by `sefirah/gui.h`.
+
+## Architecture
+
+```text
+program .lisp
+      │
+      ├── reader → evaluator → objects/environments → image
+      │                         │
+      │                         └── streams and shared libraries
+      │
+      └── i64 frontend → verified SSA IR → reference interpreter
+                                      ├── x86-64/AArch64 JIT
+                                      └── ELF / COFF / Mach-O
+
+GUI components → layout/interaction → CPU rasterizer → window backend
+                                                       ├── X11
+                                                       ├── Win32
+                                                       └── Cocoa/CoreGraphics
+```
+
+The runtime does not know about windows, the rasterizer does not know about
+X11/Win32/Cocoa, and the compiler keeps its IR independent of object writers.
+
+| Module | Responsibility | Public API |
+| --- | --- | --- |
+| `nucleo` | objects, reader, evaluator, GC, streams, packages, and images | `sefirah/runtime.h` |
+| `compilador` | SSA IR, verifier, backends, JIT, and objects | `sefirah/compilador.h` |
+| `graficos` | RGB surfaces, rasterization, and bitmap font | `sefirah/graficos.h` |
+| `gui` | components, layout, themes, and interaction | `sefirah/gui.h` |
+| `plataforma` | host windows and events | `sefirah/janela.h` |
+| `cli` | text commands, REPL, compilation, and images | `sefirah` executable |
+| `ide` | graphical listener, editor, and inspector | `ide/ide.h`, `sefirah_ide` executable |
+
+## Examples
+
+| File | Demonstrates |
+| --- | --- |
+| `exemplos/inicio.lisp` | evaluation, functions, and images |
+| `exemplos/nativo.lisp` | a function compatible with the i64 frontend |
+| `exemplos/externa.lisp` | C imports with one and two i64 inputs |
+| `exemplos/integracao-c/chamar_nativo.c` | linking a Sefirah object from C |
+| `exemplos/integracao-c/chamar_externa.c` | linking an object with an external C symbol |
+| `exemplos/integracao-c/gerar_objeto_externo.c` | direct compiler SDK use |
+
+## Documentation
+
+| Guide | English | Português do Brasil |
+| --- | --- | --- |
+| Bootstrap manual | [manual](docs-en/manual.md) | [manual](docs-ptbr/manual.md) |
+| Architecture | [architecture](docs-en/architecture.md) | [arquitetura](docs-ptbr/arquitetura.md) |
+| Compiler | [compiler](docs-en/compiler.md) | [compilador](docs-ptbr/compilador.md) |
+| 1.0 roadmap | [roadmap](docs-en/roadmap.md) | [roteiro](docs-ptbr/roteiro.md) |
+
+## Current limitations
+
+- ANSI Common Lisp conformance is incomplete;
+- the integrated compiler accepts only the documented i64 subset;
+- the typed FFI does not cover general structs, floats, pointers, or callbacks;
+- the GC is not generational and lacks native-code stack maps;
+- the GUI lacks vector fonts, HiDPI, IME, accessibility, and complete desktop
+  integration;
+- macOS keyboard input, Wayland, and distribution packages remain pending;
+- the IDE editor, inspector, debugger, profiler, and transactional history are
+  not complete.
+
+Detailed, verifiable status is in the [implementation roadmap](docs-en/roadmap.md).
+
+## License
+
+Sefirah Lisp is distributed under the MIT License. See [LICENSE](LICENSE).
+
+---
+
+<a id="português-do-brasil"></a>
+
 # Sefirah Lisp — ambiente Lisp vivo para computadores pessoais
+
+[English](#english) ·
+**Português do Brasil**
 
 Sefirah Lisp é uma implementação de Common Lisp em construção, inspirada no
 Interlisp e nas Lisp Machines. O objetivo é reunir linguagem, compilador,
@@ -26,8 +288,8 @@ nativa permanecem no roteiro.
 
 | Subsistema | Estado atual |
 | --- | --- |
-| Linguagem | Subconjunto Common Lisp com funções, macros, caracteres Unicode, vetores, packages e controle não local |
-| Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v8 |
+| Linguagem | Subconjunto Common Lisp com funções, macros, caracteres Unicode, vetores, tabelas hash, packages e controle não local |
+| Runtime | Heap de objetos, GC mark-and-sweep, raízes explícitas, streams e imagem binária v9 |
 | Compilador | IR SSA i64, interpretador de referência, JIT W^X x86-64/AArch64 e objetos relocáveis |
 | FFI | Bibliotecas compartilhadas explícitas e chamadas C i64 com uma ou duas entradas |
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
@@ -37,26 +299,28 @@ nativa permanecem no roteiro.
 
 ## Destaques
 
-- código C17 modular, com nomes, comentários e documentação em PT-BR;
-- arquivos de programa exclusivamente `.lisp` — a extensão `.sef` não faz
-  parte do formato público;
+- código C17 modular, com identificadores legíveis em PT-BR e documentação em
+  inglês e PT-BR;
+- arquivos de programa usam exclusivamente `.lisp`; `.sef` não é um formato
+  público;
 - símbolos públicos da linguagem em inglês para convergir com ANSI Common
   Lisp;
 - células separadas de valor e função, macros, quasiquote, packages e controle
   não local com limpeza;
-- vetores simples `#(...)`, arrays unidimensionais, acesso por `AREF`/`SVREF` e
-  mutação básica por `SETF`;
+- vetores simples `#(...)`, arrays unidimensionais, `AREF`/`SVREF` e mutação
+  básica por `SETF`;
 - objetos `CHARACTER`, literais `#\`, strings UTF-8 indexadas por ponto de
   código e acesso uniforme por `ELT`;
-- algoritmos `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL` compartilhados por
-  listas, vetores e strings;
-- biblioteca de listas com composição destrutiva e não destrutiva, busca,
-  navegação e mapeamento sobre uma ou mais listas;
+- tabelas hash `EQL` com `GETHASH`, `SETF`, remoção, GC e persistência;
+- `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL` compartilhados por listas, vetores e
+  strings;
+- composição de listas, operações destrutivas, busca, navegação e mapeamento
+  sobre múltiplas listas;
 - compilação `DEFUN` → IR SSA → x86-64/AArch64 integrada a `COMPILE`;
 - páginas JIT W^X e suporte às ABIs System V, Microsoft x64 e AAPCS64;
 - geração direta de objetos ELF64, COFF e Mach-O para x86-64 e ARM64;
-- bibliotecas `.so`, `.dylib` e `.dll` representadas por objetos Lisp com
-  fechamento explícito e retenção segura por funções compiladas;
+- objetos `.so`, `.dylib` e `.dll` com fechamento explícito e retenção segura
+  por funções compiladas;
 - imagem persistente com gravação atômica e política explícita para recursos
   externos;
 - GUI desenhada pelo próprio Sefirah, sem depender de widgets nativos;
@@ -75,15 +339,15 @@ cmake --build construir --parallel
 ctest --test-dir construir --output-on-failure
 ```
 
-Instale o executável, as bibliotecas modulares, os headers do SDK e a
-documentação:
+Instale os executáveis, bibliotecas modulares, headers do SDK e os dois idiomas
+da documentação:
 
 ```bash
 cmake --install construir --prefix instalar
 ```
 
-No Windows, use o gerador do Visual Studio ou outro compilador C17 aceito pelo
-CMake. No macOS, o backend liga AppKit, Foundation e CoreGraphics.
+No Windows, use o Visual Studio ou outro compilador C17 aceito pelo CMake. No
+macOS, o backend liga AppKit, Foundation e CoreGraphics.
 
 ## Visão rápida
 
@@ -95,8 +359,6 @@ CMake. No macOS, o backend liga AppKit, Foundation e CoreGraphics.
 ./construir/sefirah repl
 ```
 
-Um programa Sefirah comum continua legível como Lisp:
-
 ```lisp
 (defun fatorial (n)
   (if (< n 2)
@@ -106,18 +368,19 @@ Um programa Sefirah comum continua legível como Lisp:
 (fatorial 6) ; => 720
 ```
 
-Vetores são objetos do heap, participam do GC e sobrevivem à imagem viva:
+Vetores e tabelas hash são objetos do heap, participam do GC e sobrevivem à
+imagem viva:
 
 ```lisp
-(let ((valores (make-array 3 :initial-element 0)))
-  (setf (aref valores 1) 42)
-  valores) ; => #(0 42 0)
+(let ((configuracao (make-hash-table)))
+  (setf (gethash 'tema configuracao) :escuro)
+  (gethash 'tema configuracao)) ; => :ESCURO
 ```
 
 ### Compilação nativa
 
-O subconjunto i64 pode ser instalado no próprio processo ou gravado como
-objeto relocável:
+O subconjunto i64 pode ser instalado no processo atual ou gravado como objeto
+relocável:
 
 ```lisp
 (defun calcular (x y)
@@ -135,9 +398,9 @@ objeto relocável:
 ./construir/sefirah compilar-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
 ```
 
-Os arquivos C usados para demonstrar ligação nativa ficam deliberadamente em
-`exemplos/integracao-c/`. Eles são consumidores do SDK C17, não código-fonte da
-linguagem Sefirah.
+Os arquivos C em `exemplos/integracao-c/` demonstram o consumo do SDK C17 e
+dos objetos gerados. Eles são deliberadamente exemplos de integração, não
+fontes Sefirah.
 
 ### Bibliotecas compartilhadas
 
@@ -154,7 +417,7 @@ linguagem Sefirah.
 ```
 
 No Windows use uma `.dll`; no macOS, uma `.dylib`. O handle nativo só é
-descarregado quando o objeto e todas as funções compiladas deixam de possuí-lo.
+descarregado quando o objeto e todas as funções compiladas o liberam.
 
 ### Imagem viva
 
@@ -164,10 +427,10 @@ descarregado quando o objeto e todas as funções compiladas deixam de possuí-l
 ./construir/sefirah imagem abrir desenvolvimento.imagem
 ```
 
-A imagem v8 preserva o grafo Lisp portável, inclusive vetores e caracteres,
-mas não bytes JIT nem handles do processo. O leitor continua aceitando imagens
-v6 e v7. Streams de arquivo e bibliotecas compartilhadas precisam estar
-fechados antes da gravação.
+A imagem v9 preserva o grafo Lisp portável, inclusive vetores, caracteres e
+tabelas hash, mas não bytes JIT nem handles do processo. O leitor continua
+aceitando v6, v7 e v8. Streams de arquivo e bibliotecas compartilhadas precisam
+estar fechados antes da gravação.
 
 ### GUI e IDE
 
@@ -175,11 +438,11 @@ fechados antes da gravação.
 ./construir/sefirah_ide
 ```
 
-A composição é rasterizada pelo Sefirah sobre `SefSuperficie`. Painéis,
-rótulos, botões e campos usam a mesma árvore de componentes, layout flexível,
-tema, foco e despacho de ações expostos pelo SDK em `sefirah/gui.h`.
+O Sefirah rasteriza a composição sobre `SefSuperficie`. Painéis, rótulos,
+botões e campos usam a mesma árvore de componentes, layout flexível, tema,
+foco e despacho de ações expostos por `sefirah/gui.h`.
 
-## Arquitetura sugerida
+## Arquitetura
 
 ```text
 programa .lisp
@@ -198,56 +461,53 @@ componentes GUI → layout/interação → rasterizador CPU → backend de janel
                                                       └── Cocoa/CoreGraphics
 ```
 
-As camadas não escondem ownership nem formato de saída. O runtime não conhece
-janelas; o rasterizador não conhece X11, Win32 ou Cocoa; e o compilador mantém
-a IR independente dos gravadores de objeto.
-
-## Módulos
+O runtime não conhece janelas, o rasterizador não conhece X11/Win32/Cocoa e o
+compilador mantém a IR independente dos gravadores de objetos.
 
 | Módulo | Responsabilidade | API pública |
 | --- | --- | --- |
-| `nucleo` | objetos, leitor, avaliador, GC, streams, packages e imagem | `sefirah/runtime.h` |
+| `nucleo` | objetos, leitor, avaliador, GC, streams, packages e imagens | `sefirah/runtime.h` |
 | `compilador` | IR SSA, verificador, backends, JIT e objetos | `sefirah/compilador.h` |
-| `graficos` | superfície RGB, rasterização e fonte bitmap | `sefirah/graficos.h` |
+| `graficos` | superfícies RGB, rasterização e fonte bitmap | `sefirah/graficos.h` |
 | `gui` | componentes, layout, temas e interação | `sefirah/gui.h` |
-| `plataforma` | janela e eventos do sistema hospedeiro | `sefirah/janela.h` |
-| `cli` | comandos públicos e composição inicial da IDE | executável `sefirah` |
+| `plataforma` | janelas e eventos do hospedeiro | `sefirah/janela.h` |
+| `cli` | comandos textuais, REPL, compilação e imagens | executável `sefirah` |
+| `ide` | ouvinte, editor e inspetor gráficos | `ide/ide.h`, executável `sefirah_ide` |
 
 ## Exemplos
 
 | Arquivo | Demonstração |
 | --- | --- |
-| `exemplos/inicio.lisp` | avaliação, funções e imagem |
+| `exemplos/inicio.lisp` | avaliação, funções e imagens |
 | `exemplos/nativo.lisp` | função compatível com o frontend i64 |
 | `exemplos/externa.lisp` | imports C com uma e duas entradas i64 |
-| `exemplos/integracao-c/chamar_nativo.c` | ligação de objeto Sefirah por um programa C |
-| `exemplos/integracao-c/chamar_externa.c` | ligação de um objeto com símbolo C externo |
+| `exemplos/integracao-c/chamar_nativo.c` | ligação de objeto Sefirah por C |
+| `exemplos/integracao-c/chamar_externa.c` | ligação de objeto com símbolo C externo |
 | `exemplos/integracao-c/gerar_objeto_externo.c` | uso direto do SDK do compilador |
 
 ## Documentação
 
-| Guia | Conteúdo |
-| --- | --- |
-| [Manual do bootstrap](docs/manual.md) | linguagem disponível, streams, packages, FFI, GUI e imagens |
-| [Arquitetura](docs/arquitetura.md) | camadas, ownership e limites entre módulos |
-| [Compilador](docs/compilador.md) | IR SSA, backends, JIT, objetos e chamadas externas |
-| [Roteiro para 1.0](docs/roteiro.md) | marcos, pendências e critérios de entrega |
+| Guia | English | Português do Brasil |
+| --- | --- | --- |
+| Manual do bootstrap | [manual](docs-en/manual.md) | [manual](docs-ptbr/manual.md) |
+| Arquitetura | [architecture](docs-en/architecture.md) | [arquitetura](docs-ptbr/arquitetura.md) |
+| Compilador | [compiler](docs-en/compiler.md) | [compilador](docs-ptbr/compilador.md) |
+| Roteiro para 1.0 | [roadmap](docs-en/roadmap.md) | [roteiro](docs-ptbr/roteiro.md) |
 
 ## Limitações atuais
 
-- ainda não existe conformidade ANSI Common Lisp completa;
+- a conformidade ANSI Common Lisp ainda está incompleta;
 - o compilador integrado aceita somente o subconjunto i64 documentado;
-- a FFI tipada ainda não cobre structs, floats, ponteiros ou callbacks gerais;
-- o GC ainda não é geracional e não possui mapas de pilha do código nativo;
+- a FFI tipada não cobre structs, floats, ponteiros ou callbacks gerais;
+- o GC não é geracional e não possui mapas de pilha do código nativo;
 - a GUI ainda não possui fontes vetoriais, HiDPI, IME, acessibilidade ou
   integração desktop completa;
-- teclado no backend macOS, Wayland e empacotadores de distribuição continuam
-  pendentes;
-- o editor, inspetor, debugger, profiler e histórico transacional da IDE ainda
-  não estão prontos.
+- teclado no macOS, Wayland e pacotes de distribuição continuam pendentes;
+- editor, inspetor, debugger, profiler e histórico transacional da IDE não
+  estão completos.
 
 O estado detalhado e verificável está no
-[roteiro de implementação](docs/roteiro.md).
+[roteiro de implementação](docs-ptbr/roteiro.md).
 
 ## Licença
 

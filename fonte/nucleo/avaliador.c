@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -310,6 +310,17 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
     bool lugar_texto =
         sef_simbolo_tem_nome(operador, "CHAR") || sef_simbolo_tem_nome(operador, "SCHAR");
     bool lugar_elt = sef_simbolo_tem_nome(operador, "ELT");
+    if (sef_simbolo_tem_nome(operador, "GETHASH")) {
+        if (!contar_exato(runtime, argumentos, 2, "lugar GETHASH de SETF", erro))
+            return NULL;
+        SefValor chave = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+        SefValor tabela = chave == NULL
+                              ? NULL
+                              : sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro);
+        SefValor valor = tabela == NULL ? NULL : sef_avaliar(runtime, forma_valor, ambiente, erro);
+        return valor != NULL && sef_tabela_hash_definir(runtime, tabela, chave, valor, erro) ? valor
+                                                                                             : NULL;
+    }
     if (lugar_aref || lugar_texto || lugar_elt) {
         if (!contar_exato(runtime, argumentos, 2, "lugar indexado de SETF", erro))
             return NULL;
@@ -1004,6 +1015,7 @@ SefValor sef_avaliar(SefRuntime *runtime, SefValor forma, SefValor ambiente, Sef
     case SEF_TIPO_BIBLIOTECA:
     case SEF_TIPO_VETOR:
     case SEF_TIPO_CARACTERE:
+    case SEF_TIPO_TABELA_HASH:
         return forma;
     case SEF_TIPO_SIMBOLO: {
         if (forma == runtime->verdadeiro || forma->como.simbolo.pacote == runtime->pacote_keyword)

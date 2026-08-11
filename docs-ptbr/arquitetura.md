@@ -1,5 +1,7 @@
 # Arquitetura do Sefirah Lisp
 
+[English](../docs-en/architecture.md) · **Português do Brasil**
+
 ## Objetivo
 
 Sefirah é uma plataforma Lisp viva para aplicações desktop, não apenas um
@@ -20,8 +22,8 @@ Camadas principais:
    ações sobre o rasterizador próprio.
 5. **Plataforma** — apresentação e eventos em X11, Win32 ou
    Cocoa/CoreGraphics.
-6. **CLI e IDE** — comandos públicos, REPL e primeira composição do ambiente
-   gráfico.
+6. **CLI e IDE** — comandos públicos e REPL no executável textual; ambiente de
+   desenvolvimento gráfico em um executável separado.
 
 ## Módulos e dependências
 
@@ -44,11 +46,14 @@ sefirah_graficos ◄── sefirah_plataforma
 | `graficos` | pixels, formas e texto bitmap | X11, Win32 e Cocoa |
 | `plataforma` | janela, apresentação e eventos nativos | avaliação Lisp |
 | `cli` | APIs públicas de runtime e comandos textuais | GUI, plataforma e detalhes internos do heap |
-| `ide` | runtime, GUI e plataforma | comandos, parsing e políticas da CLI |
+| `ide` | runtime, GUI e plataforma por `ide/ide.h` | comandos, parsing e políticas da CLI |
 
 Cada build compila exatamente um backend de janela. O backend macOS permanece
 C puro e confina as chamadas tipadas ao runtime Objective-C dentro do adaptador
 de plataforma.
+`sefirah/interno.h` reúne contratos privados do núcleo para o build e não
+oferece estabilidade de SDK ou ABI; aplicações devem usar
+`sefirah/runtime.h`.
 
 ## Fluxo da linguagem
 
@@ -65,10 +70,10 @@ texto .lisp
 ```
 
 O leitor e o avaliador são a implementação de referência durante o bootstrap.
-Símbolos possuem células separadas de valor e função; packages, vetores e
-caracteres também são objetos do heap e preservam identidade e referências na
-imagem. Strings armazenam UTF-8 e são indexadas por ponto de código na API
-Lisp.
+Símbolos possuem células separadas de valor e função; packages, vetores,
+caracteres e tabelas hash também são objetos do heap e preservam identidade e
+referências na imagem. Strings armazenam UTF-8 e são indexadas por ponto de
+código na API Lisp.
 
 ## Fluxo do compilador
 
@@ -121,11 +126,11 @@ própria referência. O último proprietário executa `dlclose` ou `FreeLibrary`
 
 ## Imagem persistente
 
-O formato binário v8 preserva o grafo de objetos, símbolos, packages, vetores,
-caracteres, ambientes, funções, macros, condições e streams restauráveis. A
-gravação usa um arquivo temporário e substituição atômica. O carregador
-reconhece v6, v7 e v8; uma imagem antiga carregada e salva novamente é emitida
-no formato corrente.
+O formato binário v9 preserva o grafo de objetos, símbolos, packages, vetores,
+caracteres, tabelas hash, ambientes, funções, macros, condições e streams
+restauráveis. A gravação usa um arquivo temporário e substituição atômica. O
+carregador reconhece v6, v7, v8 e v9; uma imagem antiga carregada e salva
+novamente é emitida no formato corrente.
 
 Recursos do processo seguem uma política explícita:
 

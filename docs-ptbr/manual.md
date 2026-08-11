@@ -1,5 +1,7 @@
 # Guia do bootstrap Sefirah Lisp
 
+[English](../docs-en/manual.md) · **Português do Brasil**
+
 O bootstrap atual estabelece o primeiro caminho vertical da linguagem ao
 desktop. Ele ainda não é ANSI Common Lisp completo: este guia descreve apenas
 o comportamento implementado e testado no repositório.
@@ -28,7 +30,7 @@ faz parte do formato público.
 
 | Área | Formas e funções principais |
 | --- | --- |
-| valores | inteiros, reais, caracteres Unicode, strings, símbolos, listas, pares e vetores simples |
+| valores | inteiros, reais, caracteres Unicode, strings, símbolos, listas, pares, vetores e tabelas hash |
 | avaliação | `QUOTE`, `IF`, `PROGN`, `LAMBDA`, `FUNCTION` |
 | bindings | `DEFINE`, `DEFVAR`, `DEFPARAMETER`, `SETQ`, `SETF`, `LET`, `LET*` |
 | funções e macros | `DEFUN`, `DEFMACRO`, `FLET`, `LABELS`, `MACROLET`, `&REST` |
@@ -37,6 +39,7 @@ faz parte do formato público.
 | condições | `ERROR`, `HANDLER-CASE`, `IGNORE-ERRORS` |
 | listas | `CONS`, `CAR`, `CDR`, `FIRST`, `REST`, `LIST`, `APPEND`, `NCONC`, `NTH`, `NTHCDR`, `LAST` |
 | vetores | `VECTOR`, `MAKE-ARRAY`, `AREF`, `SVREF`, `VECTORP`, `ARRAYP` |
+| tabelas hash | `MAKE-HASH-TABLE`, `GETHASH`, `HASH-TABLE-P`, `HASH-TABLE-COUNT`, `REMHASH`, `CLRHASH` |
 | caracteres | `CHARACTERP`, `CHAR-CODE`, `CODE-CHAR` e comparadores `CHAR...` |
 | sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | números | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=` e `/=` |
@@ -103,7 +106,8 @@ dimensão inteira não negativa e aceita `:INITIAL-ELEMENT`:
 ; => (#(7 42 7) 3 42)
 ```
 
-O `SETF` inicial aceita variáveis e os lugares `AREF`, `SVREF`, `CAR` e `CDR`.
+O `SETF` inicial aceita variáveis e os lugares `AREF`, `SVREF`, `CAR`, `CDR` e
+`GETHASH`.
 Outros protocolos de lugares generalizados, arrays multidimensionais,
 element-types especializados e vetores ajustáveis permanecem pendentes.
 
@@ -160,6 +164,33 @@ precisa ser um caractere:
 ```
 
 Os intervalos usam fim exclusivo e são validados antes da mutação.
+
+## Tabelas hash
+
+`MAKE-HASH-TABLE` cria uma tabela coletada pelo runtime. O teste de chaves
+implementado nesta etapa é `EQL`: inteiros, reais e caracteres iguais localizam
+a mesma entrada; os demais objetos conservam identidade. Colisões usam
+endereçamento aberto e a tabela cresce automaticamente.
+
+```lisp
+(let ((placar (make-hash-table)))
+  (setf (gethash 'azul placar) 40
+        (gethash 'dourado placar) 42)
+  (list (gethash 'dourado placar)
+        (gethash 'ausente placar :sem-valor)
+        (hash-table-count placar)))
+; => (42 :SEM-VALOR 2)
+```
+
+`REMHASH` devolve verdadeiro quando remove uma chave. `CLRHASH` esvazia a
+tabela e devolve a própria tabela. Como valores múltiplos ainda não fazem parte
+do bootstrap, `GETHASH` devolve somente o valor encontrado ou o valor padrão;
+o indicador secundário de presença de Common Lisp permanece pendente. Também
+permanecem pendentes outros testes de chave e opções de redimensionamento.
+
+As chaves e os valores participam da marcação do GC. A imagem preserva as
+entradas, a identidade compartilhada e ciclos, inclusive uma tabela que
+contenha referência para si mesma.
 
 ## Compilação nativa inicial
 
@@ -328,11 +359,12 @@ arquivo enquanto valores múltiplos não estiverem disponíveis.
 
 ## Imagem persistente
 
-O formato binário v8 `.imagem` preserva o grafo do heap, incluindo vetores,
-caracteres, símbolos, packages, ambientes, funções, macros, condições e recursos
-restauráveis. A gravação usa arquivo temporário e substituição atômica.
-Primitivas C são restauradas pelo nome, nunca pelo endereço. O leitor v8 aceita
-imagens v6 e v7; uma nova gravação as atualiza para v8.
+O formato binário v9 `.imagem` preserva o grafo do heap, incluindo vetores,
+caracteres, tabelas hash, símbolos, packages, ambientes, funções, macros,
+condições e recursos restauráveis. A gravação usa arquivo temporário e
+substituição atômica. Primitivas C são restauradas pelo nome, nunca pelo
+endereço. O leitor v9 aceita imagens v6, v7 e v8; uma nova gravação as atualiza
+para v9.
 
 ```bash
 sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp

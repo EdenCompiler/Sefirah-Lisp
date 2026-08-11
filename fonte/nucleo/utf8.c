@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 bool sef_utf8_decodificar(const char *dados, size_t tamanho, size_t *consumidos, uint32_t *codigo) {
     if (dados == NULL || tamanho == 0 || consumidos == NULL || codigo == NULL)

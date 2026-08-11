@@ -1,5 +1,7 @@
 # Roteiro do Sefirah Lisp 1.0
 
+[English](../docs-en/roadmap.md) · **Português do Brasil**
+
 O 1.0 é uma plataforma Lisp desktop completa, não apenas uma demonstração do
 runtime ou da GUI. Este documento separa trabalho concluído de intenção e
 define as evidências necessárias para cada marco.
@@ -86,7 +88,8 @@ não significa que o marco inteiro esteja concluído.
   `COPY-SEQ`, `REVERSE`, `SUBSEQ` e `FILL`.
 - [x] Protocolo inicial de listas com composição, navegação, busca e
   `MAPCAR`/`MAPC` sobre múltiplas listas.
-- [x] Leitura retrocompatível de imagens v6/v7 e emissão do formato v8.
+- [x] Tabelas hash `EQL` com `GETHASH`, `SETF`, remoção, GC e persistência.
+- [x] Leitura retrocompatível de imagens v6/v7/v8 e emissão do formato v9.
 - [ ] Cobertura ANSI Common Lisp acompanhada por relatório de conformidade.
 - [ ] CLOS e MOP documentada.
 - [ ] Condições e restarts completos integrados ao compilador.

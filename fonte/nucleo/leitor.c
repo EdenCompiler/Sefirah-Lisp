@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 #include <ctype.h>
 #include <errno.h>

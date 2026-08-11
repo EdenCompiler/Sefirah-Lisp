@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -18,6 +18,7 @@
 static const unsigned char assinatura_v6[8] = {'S', 'E', 'F', 'I', 'M', 'G', 6, 0};
 static const unsigned char assinatura_v7[8] = {'S', 'E', 'F', 'I', 'M', 'G', 7, 0};
 static const unsigned char assinatura_v8[8] = {'S', 'E', 'F', 'I', 'M', 'G', 8, 0};
+static const unsigned char assinatura_v9[8] = {'S', 'E', 'F', 'I', 'M', 'G', 9, 0};
 
 typedef struct RegistroImagem {
     SefTipo tipo;
@@ -40,6 +41,8 @@ typedef struct RegistroImagem {
     uint32_t *exportados;
     uint32_t quantidade_itens_vetor;
     uint32_t *itens_vetor;
+    uint32_t quantidade_itens_hash;
+    uint32_t *itens_hash;
 } RegistroImagem;
 
 static bool escrever_bytes(FILE *arquivo, const void *dados, size_t tamanho, SefErro *erro) {
@@ -286,6 +289,18 @@ static bool escrever_objeto(FILE *arquivo, SefValor objeto, SefValor *objetos, u
         return true;
     case SEF_TIPO_CARACTERE:
         return escrever_u32(arquivo, objeto->como.caractere, erro);
+    case SEF_TIPO_TABELA_HASH:
+        if (objeto->como.tabela_hash.quantidade > UINT32_MAX ||
+            !escrever_u32(arquivo, (uint32_t)objeto->como.tabela_hash.quantidade, erro))
+            return false;
+        for (size_t i = 0; i < objeto->como.tabela_hash.capacidade; i++) {
+            SefEntradaHash *entrada = &objeto->como.tabela_hash.entradas[i];
+            if (entrada->estado == SEF_ENTRADA_HASH_OCUPADA &&
+                (!escrever_referencia(arquivo, objetos, quantidade, entrada->chave, erro) ||
+                 !escrever_referencia(arquivo, objetos, quantidade, entrada->valor, erro)))
+                return false;
+        }
+        return true;
     }
     return false;
 }
@@ -329,7 +344,7 @@ bool sef_runtime_imagem_salvar(SefRuntime *runtime, const char *caminho, SefErro
     }
 
     bool sucesso =
-        escrever_bytes(arquivo, assinatura_v8, sizeof(assinatura_v8), erro) &&
+        escrever_bytes(arquivo, assinatura_v9, sizeof(assinatura_v9), erro) &&
         escrever_u32(arquivo, quantidade, erro) &&
         escrever_u32(arquivo, id_de(objetos, quantidade, runtime->nulo), erro) &&
         escrever_u32(arquivo, id_de(objetos, quantidade, runtime->verdadeiro), erro) &&
@@ -384,6 +399,7 @@ static void registros_liberar(RegistroImagem *registros, uint32_t quantidade) {
         free(registros[i].usados);
         free(registros[i].exportados);
         free(registros[i].itens_vetor);
+        free(registros[i].itens_hash);
     }
     free(registros);
 }
@@ -392,8 +408,10 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
                          SefErro *erro) {
     uint8_t tipo;
     uint64_t bits;
-    SefTipo maior_tipo =
-        versao >= 8 ? SEF_TIPO_CARACTERE : (versao >= 7 ? SEF_TIPO_VETOR : SEF_TIPO_BIBLIOTECA);
+    SefTipo maior_tipo = versao >= 9   ? SEF_TIPO_TABELA_HASH
+                         : versao >= 8 ? SEF_TIPO_CARACTERE
+                         : versao >= 7 ? SEF_TIPO_VETOR
+                                       : SEF_TIPO_BIBLIOTECA;
     if (!ler_u8(arquivo, &tipo, erro) || tipo > maior_tipo) {
         if (!erro->ocorreu)
             sef_erro_definir(erro, 0, 0, "tipo de objeto invalido na imagem");
@@ -533,6 +551,24 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
         return true;
     case SEF_TIPO_CARACTERE:
         return ler_u32(arquivo, &registro->caractere, erro);
+    case SEF_TIPO_TABELA_HASH:
+        if (!ler_u32(arquivo, &registro->quantidade_itens_hash, erro))
+            return false;
+        if (registro->quantidade_itens_hash > SEF_IMAGEM_MAX_OBJETOS) {
+            sef_erro_definir(erro, 0, 0, "itens demais na tabela hash da imagem");
+            return false;
+        }
+        registro->itens_hash =
+            malloc((size_t)registro->quantidade_itens_hash * 2u * sizeof(uint32_t));
+        if (registro->itens_hash == NULL && registro->quantidade_itens_hash > 0) {
+            sef_erro_definir(erro, 0, 0, "memoria insuficiente para tabela hash da imagem");
+            return false;
+        }
+        for (uint32_t i = 0; i < registro->quantidade_itens_hash * 2u; i++) {
+            if (!ler_u32(arquivo, &registro->itens_hash[i], erro))
+                return false;
+        }
+        return true;
     }
     return false;
 }
@@ -592,6 +628,12 @@ static bool validar_registro(const RegistroImagem *registro, uint32_t quantidade
             return false;
         }
     }
+    for (uint32_t i = 0; i < registro->quantidade_itens_hash * 2u; i++) {
+        if (!id_valido(registro->itens_hash[i], quantidade)) {
+            sef_erro_definir(erro, 0, 0, "item de tabela hash invalido na imagem");
+            return false;
+        }
+    }
     for (uint32_t i = 0; i < registro->quantidade_itens_vetor; i++) {
         if (!id_valido(registro->itens_vetor[i], quantidade)) {
             sef_erro_definir(erro, 0, 0, "item de vetor invalido na imagem");
@@ -621,6 +663,8 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
         versao = 7;
     else if (cabecalho_lido && memcmp(recebida, assinatura_v8, sizeof(assinatura_v8)) == 0)
         versao = 8;
+    else if (cabecalho_lido && memcmp(recebida, assinatura_v9, sizeof(assinatura_v9)) == 0)
+        versao = 9;
     bool sucesso = cabecalho_lido && versao != 0 && ler_u32(arquivo, &quantidade, erro) &&
                    ler_u32(arquivo, &id_nulo, erro) && ler_u32(arquivo, &id_verdadeiro, erro) &&
                    ler_u32(arquivo, &id_global, erro) && ler_u32(arquivo, &total_simbolos, erro);
@@ -849,6 +893,20 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             break;
         case SEF_TIPO_CARACTERE:
             objeto->como.caractere = registro->caractere;
+            break;
+        case SEF_TIPO_TABELA_HASH:
+            if (!sef_tabela_hash_inicializar(runtime, objeto, erro)) {
+                sucesso = false;
+                break;
+            }
+            for (uint32_t j = 0; j < registro->quantidade_itens_hash; j++) {
+                SefValor chave = objetos[registro->itens_hash[j * 2u]];
+                SefValor valor = objetos[registro->itens_hash[j * 2u + 1u]];
+                if (!sef_tabela_hash_definir(runtime, objeto, chave, valor, erro)) {
+                    sucesso = false;
+                    break;
+                }
+            }
             break;
         }
     }

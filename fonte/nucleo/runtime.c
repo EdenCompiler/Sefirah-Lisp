@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -74,6 +74,15 @@ static void marcar(SefValor valor) {
         for (size_t i = 0; i < valor->como.vetor.tamanho; i++)
             marcar(valor->como.vetor.itens[i]);
         break;
+    case SEF_TIPO_TABELA_HASH:
+        for (size_t i = 0; i < valor->como.tabela_hash.capacidade; i++) {
+            SefEntradaHash *entrada = &valor->como.tabela_hash.entradas[i];
+            if (entrada->estado == SEF_ENTRADA_HASH_OCUPADA) {
+                marcar(entrada->chave);
+                marcar(entrada->valor);
+            }
+        }
+        break;
     case SEF_TIPO_STREAM:
     case SEF_TIPO_BIBLIOTECA:
         break;
@@ -104,6 +113,8 @@ static void objeto_conteudo_liberar(SefValor objeto) {
         sef_funcao_compilada_liberar(objeto->como.funcao.compilada_i64);
     } else if (objeto->tipo == SEF_TIPO_VETOR) {
         free(objeto->como.vetor.itens);
+    } else if (objeto->tipo == SEF_TIPO_TABELA_HASH) {
+        free(objeto->como.tabela_hash.entradas);
     } else if (objeto->tipo == SEF_TIPO_AMBIENTE) {
         SefVinculo *vinculo = objeto->como.ambiente.vinculos;
         while (vinculo != NULL) {

@@ -1,6 +1,8 @@
 #ifndef SEFIRAH_NUCLEO_INTERNO_H
 #define SEFIRAH_NUCLEO_INTERNO_H
 
+/* Contratos privados do nucleo. Este cabecalho nao possui estabilidade de SDK. */
+
 #include "sefirah/runtime.h"
 
 #include <setjmp.h>
@@ -21,7 +23,8 @@ typedef enum SefTipo {
     SEF_TIPO_STREAM,
     SEF_TIPO_BIBLIOTECA,
     SEF_TIPO_VETOR,
-    SEF_TIPO_CARACTERE
+    SEF_TIPO_CARACTERE,
+    SEF_TIPO_TABELA_HASH
 } SefTipo;
 
 typedef struct SefRecursoBiblioteca SefRecursoBiblioteca;
@@ -33,6 +36,18 @@ typedef struct SefVinculo {
     SefValor valor;
     struct SefVinculo *proximo;
 } SefVinculo;
+
+typedef enum SefEstadoEntradaHash {
+    SEF_ENTRADA_HASH_VAZIA,
+    SEF_ENTRADA_HASH_OCUPADA,
+    SEF_ENTRADA_HASH_REMOVIDA
+} SefEstadoEntradaHash;
+
+typedef struct SefEntradaHash {
+    SefValor chave;
+    SefValor valor;
+    SefEstadoEntradaHash estado;
+} SefEntradaHash;
 
 typedef enum SefTipoControle {
     SEF_CONTROLE_BLOCO,
@@ -122,6 +137,10 @@ struct SefObjeto {
             size_t tamanho;
         } vetor;
         uint32_t caractere;
+        struct {
+            SefEntradaHash *entradas;
+            size_t capacidade, quantidade, ocupadas;
+        } tabela_hash;
     } como;
 };
 
@@ -193,6 +212,15 @@ SefValor sef_stream_novo(SefRuntime *runtime, FILE *arquivo, const char *caminho
 SefValor sef_biblioteca_nova(SefRuntime *runtime, const char *caminho, SefErro *erro);
 SefValor sef_vetor_novo(SefRuntime *runtime, size_t tamanho, SefValor inicial, SefErro *erro);
 SefValor sef_caractere_novo(SefRuntime *runtime, uint32_t codigo, SefErro *erro);
+SefValor sef_tabela_hash_nova(SefRuntime *runtime, SefErro *erro);
+bool sef_tabela_hash_inicializar(SefRuntime *runtime, SefValor tabela, SefErro *erro);
+bool sef_tabela_hash_definir(SefRuntime *runtime, SefValor tabela, SefValor chave, SefValor valor,
+                             SefErro *erro);
+SefValor sef_tabela_hash_obter(SefRuntime *runtime, SefValor tabela, SefValor chave,
+                               SefValor padrao, SefErro *erro);
+bool sef_tabela_hash_remover(SefRuntime *runtime, SefValor tabela, SefValor chave, bool *removeu,
+                             SefErro *erro);
+void sef_tabela_hash_limpar(SefValor tabela);
 bool sef_biblioteca_fechar(SefValor biblioteca, SefErro *erro);
 SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro *erro);
 void sef_biblioteca_recurso_reter(SefRecursoBiblioteca *recurso);

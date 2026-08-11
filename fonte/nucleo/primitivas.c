@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 #include <errno.h>
 #include <math.h>
@@ -854,7 +854,8 @@ static SefValor primitiva_type_of(SefRuntime *runtime, SefValor argumentos, SefE
                                   "STREAM",
                                   "SEFIRAH::SHARED-LIBRARY",
                                   "VECTOR",
-                                  "CHARACTER"};
+                                  "CHARACTER",
+                                  "HASH-TABLE"};
     SefValor valor = car(argumentos);
     if (valor->tipo == SEF_TIPO_CONDICAO)
         return valor->como.condicao.classe;
@@ -1179,6 +1180,54 @@ static SefValor primitiva_list_all_packages(SefRuntime *runtime, SefValor argume
     return resultado;
 }
 
+static SefValor primitiva_make_hash_table(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 0, 0, "MAKE-HASH-TABLE", erro))
+        return NULL;
+    return sef_tabela_hash_nova(runtime, erro);
+}
+static SefValor primitiva_gethash(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 3, "GETHASH", erro))
+        return NULL;
+    SefValor padrao =
+        cdr(cdr(argumentos)) == runtime->nulo ? runtime->nulo : car(cdr(cdr(argumentos)));
+    return sef_tabela_hash_obter(runtime, car(cdr(argumentos)), car(argumentos), padrao, erro);
+}
+static SefValor primitiva_hash_table_p(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "HASH-TABLE-P", erro))
+        return NULL;
+    return car(argumentos)->tipo == SEF_TIPO_TABELA_HASH ? runtime->verdadeiro : runtime->nulo;
+}
+static SefValor primitiva_hash_table_count(SefRuntime *runtime, SefValor argumentos,
+                                           SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "HASH-TABLE-COUNT", erro))
+        return NULL;
+    SefValor t = car(argumentos);
+    if (t->tipo != SEF_TIPO_TABELA_HASH) {
+        sef_erro_definir(erro, 0, 0, "HASH-TABLE-COUNT exige tabela hash");
+        return NULL;
+    }
+    return sef_inteiro_novo(runtime, (int64_t)t->como.tabela_hash.quantidade, erro);
+}
+static SefValor primitiva_remhash(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, "REMHASH", erro))
+        return NULL;
+    bool r = false;
+    return sef_tabela_hash_remover(runtime, car(cdr(argumentos)), car(argumentos), &r, erro)
+               ? (r ? runtime->verdadeiro : runtime->nulo)
+               : NULL;
+}
+static SefValor primitiva_clrhash(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "CLRHASH", erro))
+        return NULL;
+    SefValor t = car(argumentos);
+    if (t->tipo != SEF_TIPO_TABELA_HASH) {
+        sef_erro_definir(erro, 0, 0, "CLRHASH exige tabela hash");
+        return NULL;
+    }
+    sef_tabela_hash_limpar(t);
+    return t;
+}
+
 static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "ERROR", erro))
         return NULL;
@@ -1314,6 +1363,12 @@ static const struct {
                   {"SYMBOL-NAME", primitiva_symbol_name},
                   {"SYMBOL-PACKAGE", primitiva_symbol_package},
                   {"LIST-ALL-PACKAGES", primitiva_list_all_packages},
+                  {"MAKE-HASH-TABLE", primitiva_make_hash_table},
+                  {"GETHASH", primitiva_gethash},
+                  {"HASH-TABLE-P", primitiva_hash_table_p},
+                  {"HASH-TABLE-COUNT", primitiva_hash_table_count},
+                  {"REMHASH", primitiva_remhash},
+                  {"CLRHASH", primitiva_clrhash},
                   {"SEFIRAH::OBJECT-COUNT", primitiva_contar_objetos}};
 
 SefFuncaoNativa sef_primitiva_buscar(const char *nome) {

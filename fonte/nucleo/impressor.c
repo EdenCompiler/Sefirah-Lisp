@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -217,6 +217,9 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
         return imprimir_vetor(texto, runtime, valor, legivel, profundidade, erro);
     case SEF_TIPO_CARACTERE:
         return imprimir_caractere(texto, valor->como.caractere, legivel, erro);
+    case SEF_TIPO_TABELA_HASH:
+        snprintf(numero, sizeof(numero), "#<HASH-TABLE %zu>", valor->como.tabela_hash.quantidade);
+        return anexar(texto, numero, erro);
     }
     return anexar(texto, "#<DESCONHECIDO>", erro);
 }

@@ -1,0 +1,158 @@
+# Sefirah Lisp 1.0 Roadmap
+
+**English** · [Português do Brasil](../docs-ptbr/roteiro.md)
+
+Version 1.0 is a complete desktop Lisp platform, not merely a runtime or GUI
+demonstration. This document separates completed work from intent and defines
+the evidence required for each milestone.
+
+## Milestone status
+
+| Milestone | Goal | Status |
+| --- | --- | --- |
+| 0 | executable foundation | functional base; listed items complete |
+| 1 | compilable runtime | in progress |
+| 2 | hosted Common Lisp and live image | pending |
+| 3 | desktop GUI | initial base; desktop capabilities pending |
+| 4 | 1.0 environment and distribution | pending |
+
+A checked box means a corresponding implementation and test exist. It does
+not mean the entire milestone is complete.
+
+## Milestone 0 — executable foundation
+
+- [x] Modular C17 build and CMake tests.
+- [x] Objects, lexical environments, reader, printer, and evaluator.
+- [x] Functions, macros, recursion, and essential primitives.
+- [x] Mark-and-sweep collector at evaluation boundaries.
+- [x] CPU rasterizer, bitmap font, and custom visual composition.
+- [x] X11 and Win32 windows; macOS bridge written in pure C.
+- [x] Graphical listener connected to the runtime on X11 and Win32.
+- [x] CI declared for Linux, Windows, and macOS.
+- [x] Versioned image with atomic saving and heap restoration.
+- [x] Explicit root handles for safe C, IDE, and FFI integration.
+- [x] Quasiquote, unquote, and splice for readable macros.
+- [x] Heap packages, qualified symbols, `KEYWORD`, `:USE` inheritance, and
+  image persistence.
+- [x] Standard and file streams, text I/O, and a safe image policy.
+- [x] Internal `SEFIRAH` package for implementation types and operations.
+
+## Milestone 1 — compilable runtime
+
+### Runtime and language
+
+- [ ] Explicit roots at every native boundary, safe points, and a precise
+  generational GC.
+- [ ] Complete conditions and restarts.
+- [ ] Composite streams and the complete stream protocol.
+- [ ] Common Lisp numeric tower.
+- [x] Separate value/function namespaces and non-local control with cleanup.
+- [x] Initial condition objects and recoverable handling with `HANDLER-CASE`.
+
+### Compiler
+
+- [x] Typed SSA IR, dominance verifier, and reference interpreter.
+- [x] System V/Microsoft x86-64 emitter and W^X loading under both ABIs.
+- [x] `DEFUN` → SSA → native-code frontend integrated with `COMPILE`.
+- [x] AArch64 AAPCS64 emitter with native frontend selection.
+- [x] Relocatable x86-64/AArch64 ELF64 writer and `compilar-elf` command.
+- [x] AMD64/ARM64 COFF writer and `compilar-coff` command.
+- [x] x86-64/ARM64 Mach-O writer and `compilar-macho` command.
+- [x] Desktop relocations and external i64 calls with one or two inputs.
+- [x] Lisp `EXTERNAL-I64` form for imports in native objects.
+- [x] x86-64/AArch64 JIT trampolines with explicit binding and W^X.
+- [ ] Native representation of tagged Lisp values.
+- [ ] General Lisp calls, allocation, safe points, and exception metadata.
+- [ ] Register allocation and optimizations beyond bootstrap.
+- [ ] Bootstrap compiler written in Sefirah and reproducible self-hosting.
+
+### FFI
+
+- [x] `.so`, `.dylib`, and `.dll` loading through `COMPILE-EXTERNAL-I64`.
+- [x] Library objects with explicit closing and safe references.
+- [x] Image policy for shared libraries.
+- [ ] Foreign type descriptors.
+- [ ] General signatures with integers, floats, pointers, strings, structs,
+  and `void` returns.
+- [ ] C-to-Lisp callbacks with defined ownership and error handling.
+
+## Milestone 2 — hosted Common Lisp and live image
+
+- [x] Simple heap vectors with `#(...)`, access, mutation, GC, and persistence.
+- [x] Unicode characters, `#\` syntax, UTF-8 strings, and the initial `ELT`
+  sequence protocol.
+- [x] Initial sequence algorithms for lists, vectors, and strings:
+  `COPY-SEQ`, `REVERSE`, `SUBSEQ`, and `FILL`.
+- [x] Initial list protocol with composition, navigation, search, and
+  multi-list `MAPCAR`/`MAPC`.
+- [x] `EQL` hash tables with `GETHASH`, `SETF`, removal, GC, and persistence.
+- [x] Backward-compatible v6/v7/v8 image loading and v9 emission.
+- [ ] ANSI Common Lisp coverage with a conformance report.
+- [ ] Documented CLOS and MOP.
+- [ ] Complete conditions and restarts integrated with the compiler.
+- [ ] Threads, synchronization, and safe GC/FFI interaction.
+- [ ] General migration infrastructure for future image versions.
+- [ ] Declarative recovery of non-serializable external resources.
+- [ ] ASDF, Quicklisp, and a Sefirah manager with lockfiles.
+- [ ] Compiler and core libraries loadable from the image.
+
+## Milestone 3 — desktop GUI
+
+### Rendering and text
+
+- [x] RGB surface, CPU rasterizer, and initial bitmap font.
+- [x] Component tree, layout, themes, hit testing, focus, and actions.
+- [ ] Paths, general clipping, alpha, and composition.
+- [ ] Images, vector fonts, shaping, and font fallback.
+- [ ] HiDPI and fractional scaling.
+
+### Platform and accessibility
+
+- [x] Initial X11 and Win32 windows and events.
+- [x] Cocoa/CoreGraphics bridge written in C.
+- [ ] Wayland.
+- [ ] Unicode input, IME, and macOS keyboard bridge.
+- [ ] Semantic tree and assistive-technology integration.
+- [ ] Clipboard, drag and drop, dialogs, printing, and notifications.
+
+### Application services
+
+- [ ] Networking and TLS.
+- [ ] Processes and inter-process communication.
+- [ ] SQLite.
+- [ ] Basic audio.
+
+## Milestone 4 — 1.0 environment and distribution
+
+### Lisp environment
+
+- [ ] Text and structural editor.
+- [ ] Object inspector and code browser.
+- [ ] Debugger, profiler, and condition/restart navigation.
+- [ ] Reversible DWIM and transactional history.
+- [ ] Git integration, autosave, and session restoration.
+- [ ] IDE recompiles the compiler and itself.
+
+### Distribution
+
+- [ ] MSIX package for Windows.
+- [ ] DMG application for Intel and Apple Silicon macOS.
+- [ ] AppImage, DEB, and RPM for Linux.
+- [ ] Signing hooks, metadata, icons, and updates.
+- [ ] Official Windows x64, macOS Intel/ARM, and Linux x64/ARM matrix with
+  X11/Wayland.
+
+## 1.0 delivery criteria
+
+The goal is complete only when evidence exists for all of these items:
+
+1. a conformance suite documenting the supported Common Lisp surface;
+2. reproducible self-hosting on x86-64 and AArch64;
+3. an image capable of restoring a real development session;
+4. a functional Sefirah desktop application on Windows, Linux, and macOS;
+5. an IDE with integrated editing, evaluation, inspection, and debugging;
+6. installable packages and installation tests on official platforms;
+7. user, architecture, SDK, and migration documentation for the delivered
+   version.
+
+While any evidence is missing, the version remains pre-1.0.

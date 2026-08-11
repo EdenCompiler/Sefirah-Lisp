@@ -1,0 +1,174 @@
+# Sefirah Lisp Architecture
+
+**English** · [Português do Brasil](../docs-ptbr/arquitetura.md)
+
+## Purpose
+
+Sefirah is a live Lisp platform for desktop applications, not merely an
+interpreter embedded in a GUI. The architecture keeps the language, compiler,
+image, graphics, and native integration as explicit modules. Each layer can
+therefore evolve without hiding ownership or depending on a single operating
+system.
+
+Main layers:
+
+1. **Lisp core** — objects, packages, environments, reader, evaluator,
+   primitives, conditions, streams, GC, and persistent images.
+2. **Compiler** — verified SSA IR, reference interpreter, x86-64/AArch64
+   backends, W^X JIT, and ELF/COFF/Mach-O writers.
+3. **Graphics** — RGB surfaces, raster primitives, and a bitmap font without a
+   window API dependency.
+4. **GUI** — component tree, flexible layout, themes, hit testing, focus, and
+   actions over the custom rasterizer.
+5. **Platform** — presentation and events through X11, Win32, or
+   Cocoa/CoreGraphics.
+6. **CLI and IDE** — public commands and REPL in the CLI; the graphical
+   development environment in a separate executable.
+
+## Modules and dependencies
+
+```text
+sefirah_compilador
+       ▲
+       │
+sefirah_nucleo ───────────────┐
+                              ├── sefirah (CLI)
+                              └── sefirah_ide (IDE)
+sefirah_graficos ◄── sefirah_plataforma
+       ▲                      │
+       └──────────────────────┘
+```
+
+| Module | Knows about | Does not know about |
+| --- | --- | --- |
+| `nucleo` | objects, compiler, and process resources | windows and widgets |
+| `compilador` | IR, ABIs, and object formats | packages, GUI, and IDE |
+| `graficos` | pixels, shapes, and bitmap text | X11, Win32, and Cocoa |
+| `plataforma` | native windows, presentation, and events | Lisp evaluation |
+| `cli` | public runtime APIs and text commands | GUI, platform, and heap internals |
+| `ide` | runtime, GUI, and platform through `ide/ide.h` | CLI commands, parsing, and policies |
+
+Each build compiles exactly one window backend. The macOS backend remains pure
+C and confines typed Objective-C runtime calls to the platform adapter.
+`sefirah/interno.h` groups private core contracts for the build and does not
+promise SDK or ABI stability; applications must use `sefirah/runtime.h`.
+
+## Language flow
+
+```text
+.lisp text
+    │
+    ▼
+ reader ──► Lisp form ──► evaluator ──► heap value
+                                  │
+                                  ├── lexical/global environment
+                                  ├── value/function cell
+                                  ├── condition and non-local control
+                                  └── persistent image
+```
+
+The reader and evaluator are the reference implementation during bootstrap.
+Symbols have separate value and function cells. Packages, vectors, characters,
+and hash tables are also heap objects and preserve identity and references in
+an image. Strings store UTF-8 and the Lisp API indexes them by code point.
+
+## Compiler flow
+
+`COMPILE` lowers a compatible function to a 64-bit integer SSA IR. The IR is
+verified before it reaches the interpreter or a backend:
+
+```text
+DEFUN → i64 frontend → SSA IR → flow/dominance verifier
+                                      ├── reference interpreter
+                                      ├── x86-64 SysV/Microsoft
+                                      └── AArch64 AAPCS64
+                                                │
+                               ┌────────────────┴───────────────┐
+                               ▼                                ▼
+                         W^X JIT memory              ELF / COFF / Mach-O
+```
+
+The portable Lisp definition remains in the function object. Images do not
+save native caches: after restoration in another process or architecture, the
+function can be compiled again.
+
+## Ownership and collection
+
+The current heap uses mark-and-sweep at evaluation-unit boundaries. Values
+passed to C code can be retained across collections with `SefRaiz`. The handle
+is explicit and removable, avoiding conservative scans of the host stack.
+
+### Streams
+
+Standard streams wrap `stdin`, `stdout`, and `stderr` without owning them.
+Streams returned by `OPEN` own their `FILE` and close it through `CLOSE`, when
+the runtime is destroyed, or during collection.
+
+### Shared libraries
+
+The Lisp object and JIT functions share a reference-counted native resource:
+
+```text
+SHARED-LIBRARY object ──┐
+                        ├── resource (.so/.dylib/.dll) ── native handle
+compiled function A ────┤
+compiled function B ────┘
+```
+
+`CLOSE-SHARED-LIBRARY` releases the object's reference and prevents new
+bindings. An existing compiled function remains valid because it owns another
+reference. The final owner calls `dlclose` or `FreeLibrary`.
+
+## Persistent image
+
+The v9 binary format preserves the object graph, including symbols, packages,
+vectors, characters, hash tables, environments, functions, macros, conditions,
+and restorable streams. Saving uses a temporary file followed by atomic
+replacement. The loader recognizes v6, v7, v8, and v9; loading and saving an
+older image emits the current format.
+
+Process resources follow an explicit policy:
+
+| Resource | Save policy |
+| --- | --- |
+| standard stream | preserved and rebound in the next process |
+| closed file stream | preserved as closed |
+| open file stream | save is rejected |
+| closed shared library | preserved as closed |
+| open shared library | save is rejected |
+| JIT cache | discarded; recompiled on demand |
+
+This policy avoids serializing descriptors, pointers, or machine bytes with no
+valid meaning in the next process.
+
+## Custom GUI
+
+The GUI does not wrap operating-system widgets. Sefirah arranges and draws
+components on `SefSuperficie`; the platform backend only presents pixels and
+translates events.
+
+```text
+SefComponente
+    ├── row/column layout and weights
+    ├── theme and visual states
+    ├── hit testing and focus
+    └── action
+          │
+          ▼
+SefSuperficie → CPU rasterizer → native window
+```
+
+This design lets ordinary applications use the same GUI as the IDE. Vector
+fonts, general clipping, HiDPI, IME, and accessibility belong to later
+milestones.
+
+## Evolution strategy
+
+The self-hosted compiler will follow once the bootstrap IR supports Lisp value
+representation, general calls, allocation, safe points, and exception
+metadata. The GUI will grow capability by capability—text, composition,
+accessibility, and desktop integration—without abandoning the custom
+rasterizer.
+
+Criteria and pending work for every phase are in the
+[1.0 roadmap](roadmap.md).

@@ -1,4 +1,4 @@
-#include "interno.h"
+#include "sefirah/interno.h"
 
 static SefValor primeiro(SefValor lista) { return lista->como.par.primeiro; }
 static SefValor resto(SefValor lista) { return lista->como.par.resto; }

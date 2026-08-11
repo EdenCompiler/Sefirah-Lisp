@@ -1,5 +1,7 @@
 # Compilador do Sefirah Lisp
 
+[English](../docs-en/compiler.md) · **Português do Brasil**
+
 ## Visão geral
 
 O compilador é um módulo separado do runtime e da GUI. A camada pública em

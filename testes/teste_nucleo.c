@@ -105,6 +105,29 @@ int main(int argc, char **argv) {
     verificar_texto(runtime, "(handler-case (endp 42) (error (c) :lista-exigida))",
                     ":LISTA-EXIGIDA");
     verificar_texto(runtime, "(let ((x 20) (y 22)) (+ x y))", "42");
+    verificar_texto(runtime,
+                    "(let ((h (make-hash-table))) "
+                    "(setf (gethash 1 h) 40 (gethash 17 h) 42) "
+                    "(list (hash-table-p h) (gethash 1 h) (gethash 2 h :ausente) "
+                    "(hash-table-count h) (remhash 1 h) (hash-table-count h) "
+                    "(type-of h) (clrhash h) (hash-table-count h)))",
+                    "(T 40 :AUSENTE 2 T 1 HASH-TABLE #<HASH-TABLE 0> 0)");
+    verificar_texto(runtime,
+                    "(let ((h (make-hash-table))) "
+                    "(setf (gethash 0.0 h) 42) "
+                    "(list (gethash -0.0 h) (hash-table-count h)))",
+                    "(42 1)");
+    verificar_texto(runtime,
+                    "(let ((h (make-hash-table))) "
+                    "(labels ((preencher (n) "
+                    "(if (< n 1) h (progn (setf (gethash n h) (+ n 1)) "
+                    "(preencher (- n 1)))))) "
+                    "(preencher 100) "
+                    "(list (gethash 41 h) (hash-table-count h) "
+                    "(remhash 41 h) (gethash 41 h :removida))))",
+                    "(42 100 T :REMOVIDA)");
+    verificar_texto(runtime, "(handler-case (gethash 'chave 42) (error (c) :tabela-exigida))",
+                    ":TABELA-EXIGIDA");
     verificar_texto(runtime, "(defun fat (n) (if (< n 2) 1 (* n (fat (- n 1))))) (fat 6)", "720");
     verificar_texto(runtime,
                     "(defmacro primeiro-quando (teste valor) (list 'if teste valor nil)) "
@@ -210,6 +233,17 @@ int main(int argc, char **argv) {
               "SDK criou e consultou caractere Unicode");
     verificar(sef_caractere_criar(runtime, 0xd800u, &erro) == NULL && erro.ocorreu,
               "SDK rejeitou surrogate Unicode");
+    verificar_texto(runtime, "(define caractere-v8 #\\λ)", "CARACTERE-V8");
+    verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v8.imagem", &erro),
+              "imagem com caractere foi salva no formato atual");
+    converter_assinatura("teste-sefirah-v8.imagem", 8);
+    SefRuntime *runtime_v8 = sef_runtime_imagem_abrir("teste-sefirah-v8.imagem", &erro);
+    verificar(runtime_v8 != NULL, "leitor atual aceitou imagem v8 com caractere");
+    if (runtime_v8 != NULL) {
+        verificar_texto(runtime_v8, "caractere-v8", "#\\λ");
+        sef_runtime_destruir(runtime_v8);
+    }
+    remove("teste-sefirah-v8.imagem");
     verificar_texto(runtime, "(type-of \"sefirah\")", "STRING");
     verificar_texto(runtime, "(> (sefirah::object-count) 0)", "T");
     verificar_texto(runtime,
@@ -471,8 +505,13 @@ int main(int argc, char **argv) {
                     "(define base-da-imagem 40) "
                     "(defun usar-imagem (x) (+ base-da-imagem x)) "
                     "(define vetor-da-imagem (vector 'persistente 41 42)) "
-                    "(define caractere-da-imagem #\\λ)",
-                    "CARACTERE-DA-IMAGEM");
+                    "(define caractere-da-imagem #\\λ) "
+                    "(define tabela-da-imagem (make-hash-table)) "
+                    "(setf (gethash 'resposta tabela-da-imagem) 42 "
+                    "(gethash 'dados tabela-da-imagem) (list 'persistente 42) "
+                    "(gethash :self tabela-da-imagem) tabela-da-imagem) "
+                    "(hash-table-count tabela-da-imagem)",
+                    "3");
     verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah.imagem", &erro),
               "imagem foi salva");
     sef_runtime_destruir(runtime);
@@ -486,6 +525,13 @@ int main(int argc, char **argv) {
     if (runtime != NULL)
         verificar_texto(runtime, "(list caractere-da-imagem (char-code caractere-da-imagem))",
                         "(#\\λ 955)");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(list (gethash 'resposta tabela-da-imagem) "
+                        "(gethash 'dados tabela-da-imagem) "
+                        "(eq (gethash :self tabela-da-imagem) tabela-da-imagem) "
+                        "(hash-table-count tabela-da-imagem))",
+                        "(42 (PERSISTENTE 42) T 3)");
     if (runtime != NULL)
         verificar_texto(runtime, "condicao-salva", "#<ERROR persistente>");
     if (runtime != NULL)
