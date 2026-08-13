@@ -450,7 +450,9 @@ lines. An open list, string, vector, or reader prefix changes `sefirah>` to the
 and prints every returned value. `:help` lists commands and `:quit` exits.
 
 The graphical IDE is split into a platform-independent session engine and a
-dark desktop presentation. It provides persistent `.lisp` editor tabs, multiline
+Lisp-workstation desktop presentation. Its cream, sage, olive, and amber palette
+keeps the visual lineage of Interlisp and Lisp Machines while the workbench
+layout follows modern editor conventions. It provides persistent `.lisp` editor tabs, multiline
 listener, persistent transcript, result inspector, whole-buffer evaluation,
 structural and incremental evaluation, definition navigation, live-world
 snapshots, linear undo/redo, and file load/save:
@@ -458,12 +460,25 @@ snapshots, linear undo/redo, and file load/save:
 ```bash
 sefirah_ide
 sefirah_ide path/to/program.lisp
+sefirah_ide path/to/project-directory
 ```
 
 Opening another source file creates a tab instead of replacing the current
 buffer. Every tab retains its cursor, selection, bounded undo/redo timeline,
 incremental-evaluation history, and unsaved state. Modified tabs show `*`, and
 a pointer click on a tab activates its preserved editor state.
+
+Passing a directory opens it as a workspace. The Explorer recursively indexes
+up to 10,000 `.lisp` files, ignores generated/dependency directories and
+symbolic-link loops, and presents paths in deterministic order. With Explorer
+focus, Up/Down wraps through the index and Enter opens the selected source in a
+tab; a pointer click selects and opens a visible entry. The initial source file
+reuses an untouched empty tab.
+
+The command toolbar provides pointer buttons for Run, Run Form, Run Changes,
+Save, Snapshot, and Restore. They invoke the same live-world operations as
+F5/F6/F7, Ctrl+S, and F9/F10; the toolbar does not create a separate batch-mode
+workflow.
 
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector

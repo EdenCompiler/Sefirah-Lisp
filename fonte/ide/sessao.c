@@ -1,6 +1,7 @@
 #include "ide/ide.h"
 
 #include "apoio.h"
+#include "espaco_trabalho.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -57,6 +58,7 @@ struct SefSessaoIde {
     TextoIde caminho;
     TextoIde caminho_imagem;
     TextoIde abas;
+    TextoIde explorador;
     size_t cursor_editor;
     size_t ancora_selecao_editor;
     bool selecao_editor_ativa;
@@ -77,6 +79,8 @@ struct SefSessaoIde {
     size_t quantidade_documentos;
     size_t capacidade_documentos;
     size_t documento_ativo;
+    SefEspacoTrabalhoIde *espaco_trabalho;
+    size_t arquivo_espaco_trabalho_selecionado;
     DiagnosticoIde diagnosticos[SEF_LIMITE_CONDICOES_IDE];
     size_t quantidade_diagnosticos;
     size_t diagnostico_selecionado;
@@ -237,6 +241,30 @@ static bool atualizar_abas(SefSessaoIde *sessao, SefErro *erro) {
                                documento_modificado(sessao, i) ? " *" : "");
         if (tamanho < 0 || (size_t)tamanho >= sizeof(aba) ||
             !texto_acrescentar_n(&sessao->abas, aba, (size_t)tamanho, erro))
+            return false;
+    }
+    return true;
+}
+
+static bool atualizar_explorador(SefSessaoIde *sessao, SefErro *erro) {
+    const char *raiz = sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho);
+    size_t quantidade = sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho);
+    if (raiz[0] == '\0')
+        return texto_definir(&sessao->explorador,
+                             "NO FOLDER OPEN\n\nPass a directory to sefirah_ide.", erro);
+    if (!texto_formatar(&sessao->explorador, erro, "ROOT: %s\nLISP FILES: %zu\n", nome_base(raiz),
+                        quantidade))
+        return false;
+    if (quantidade == 0)
+        return texto_acrescentar(&sessao->explorador, "\n(no .lisp files)", erro);
+    for (size_t i = 0; i < quantidade; i++) {
+        const char *arquivo = sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, i);
+        char prefixo[8];
+        int tamanho = snprintf(prefixo, sizeof(prefixo), "\n%c ",
+                               i == sessao->arquivo_espaco_trabalho_selecionado ? '>' : ' ');
+        if (tamanho <= 0 || (size_t)tamanho >= sizeof(prefixo) ||
+            !texto_acrescentar_n(&sessao->explorador, prefixo, (size_t)tamanho, erro) ||
+            !texto_acrescentar(&sessao->explorador, arquivo, erro))
             return false;
     }
     return true;
@@ -729,8 +757,16 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
         return NULL;
     }
     sessao->runtime = sef_runtime_criar(erro);
-    if (sessao->runtime == NULL || !texto_definir(&sessao->editor, "", erro) ||
-        !texto_definir(&sessao->ouvinte, "", erro) ||
+    if (sessao->runtime == NULL) {
+        sef_sessao_ide_destruir(sessao);
+        return NULL;
+    }
+    sessao->espaco_trabalho = sef_espaco_trabalho_ide_criar(erro);
+    if (sessao->espaco_trabalho == NULL) {
+        sef_sessao_ide_destruir(sessao);
+        return NULL;
+    }
+    if (!texto_definir(&sessao->editor, "", erro) || !texto_definir(&sessao->ouvinte, "", erro) ||
         !texto_definir(&sessao->transcricao, "", erro) ||
         !texto_definir(&sessao->inspetor, "OBJECTS: 0\nSELECTED: (NONE)", erro) ||
         !texto_definir(&sessao->navegador,
@@ -741,7 +777,8 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
                        erro) ||
         !texto_definir(&sessao->estado, "New file", erro) ||
         !texto_definir(&sessao->caminho, "untitled.lisp", erro) ||
-        !texto_definir(&sessao->abas, "", erro) || !atualizar_caminho_imagem(sessao, erro)) {
+        !texto_definir(&sessao->abas, "", erro) || !texto_definir(&sessao->explorador, "", erro) ||
+        !atualizar_caminho_imagem(sessao, erro)) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
     }
@@ -753,7 +790,7 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
         return NULL;
     }
     sessao->quantidade_documentos = 1;
-    if (!atualizar_abas(sessao, erro)) {
+    if (!atualizar_abas(sessao, erro) || !atualizar_explorador(sessao, erro)) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
     }
@@ -767,6 +804,7 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     liberar_diagnosticos(sessao);
     sef_historico_texto_destruir(sessao->historico_ouvinte);
     sef_historico_editor_destruir(sessao->historico_editor);
+    sef_espaco_trabalho_ide_destruir(sessao->espaco_trabalho);
     sef_runtime_destruir(sessao->runtime);
     texto_liberar(&sessao->editor);
     texto_liberar(&sessao->ouvinte);
@@ -778,6 +816,7 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     texto_liberar(&sessao->caminho);
     texto_liberar(&sessao->caminho_imagem);
     texto_liberar(&sessao->abas);
+    texto_liberar(&sessao->explorador);
     for (size_t i = 0; i < sessao->quantidade_documentos; i++)
         documento_liberar(&sessao->documentos[i]);
     free(sessao->documentos);
@@ -797,6 +836,23 @@ const char *sef_sessao_ide_estado(const SefSessaoIde *sessao) { return sessao->e
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao) { return sessao->caminho.dados; }
 const char *sef_sessao_ide_abas(const SefSessaoIde *sessao) {
     return sessao == NULL ? "" : sessao->abas.dados;
+}
+const char *sef_sessao_ide_explorador(const SefSessaoIde *sessao) {
+    return sessao == NULL ? "" : sessao->explorador.dados;
+}
+const char *sef_sessao_ide_espaco_trabalho_raiz(const SefSessaoIde *sessao) {
+    return sessao == NULL ? "" : sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho);
+}
+size_t sef_sessao_ide_espaco_trabalho_quantidade(const SefSessaoIde *sessao) {
+    return sessao == NULL ? 0 : sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho);
+}
+size_t sef_sessao_ide_espaco_trabalho_selecionado(const SefSessaoIde *sessao) {
+    return sessao == NULL ? 0 : sessao->arquivo_espaco_trabalho_selecionado;
+}
+const char *sef_sessao_ide_espaco_trabalho_arquivo(const SefSessaoIde *sessao, size_t indice) {
+    return sessao == NULL
+               ? NULL
+               : sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, indice);
 }
 size_t sef_sessao_ide_quantidade_documentos(const SefSessaoIde *sessao) {
     return sessao == NULL ? 0 : sessao->quantidade_documentos;
@@ -840,6 +896,74 @@ bool sef_sessao_ide_selecao_editor(const SefSessaoIde *sessao, size_t *inicio, s
     *fim = sessao->ancora_selecao_editor > sessao->cursor_editor ? sessao->ancora_selecao_editor
                                                                  : sessao->cursor_editor;
     return true;
+}
+
+bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho,
+                                          SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while opening workspace");
+        return false;
+    }
+    if (!sef_espaco_trabalho_ide_abrir(sessao->espaco_trabalho, caminho, erro))
+        return false;
+    sessao->arquivo_espaco_trabalho_selecionado = 0;
+    return atualizar_explorador(sessao, erro) &&
+           texto_formatar(&sessao->estado, erro, "Workspace opened: %s (%zu Lisp file(s))", caminho,
+                          sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho));
+}
+
+bool sef_sessao_ide_espaco_trabalho_mover(SefSessaoIde *sessao, SefMovimentoArquivoIde movimento,
+                                          SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while navigating workspace");
+        return false;
+    }
+    size_t quantidade = sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho);
+    if (quantidade == 0)
+        return texto_definir(&sessao->estado, "Workspace has no Lisp files", erro);
+    if (movimento == SEF_ARQUIVO_ANTERIOR)
+        sessao->arquivo_espaco_trabalho_selecionado =
+            sessao->arquivo_espaco_trabalho_selecionado == 0
+                ? quantidade - 1
+                : sessao->arquivo_espaco_trabalho_selecionado - 1;
+    else
+        sessao->arquivo_espaco_trabalho_selecionado =
+            (sessao->arquivo_espaco_trabalho_selecionado + 1) % quantidade;
+    return atualizar_explorador(sessao, erro) &&
+           texto_formatar(
+               &sessao->estado, erro, "Selected: %s",
+               sef_espaco_trabalho_ide_arquivo_relativo(
+                   sessao->espaco_trabalho, sessao->arquivo_espaco_trabalho_selecionado));
+}
+
+bool sef_sessao_ide_espaco_trabalho_selecionar(SefSessaoIde *sessao, size_t indice, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || indice >= sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho)) {
+        sef_erro_definir(erro, 0, 0, "invalid workspace file selection");
+        return false;
+    }
+    sessao->arquivo_espaco_trabalho_selecionado = indice;
+    return atualizar_explorador(sessao, erro) &&
+           texto_formatar(
+               &sessao->estado, erro, "Selected: %s",
+               sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, indice));
+}
+
+bool sef_sessao_ide_espaco_trabalho_abrir_selecionado(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while opening workspace file");
+        return false;
+    }
+    const char *caminho = sef_espaco_trabalho_ide_arquivo_absoluto(
+        sessao->espaco_trabalho, sessao->arquivo_espaco_trabalho_selecionado);
+    if (caminho == NULL) {
+        sef_erro_definir(erro, 0, 0, "workspace has no selected Lisp file");
+        return false;
+    }
+    return sef_sessao_ide_abrir(sessao, caminho, erro);
 }
 
 static void selecao_editor_limpar(SefSessaoIde *sessao) {
@@ -1520,6 +1644,31 @@ bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *e
            texto_formatar(&sessao->estado, erro, "Saved: %s", caminho);
 }
 
+static void tentar_abrir_espaco_trabalho_pai(SefSessaoIde *sessao, const char *caminho) {
+    if (sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho)[0] != '\0')
+        return;
+    const char *separador = NULL;
+    for (const char *cursor = caminho; *cursor != '\0'; cursor++)
+        if (*cursor == '/' || *cursor == '\\')
+            separador = cursor;
+    TextoIde raiz = {0};
+    SefErro descarte;
+    sef_erro_limpar(&descarte);
+    bool definiu = separador == NULL
+                       ? texto_definir(&raiz, ".", &descarte)
+                       : texto_definir_n(&raiz, caminho,
+                                         separador == caminho ? 1u
+                                         : separador == caminho + 2 && caminho[1] == ':'
+                                             ? 3u
+                                             : (size_t)(separador - caminho),
+                                         &descarte);
+    if (definiu && sef_espaco_trabalho_ide_abrir(sessao->espaco_trabalho, raiz.dados, &descarte)) {
+        sessao->arquivo_espaco_trabalho_selecionado = 0;
+        atualizar_explorador(sessao, &descarte);
+    }
+    texto_liberar(&raiz);
+}
+
 bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL || caminho == NULL || caminho[0] == '\0') {
@@ -1566,7 +1715,10 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
         sef_erro_definir(erro, 0, 0, "incomplete read from '%s'", caminho);
         return false;
     }
-    bool mesmo_documento = strcmp(sessao->caminho.dados, caminho) == 0;
+    bool reutilizar_aba_vazia = sessao->quantidade_documentos == 1 &&
+                                !sessao->documento_modificado && sessao->editor.tamanho == 0 &&
+                                strcmp(sessao->caminho.dados, "untitled.lisp") == 0;
+    bool mesmo_documento = reutilizar_aba_vazia || strcmp(sessao->caminho.dados, caminho) == 0;
     bool abriu = false;
     if (mesmo_documento) {
         abriu = texto_definir_n(&sessao->editor, dados, lidos, erro) &&
@@ -1598,9 +1750,11 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
         }
         documento_liberar(&novo);
     }
-    if (abriu)
+    if (abriu) {
+        tentar_abrir_espaco_trabalho_pai(sessao, caminho);
         abriu = atualizar_abas(sessao, erro) && atualizar_navegador_atual(sessao, erro) &&
                 texto_formatar(&sessao->estado, erro, "Opened: %s", caminho);
+    }
     free(dados);
     return abriu;
 }

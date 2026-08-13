@@ -107,8 +107,11 @@ instalação incremental, caminho ativo e runtime. Cada documento em segundo
 plano mantém texto, caminho, caminho da imagem, cursor, seleção, indicador de
 alteração, histórico do editor e assinaturas incrementais. A movimentação
 desses valores entre o slot do documento e o editor ativo torna a troca de abas
-sem perda e sem duplicação de buffers. A sessão executa, abre, grava,
-captura e restaura sem uma janela, o
+sem perda e sem duplicação de buffers.
+`espaco_trabalho.c` constrói o índice limitado e ordenado do projeto por enumeração
+nativa de diretórios, evita recursão por links simbólicos/reparse points e
+separa caminhos absolutos daqueles relativos exibidos pelo Explorer. A sessão
+executa, abre, grava, captura e restaura sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
 painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.
 

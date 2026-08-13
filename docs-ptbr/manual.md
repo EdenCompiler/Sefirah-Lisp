@@ -457,8 +457,10 @@ está completa e imprime todos os valores devolvidos. `:help` lista os comandos
 e `:quit` encerra a sessão.
 
 A IDE gráfica está dividida entre um motor de sessão independente da plataforma
-e uma apresentação desktop escura. Ela oferece abas persistentes de edição
-`.lisp`, ouvinte
+e uma apresentação desktop de estação Lisp. Sua paleta em creme, sálvia, oliva
+e âmbar preserva a linhagem visual de Interlisp e Lisp Machines, enquanto o
+layout de workbench segue convenções de editores modernos. Ela oferece abas
+persistentes de edição `.lisp`, ouvinte
 multilinha, transcrição persistente, inspetor de resultados, avaliação do
 buffer inteiro, avaliação estrutural e incremental, navegação de definições,
 snapshots do mundo vivo, desfazer/refazer linear e abertura/gravação de arquivo:
@@ -466,12 +468,24 @@ snapshots do mundo vivo, desfazer/refazer linear e abertura/gravação de arquiv
 ```bash
 sefirah_ide
 sefirah_ide caminho/para/programa.lisp
+sefirah_ide caminho/para/diretorio-do-projeto
 ```
 
 Abrir outro fonte cria uma aba em vez de substituir o buffer corrente. Cada aba
 mantém cursor, seleção, linha do tempo limitada de desfazer/refazer, histórico
 de avaliação incremental e estado não gravado. Abas alteradas exibem `*`, e um
 clique na aba ativa seu estado de edição preservado.
+
+Passar um diretório o abre como workspace. O Explorer indexa recursivamente até
+10.000 arquivos `.lisp`, ignora diretórios gerados/de dependências e ciclos por
+links simbólicos e apresenta os caminhos em ordem determinística. Com foco no
+Explorer, Cima/Baixo percorrem circularmente o índice e Enter abre o fonte
+selecionado em uma aba; um clique seleciona e abre uma entrada visível. O
+primeiro fonte reutiliza uma aba vazia ainda intocada.
+
+A barra de comandos fornece botões para Run, Run Form, Run Changes, Save,
+Snapshot e Restore. Eles acionam as mesmas operações sobre o mundo vivo que
+F5/F6/F7, Ctrl+S e F9/F10; a barra não cria um fluxo batch separado.
 
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou

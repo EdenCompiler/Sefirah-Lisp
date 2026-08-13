@@ -157,8 +157,10 @@ não significa que o marco inteiro esteja concluído.
 - [x] Histórico limitado e enraizado no GC de condições não tratadas ligado ao inspetor.
 - [x] Seleção de intervalo UTF-8 e seleção estrutural de forma de topo com
   substituição/remoção atômica no histórico de undo.
-- [x] Shell desktop escuro com abas persistentes, histórico de undo independente,
-  estado de cursor/seleção e indicadores de alterações não gravadas.
+- [x] Shell de estação Lisp com paleta histórica quente, abas persistentes,
+  histórico de undo independente, cursor/seleção e indicadores de alterações.
+- [x] Explorer recursivo do workspace com índice determinístico de fontes Lisp e
+  abertura direta por teclado/ponteiro nas abas do editor.
 - [ ] Navegador de código multifonte e consciente do runtime.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.

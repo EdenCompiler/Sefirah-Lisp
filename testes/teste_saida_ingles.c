@@ -20,10 +20,9 @@ static bool texto_contem(const char *texto, const char *trecho) {
 
 static bool texto_contem_portugues(const char *texto) {
     static const char *marcadores[] = {
-        " memoria ", " nao ",      " exige ",    " invalido", " invalida",
-        " simbolo",  " funcao",    " arquivo",   " caminho",  " condicao",
-        " reinicio", " nenhum",    " nenhuma",   " erro:",    " falha",
-        " esperava ", " recebeu ", " argumento", " codigo",   " objeto",
+        " memoria ", " nao ",      " exige ",   " invalido",  " invalida", " simbolo", " funcao",
+        " arquivo",  " caminho",   " condicao", " reinicio",  " nenhum",   " nenhuma", " erro:",
+        " falha",    " esperava ", " recebeu ", " argumento", " codigo",   " objeto",
     };
     char normalizado[sizeof(((SefErro *)0)->mensagem) + 3];
     size_t tamanho = texto == NULL ? 0 : strlen(texto);
@@ -69,7 +68,8 @@ int main(void) {
     if (sessao != NULL) {
         verificar(texto_contem(sef_sessao_ide_inspetor(sessao), "OBJECTS") &&
                       texto_contem(sef_sessao_ide_navegador(sessao), "DEFINITIONS") &&
-                      texto_contem(sef_sessao_ide_depurador(sessao), "CONDITIONS"),
+                      texto_contem(sef_sessao_ide_depurador(sessao), "CONDITIONS") &&
+                      texto_contem(sef_sessao_ide_explorador(sessao), "NO FOLDER OPEN"),
                   "IDE panels use English labels");
         verificar(!sef_sessao_ide_editor_selecionar_forma(sessao, &erro) && erro.ocorreu &&
                       texto_contem(erro.mensagem, "complete Lisp form") &&

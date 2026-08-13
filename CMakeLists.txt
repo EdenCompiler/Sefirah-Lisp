@@ -98,6 +98,7 @@ add_library(sefirah_ide_nucleo
     fonte/ide/historico.c
     fonte/ide/estrutura.c
     fonte/ide/sessao.c
+    fonte/ide/espaco_trabalho.c
 )
 target_include_directories(sefirah_ide_nucleo PUBLIC incluir)
 target_link_libraries(sefirah_ide_nucleo PUBLIC sefirah_nucleo)

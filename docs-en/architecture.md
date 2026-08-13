@@ -102,8 +102,11 @@ history, active path, and runtime. Each background document retains its text,
 path, image path, cursor, selection, modified flag, editor history, and
 incremental fingerprints. Moving those owned values between a document slot
 and the active editor makes tab switching lossless without duplicating buffers.
-The session can execute, load, save, snapshot, and
-restore without a window, which makes behavior testable on CI. `sefirah_ide`
+`espaco_trabalho.c` builds the bounded, sorted project index through native directory
+enumeration, skips symlink/reparse-point recursion, and keeps absolute paths
+separate from the relative paths shown by the Explorer.
+The session can execute, load, save, snapshot, and restore without a window,
+which makes behavior testable on CI. `sefirah_ide`
 only lays out the panels,
 draws the state, and translates X11/Win32/Cocoa events into session actions.
 

@@ -46,6 +46,11 @@ typedef enum SefMovimentoCondicaoIde {
     SEF_CONDICAO_PROXIMA
 } SefMovimentoCondicaoIde;
 
+typedef enum SefMovimentoArquivoIde {
+    SEF_ARQUIVO_ANTERIOR,
+    SEF_ARQUIVO_PROXIMO
+} SefMovimentoArquivoIde;
+
 SefSessaoIde *sef_sessao_ide_criar(SefErro *erro);
 void sef_sessao_ide_destruir(SefSessaoIde *sessao);
 
@@ -58,6 +63,11 @@ const char *sef_sessao_ide_depurador(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_abas(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_explorador(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_espaco_trabalho_raiz(const SefSessaoIde *sessao);
+size_t sef_sessao_ide_espaco_trabalho_quantidade(const SefSessaoIde *sessao);
+size_t sef_sessao_ide_espaco_trabalho_selecionado(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_espaco_trabalho_arquivo(const SefSessaoIde *sessao, size_t indice);
 size_t sef_sessao_ide_quantidade_documentos(const SefSessaoIde *sessao);
 size_t sef_sessao_ide_documento_ativo(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_documento_caminho(const SefSessaoIde *sessao, size_t indice);
@@ -76,6 +86,12 @@ bool sef_sessao_ide_editor_selecionar_forma(SefSessaoIde *sessao, SefErro *erro)
 bool sef_sessao_ide_editor_nova_linha(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro);
+
+bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
+bool sef_sessao_ide_espaco_trabalho_mover(SefSessaoIde *sessao, SefMovimentoArquivoIde movimento,
+                                          SefErro *erro);
+bool sef_sessao_ide_espaco_trabalho_selecionar(SefSessaoIde *sessao, size_t indice, SefErro *erro);
+bool sef_sessao_ide_espaco_trabalho_abrir_selecionado(SefSessaoIde *sessao, SefErro *erro);
 
 bool sef_sessao_ide_ouvinte_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro);
 void sef_sessao_ide_ouvinte_apagar(SefSessaoIde *sessao);

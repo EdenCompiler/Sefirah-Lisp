@@ -3,11 +3,18 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 static int falhas = 0;
 
 static void verificar(bool condicao, const char *mensagem) {
     if (!condicao) {
-        fprintf(stderr, "FALHOU: %s\n", mensagem);
+        fprintf(stderr, "FAILED: %s\n", mensagem);
         falhas++;
     }
 }
@@ -19,6 +26,22 @@ static bool gravar_arquivo(const char *caminho, const char *texto) {
     size_t tamanho = strlen(texto);
     bool gravou = fwrite(texto, 1, tamanho, arquivo) == tamanho;
     return fclose(arquivo) == 0 && gravou;
+}
+
+static bool criar_diretorio(const char *caminho) {
+#ifdef _WIN32
+    return _mkdir(caminho) == 0;
+#else
+    return mkdir(caminho, 0700) == 0;
+#endif
+}
+
+static void remover_diretorio(const char *caminho) {
+#ifdef _WIN32
+    _rmdir(caminho);
+#else
+    rmdir(caminho);
+#endif
 }
 
 int main(void) {
@@ -200,6 +223,28 @@ int main(void) {
     remove("teste-ide.lisp");
     remove("teste-aba-2.lisp");
 
+    verificar(criar_diretorio("teste-espaco") && criar_diretorio("teste-espaco/sub") &&
+                  gravar_arquivo("teste-espaco/main.lisp", "(define main 1)\n") &&
+                  gravar_arquivo("teste-espaco/sub/helper.lisp", "(define helper 2)\n") &&
+                  gravar_arquivo("teste-espaco/ignored.txt", "not Lisp\n") &&
+                  sef_sessao_ide_espaco_trabalho_abrir(sessao, "teste-espaco", &erro) &&
+                  sef_sessao_ide_espaco_trabalho_quantidade(sessao) == 2 &&
+                  strcmp(sef_sessao_ide_espaco_trabalho_arquivo(sessao, 0), "main.lisp") == 0 &&
+                  strstr(sef_sessao_ide_espaco_trabalho_arquivo(sessao, 1), "helper.lisp") !=
+                      NULL &&
+                  strstr(sef_sessao_ide_explorador(sessao), "LISP FILES: 2") != NULL,
+              "workspace explorer indexed recursive Lisp sources and ignored other files");
+    verificar(sef_sessao_ide_espaco_trabalho_mover(sessao, SEF_ARQUIVO_PROXIMO, &erro) &&
+                  sef_sessao_ide_espaco_trabalho_selecionado(sessao) == 1 &&
+                  sef_sessao_ide_espaco_trabalho_abrir_selecionado(sessao, &erro) &&
+                  strstr(sef_sessao_ide_editor(sessao), "define helper") != NULL,
+              "workspace explorer opened the selected file in an editor tab");
+    remove("teste-espaco/main.lisp");
+    remove("teste-espaco/sub/helper.lisp");
+    remove("teste-espaco/ignored.txt");
+    remover_diretorio("teste-espaco/sub");
+    remover_diretorio("teste-espaco");
+
     verificar(sef_sessao_ide_editor_definir(sessao, "abc\ndef", &erro),
               "editor preparou teste de cursor");
     sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_CIMA);
@@ -327,7 +372,16 @@ int main(void) {
     remove("teste-mundo.lisp");
 
     sef_sessao_ide_destruir(sessao);
+    SefSessaoIde *sessao_vazia = sef_sessao_ide_criar(&erro);
+    verificar(gravar_arquivo("teste-primeira-aba.lisp", "(define first-file 1)\n") &&
+                  sessao_vazia != NULL &&
+                  sef_sessao_ide_abrir(sessao_vazia, "teste-primeira-aba.lisp", &erro) &&
+                  sef_sessao_ide_quantidade_documentos(sessao_vazia) == 1 &&
+                  strcmp(sef_sessao_ide_caminho(sessao_vazia), "teste-primeira-aba.lisp") == 0,
+              "opening the first file reused the empty untitled editor tab");
+    sef_sessao_ide_destruir(sessao_vazia);
+    remove("teste-primeira-aba.lisp");
     if (falhas == 0)
-        puts("ide: todos os testes passaram");
+        puts("ide: all tests passed");
     return falhas == 0 ? 0 : 1;
 }
