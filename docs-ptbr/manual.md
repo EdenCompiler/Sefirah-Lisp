@@ -457,7 +457,8 @@ está completa e imprime todos os valores devolvidos. `:help` lista os comandos
 e `:quit` encerra a sessão.
 
 A IDE gráfica está dividida entre um motor de sessão independente da plataforma
-e a apresentação em janela. Ela oferece buffer `.lisp` editável, ouvinte
+e uma apresentação desktop escura. Ela oferece abas persistentes de edição
+`.lisp`, ouvinte
 multilinha, transcrição persistente, inspetor de resultados, avaliação do
 buffer inteiro, avaliação estrutural e incremental, navegação de definições,
 snapshots do mundo vivo, desfazer/refazer linear e abertura/gravação de arquivo:
@@ -466,6 +467,11 @@ snapshots do mundo vivo, desfazer/refazer linear e abertura/gravação de arquiv
 sefirah_ide
 sefirah_ide caminho/para/programa.lisp
 ```
+
+Abrir outro fonte cria uma aba em vez de substituir o buffer corrente. Cada aba
+mantém cursor, seleção, linha do tempo limitada de desfazer/refazer, histórico
+de avaliação incremental e estado não gravado. Abas alteradas exibem `*`, e um
+clique na aba ativa seu estado de edição preservado.
 
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou

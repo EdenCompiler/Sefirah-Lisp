@@ -24,7 +24,14 @@ typedef struct EstadoIde {
 } EstadoIde;
 
 static bool iniciar_componentes(EstadoIde *estado) {
-    estado->tema = sef_tema_gui_classico();
+    estado->tema = (SefTemaGui){SEF_COR(24, 24, 24),
+                                SEF_COR(31, 31, 31),
+                                SEF_COR(45, 45, 45),
+                                SEF_COR(212, 212, 212),
+                                SEF_COR(62, 62, 66),
+                                SEF_COR(0, 122, 204),
+                                6,
+                                4};
     sef_componente_iniciar(&estado->raiz, SEF_COMPONENTE_PAINEL, NULL);
     sef_componente_iniciar(&estado->area_principal, SEF_COMPONENTE_PAINEL, NULL);
     sef_componente_iniciar(&estado->editor, SEF_COMPONENTE_PAINEL, "EDITOR");
@@ -75,15 +82,50 @@ static void mover_cursor_editor(EstadoIde *estado, const SefEventoJanela *evento
 
 static void desenhar_painel(SefSuperficie *superficie, SefRetangulo limites, const char *titulo,
                             bool ativo) {
-    const SefCor tinta = SEF_COR(43, 54, 45);
-    SefCor barra = ativo ? SEF_COR(143, 173, 121) : SEF_COR(177, 196, 154);
+    const SefCor tinta = SEF_COR(212, 212, 212);
+    SefCor barra = ativo ? SEF_COR(0, 82, 136) : SEF_COR(45, 45, 45);
     sef_superficie_retangulo(superficie, limites.x, limites.y, limites.largura, limites.altura,
-                             SEF_COR(244, 238, 211));
+                             SEF_COR(31, 31, 31));
     sef_superficie_contorno(superficie, limites.x, limites.y, limites.largura, limites.altura,
-                            ativo ? 3 : 2, tinta);
+                            ativo ? 2 : 1, ativo ? SEF_COR(0, 122, 204) : SEF_COR(62, 62, 66));
     sef_superficie_retangulo(superficie, limites.x + 2, limites.y + 2, limites.largura - 4, 28,
                              barra);
     sef_superficie_texto(superficie, limites.x + 9, limites.y + 8, titulo, 2, tinta);
+}
+
+static void desenhar_abas(SefSuperficie *superficie, SefRetangulo limites,
+                          const SefSessaoIde *sessao) {
+    const int largura_aba = 180;
+    const int y = limites.y + 31;
+    sef_superficie_retangulo(superficie, limites.x + 2, limites.y + 31, limites.largura - 4, 26,
+                             SEF_COR(37, 37, 38));
+    size_t quantidade = sef_sessao_ide_quantidade_documentos(sessao);
+    size_t ativa = sef_sessao_ide_documento_ativo(sessao);
+    for (size_t i = 0; i < quantidade; i++) {
+        int x = limites.x + 2 + (int)i * largura_aba;
+        if (x >= limites.x + limites.largura - 2)
+            break;
+        int largura = largura_aba;
+        if (x + largura > limites.x + limites.largura - 2)
+            largura = limites.x + limites.largura - 2 - x;
+        bool ativa_agora = i == ativa;
+        sef_superficie_retangulo(superficie, x, y, largura, 26,
+                                 ativa_agora ? SEF_COR(31, 31, 31) : SEF_COR(45, 45, 45));
+        sef_superficie_retangulo(superficie, x + largura - 1, y, 1, 26, SEF_COR(62, 62, 66));
+        if (ativa_agora)
+            sef_superficie_retangulo(superficie, x, y + 24, largura, 2, SEF_COR(0, 122, 204));
+
+        const char *caminho = sef_sessao_ide_documento_caminho(sessao, i);
+        const char *nome = caminho == NULL ? "untitled.lisp" : caminho;
+        for (const char *cursor = nome; *cursor != '\0'; cursor++)
+            if (*cursor == '/' || *cursor == '\\')
+                nome = cursor + 1;
+        char titulo[32];
+        snprintf(titulo, sizeof(titulo), "%.22s%s", nome,
+                 sef_sessao_ide_documento_modificado(sessao, i) ? "  *" : "");
+        sef_superficie_texto(superficie, x + 10, y + 8, titulo, 1,
+                             ativa_agora ? SEF_COR(245, 245, 245) : SEF_COR(180, 180, 180));
+    }
 }
 
 static const char *inicio_das_ultimas_linhas(const char *texto, size_t quantidade) {
@@ -142,7 +184,7 @@ static void desenhar_texto_limitado(SefSuperficie *superficie, SefRetangulo limi
         if (*cursor == '\n')
             cursor++;
         linha[tamanho] = '\0';
-        sef_superficie_texto(superficie, limites.x + 12, y, linha, 2, SEF_COR(43, 54, 45));
+        sef_superficie_texto(superficie, limites.x + 12, y, linha, 2, SEF_COR(212, 212, 212));
         y += 18;
     }
 }
@@ -186,17 +228,17 @@ static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
 
 static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     EstadoIde *estado = dados;
-    const SefCor tinta = SEF_COR(43, 54, 45);
-    sef_superficie_limpar(superficie, SEF_COR(207, 198, 164));
-    sef_superficie_retangulo(superficie, 0, 0, superficie->largura, 30, tinta);
+    const SefCor tinta = SEF_COR(212, 212, 212);
+    sef_superficie_limpar(superficie, SEF_COR(24, 24, 24));
+    sef_superficie_retangulo(superficie, 0, 0, superficie->largura, 30, SEF_COR(51, 51, 51));
     sef_superficie_texto(superficie, 12, 8, "SEFIRAH LISP  LIVE ENVIRONMENT", 2,
-                         SEF_COR(231, 218, 168));
+                         SEF_COR(245, 245, 245));
     sef_componente_organizar(&estado->raiz,
                              (SefRetangulo){0, 30, superficie->largura, superficie->altura - 66},
                              &estado->tema);
 
     desenhar_painel(superficie, estado->editor.limites,
-                    "EDITOR [F5 ALL] [F6 FORM] [SHIFT+F6 SELECT]", estado->foco == FOCO_EDITOR);
+                    "EDITOR  [F5 ALL] [F6 FORM] [SHIFT+F6 SELECT]", estado->foco == FOCO_EDITOR);
     desenhar_painel(superficie, estado->inspetor.limites, "INSPECTOR [ENTER OPEN] [BACK GO BACK]",
                     estado->foco == FOCO_INSPETOR);
     desenhar_painel(superficie, estado->navegador.limites,
@@ -205,7 +247,11 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                     estado->foco == FOCO_DEPURADOR);
     desenhar_painel(superficie, estado->ouvinte.limites, "REPL [ENTER RUN] [UP HISTORY]",
                     estado->foco == FOCO_OUVINTE);
-    desenhar_editor(superficie, estado->editor.limites, estado->sessao);
+    desenhar_abas(superficie, estado->editor.limites, estado->sessao);
+    SefRetangulo area_codigo = estado->editor.limites;
+    area_codigo.y += 24;
+    area_codigo.altura -= 24;
+    desenhar_editor(superficie, area_codigo, estado->sessao);
     desenhar_texto_limitado(superficie, estado->inspetor.limites,
                             sef_sessao_ide_inspetor(estado->sessao), false);
     desenhar_texto_limitado(superficie, estado->navegador.limites,
@@ -233,7 +279,7 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                          2, tinta);
 
     sef_superficie_retangulo(superficie, 0, superficie->altura - 34, superficie->largura, 34,
-                             SEF_COR(177, 196, 154));
+                             SEF_COR(0, 122, 204));
     char estado_barra[768];
     snprintf(estado_barra, sizeof(estado_barra), "%s  |  %s  |  CTRL+S SAVE  CTRL+O OPEN",
              sef_sessao_ide_caminho(estado->sessao), sef_sessao_ide_estado(estado->sessao));
@@ -377,9 +423,15 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
             mover_cursor_editor(estado, evento, SEF_CURSOR_FIM_LINHA);
         break;
     case SEF_EVENTO_PONTEIRO_PRESSIONAR:
-        if (ponto_dentro(estado->editor.limites, evento->x, evento->y))
+        if (ponto_dentro(estado->editor.limites, evento->x, evento->y)) {
             estado->foco = FOCO_EDITOR;
-        else if (ponto_dentro(estado->inspetor.limites, evento->x, evento->y)) {
+            if (evento->y >= estado->editor.limites.y + 30 &&
+                evento->y < estado->editor.limites.y + 60) {
+                size_t indice = (size_t)(evento->x - estado->editor.limites.x - 2) / 180u;
+                if (indice < sef_sessao_ide_quantidade_documentos(estado->sessao))
+                    sef_sessao_ide_documento_ativar(estado->sessao, indice, &erro);
+            }
+        } else if (ponto_dentro(estado->inspetor.limites, evento->x, evento->y)) {
             if (estado->foco == FOCO_INSPETOR)
                 sef_sessao_ide_inspetor_mover_componente(estado->sessao,
                                                          SEF_COMPONENTE_INSPETOR_PROXIMO, &erro);

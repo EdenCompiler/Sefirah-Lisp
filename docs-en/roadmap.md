@@ -155,6 +155,8 @@ not mean the entire milestone is complete.
 - [x] Bounded, GC-rooted unhandled-condition history connected to the inspector.
 - [x] UTF-8 range selection and top-level structural selection with atomic
   replacement/removal in undo history.
+- [x] Dark desktop shell with persistent editor tabs, independent undo history,
+  cursor/selection state, and unsaved-change indicators.
 - [ ] Multi-file and runtime-aware code browser.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.

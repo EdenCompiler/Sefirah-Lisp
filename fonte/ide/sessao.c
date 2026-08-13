@@ -18,6 +18,20 @@ typedef struct TextoIde {
     size_t capacidade;
 } TextoIde;
 
+typedef struct DocumentoIde {
+    TextoIde editor;
+    TextoIde caminho;
+    TextoIde caminho_imagem;
+    size_t cursor_editor;
+    size_t ancora_selecao_editor;
+    bool selecao_editor_ativa;
+    bool modificado;
+    SefHistoricoEditorIde *historico_editor;
+    uint64_t *formas_executadas;
+    size_t quantidade_formas_executadas;
+    size_t capacidade_formas_executadas;
+} DocumentoIde;
+
 typedef struct PassoInspecaoIde {
     SefRaiz *raiz;
     char rotulo[64];
@@ -42,6 +56,7 @@ struct SefSessaoIde {
     TextoIde estado;
     TextoIde caminho;
     TextoIde caminho_imagem;
+    TextoIde abas;
     size_t cursor_editor;
     size_t ancora_selecao_editor;
     bool selecao_editor_ativa;
@@ -57,6 +72,11 @@ struct SefSessaoIde {
     uint64_t *formas_executadas;
     size_t quantidade_formas_executadas;
     size_t capacidade_formas_executadas;
+    bool documento_modificado;
+    DocumentoIde *documentos;
+    size_t quantidade_documentos;
+    size_t capacidade_documentos;
+    size_t documento_ativo;
     DiagnosticoIde diagnosticos[SEF_LIMITE_CONDICOES_IDE];
     size_t quantidade_diagnosticos;
     size_t diagnostico_selecionado;
@@ -175,9 +195,113 @@ static void texto_liberar(TextoIde *texto) {
     memset(texto, 0, sizeof(*texto));
 }
 
-static bool atualizar_caminho_imagem(SefSessaoIde *sessao, SefErro *erro) {
-    const char *caminho = sessao->caminho.dados;
-    size_t tamanho = sessao->caminho.tamanho;
+static void documento_liberar(DocumentoIde *documento) {
+    texto_liberar(&documento->editor);
+    texto_liberar(&documento->caminho);
+    texto_liberar(&documento->caminho_imagem);
+    sef_historico_editor_destruir(documento->historico_editor);
+    free(documento->formas_executadas);
+    memset(documento, 0, sizeof(*documento));
+}
+
+static const char *nome_base(const char *caminho) {
+    const char *nome = caminho;
+    for (const char *cursor = caminho; *cursor != '\0'; cursor++) {
+        if (*cursor == '/' || *cursor == '\\')
+            nome = cursor + 1;
+    }
+    return nome;
+}
+
+static const char *documento_caminho(const SefSessaoIde *sessao, size_t indice) {
+    if (indice >= sessao->quantidade_documentos)
+        return NULL;
+    return indice == sessao->documento_ativo ? sessao->caminho.dados
+                                             : sessao->documentos[indice].caminho.dados;
+}
+
+static bool documento_modificado(const SefSessaoIde *sessao, size_t indice) {
+    return indice == sessao->documento_ativo ? sessao->documento_modificado
+                                             : sessao->documentos[indice].modificado;
+}
+
+static bool atualizar_abas(SefSessaoIde *sessao, SefErro *erro) {
+    if (!texto_definir(&sessao->abas, "", erro))
+        return false;
+    for (size_t i = 0; i < sessao->quantidade_documentos; i++) {
+        const char *caminho = documento_caminho(sessao, i);
+        char aba[320];
+        int tamanho = snprintf(aba, sizeof(aba), "%s%s[%zu] %s%s", i == 0 ? "" : "  ",
+                               i == sessao->documento_ativo ? ">" : "", i + 1,
+                               nome_base(caminho == NULL ? "untitled.lisp" : caminho),
+                               documento_modificado(sessao, i) ? " *" : "");
+        if (tamanho < 0 || (size_t)tamanho >= sizeof(aba) ||
+            !texto_acrescentar_n(&sessao->abas, aba, (size_t)tamanho, erro))
+            return false;
+    }
+    return true;
+}
+
+static bool reservar_documentos(SefSessaoIde *sessao, size_t quantidade, SefErro *erro) {
+    if (quantidade <= sessao->capacidade_documentos)
+        return true;
+    size_t capacidade = sessao->capacidade_documentos == 0 ? 4 : sessao->capacidade_documentos * 2;
+    while (capacidade < quantidade)
+        capacidade *= 2;
+    DocumentoIde *documentos = realloc(sessao->documentos, capacidade * sizeof(*documentos));
+    if (documentos == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for editor tabs");
+        return false;
+    }
+    memset(documentos + sessao->capacidade_documentos, 0,
+           (capacidade - sessao->capacidade_documentos) * sizeof(*documentos));
+    sessao->documentos = documentos;
+    sessao->capacidade_documentos = capacidade;
+    return true;
+}
+
+static void guardar_documento_ativo(SefSessaoIde *sessao) {
+    DocumentoIde *documento = &sessao->documentos[sessao->documento_ativo];
+    documento->editor = sessao->editor;
+    documento->caminho = sessao->caminho;
+    documento->caminho_imagem = sessao->caminho_imagem;
+    documento->cursor_editor = sessao->cursor_editor;
+    documento->ancora_selecao_editor = sessao->ancora_selecao_editor;
+    documento->selecao_editor_ativa = sessao->selecao_editor_ativa;
+    documento->modificado = sessao->documento_modificado;
+    documento->historico_editor = sessao->historico_editor;
+    documento->formas_executadas = sessao->formas_executadas;
+    documento->quantidade_formas_executadas = sessao->quantidade_formas_executadas;
+    documento->capacidade_formas_executadas = sessao->capacidade_formas_executadas;
+    memset(&sessao->editor, 0, sizeof(sessao->editor));
+    memset(&sessao->caminho, 0, sizeof(sessao->caminho));
+    memset(&sessao->caminho_imagem, 0, sizeof(sessao->caminho_imagem));
+    sessao->historico_editor = NULL;
+    sessao->formas_executadas = NULL;
+    sessao->quantidade_formas_executadas = 0;
+    sessao->capacidade_formas_executadas = 0;
+}
+
+static void carregar_documento(SefSessaoIde *sessao, size_t indice) {
+    DocumentoIde *documento = &sessao->documentos[indice];
+    sessao->editor = documento->editor;
+    sessao->caminho = documento->caminho;
+    sessao->caminho_imagem = documento->caminho_imagem;
+    sessao->cursor_editor = documento->cursor_editor;
+    sessao->ancora_selecao_editor = documento->ancora_selecao_editor;
+    sessao->selecao_editor_ativa = documento->selecao_editor_ativa;
+    sessao->documento_modificado = documento->modificado;
+    sessao->historico_editor = documento->historico_editor;
+    sessao->formas_executadas = documento->formas_executadas;
+    sessao->quantidade_formas_executadas = documento->quantidade_formas_executadas;
+    sessao->capacidade_formas_executadas = documento->capacidade_formas_executadas;
+    memset(documento, 0, sizeof(*documento));
+    sessao->documento_ativo = indice;
+}
+
+static bool definir_caminho_imagem(TextoIde *imagem, const TextoIde *fonte, SefErro *erro) {
+    const char *caminho = fonte->dados;
+    size_t tamanho = fonte->tamanho;
     size_t inicio_nome = 0;
     size_t extensao = tamanho;
     for (size_t i = 0; i < tamanho; i++) {
@@ -188,8 +312,12 @@ static bool atualizar_caminho_imagem(SefSessaoIde *sessao, SefErro *erro) {
             extensao = i;
         }
     }
-    return texto_definir_n(&sessao->caminho_imagem, caminho, extensao, erro) &&
-           texto_acrescentar(&sessao->caminho_imagem, ".imagem", erro);
+    return texto_definir_n(imagem, caminho, extensao, erro) &&
+           texto_acrescentar(imagem, ".imagem", erro);
+}
+
+static bool atualizar_caminho_imagem(SefSessaoIde *sessao, SefErro *erro) {
+    return definir_caminho_imagem(&sessao->caminho_imagem, &sessao->caminho, erro);
 }
 
 static bool codigo_vazio(const char *codigo) {
@@ -438,6 +566,16 @@ static bool atualizar_navegador(SefSessaoIde *sessao, const SefFormaEstruturalId
     return true;
 }
 
+static bool atualizar_navegador_atual(SefSessaoIde *sessao, SefErro *erro) {
+    SefFormaEstruturalIde *formas = NULL;
+    size_t quantidade = 0;
+    if (!sef_ide_catalogar_formas(sessao->editor.dados, &formas, &quantidade, erro))
+        return false;
+    bool atualizou = atualizar_navegador(sessao, formas, quantidade, SIZE_MAX, erro);
+    sef_ide_catalogo_liberar(formas);
+    return atualizou;
+}
+
 static bool atualizar_navegador_referencias(SefSessaoIde *sessao,
                                             const SefFormaEstruturalIde *formas,
                                             size_t quantidade_formas,
@@ -602,14 +740,20 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
                        "Shift+F9/F10 navigates history.",
                        erro) ||
         !texto_definir(&sessao->estado, "New file", erro) ||
-        !texto_definir(&sessao->caminho, "programa.lisp", erro) ||
-        !atualizar_caminho_imagem(sessao, erro)) {
+        !texto_definir(&sessao->caminho, "untitled.lisp", erro) ||
+        !texto_definir(&sessao->abas, "", erro) || !atualizar_caminho_imagem(sessao, erro)) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
     }
     sessao->historico_ouvinte = sef_historico_texto_criar(erro);
     sessao->historico_editor = sef_historico_editor_criar("", 0, erro);
-    if (sessao->historico_ouvinte == NULL || sessao->historico_editor == NULL) {
+    if (sessao->historico_ouvinte == NULL || sessao->historico_editor == NULL ||
+        !reservar_documentos(sessao, 1, erro)) {
+        sef_sessao_ide_destruir(sessao);
+        return NULL;
+    }
+    sessao->quantidade_documentos = 1;
+    if (!atualizar_abas(sessao, erro)) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
     }
@@ -633,6 +777,10 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     texto_liberar(&sessao->estado);
     texto_liberar(&sessao->caminho);
     texto_liberar(&sessao->caminho_imagem);
+    texto_liberar(&sessao->abas);
+    for (size_t i = 0; i < sessao->quantidade_documentos; i++)
+        documento_liberar(&sessao->documentos[i]);
+    free(sessao->documentos);
     free(sessao->formas_executadas);
     free(sessao);
 }
@@ -647,6 +795,38 @@ const char *sef_sessao_ide_navegador(const SefSessaoIde *sessao) { return sessao
 const char *sef_sessao_ide_depurador(const SefSessaoIde *sessao) { return sessao->depurador.dados; }
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao) { return sessao->estado.dados; }
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao) { return sessao->caminho.dados; }
+const char *sef_sessao_ide_abas(const SefSessaoIde *sessao) {
+    return sessao == NULL ? "" : sessao->abas.dados;
+}
+size_t sef_sessao_ide_quantidade_documentos(const SefSessaoIde *sessao) {
+    return sessao == NULL ? 0 : sessao->quantidade_documentos;
+}
+size_t sef_sessao_ide_documento_ativo(const SefSessaoIde *sessao) {
+    return sessao == NULL ? 0 : sessao->documento_ativo;
+}
+const char *sef_sessao_ide_documento_caminho(const SefSessaoIde *sessao, size_t indice) {
+    return sessao == NULL ? NULL : documento_caminho(sessao, indice);
+}
+bool sef_sessao_ide_documento_modificado(const SefSessaoIde *sessao, size_t indice) {
+    return sessao != NULL && indice < sessao->quantidade_documentos &&
+           documento_modificado(sessao, indice);
+}
+
+bool sef_sessao_ide_documento_ativar(SefSessaoIde *sessao, size_t indice, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || indice >= sessao->quantidade_documentos) {
+        sef_erro_definir(erro, 0, 0, "invalid editor tab");
+        return false;
+    }
+    if (indice == sessao->documento_ativo)
+        return true;
+    guardar_documento_ativo(sessao);
+    carregar_documento(sessao, indice);
+    if (!atualizar_abas(sessao, erro) || !atualizar_navegador_atual(sessao, erro))
+        return false;
+    return texto_formatar(&sessao->estado, erro, "Active tab: %s",
+                          nome_base(sessao->caminho.dados));
+}
 size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao) {
     return sessao == NULL ? 0 : sessao->cursor_editor;
 }
@@ -677,8 +857,10 @@ bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, Sef
         return false;
     sessao->cursor_editor = sessao->editor.tamanho;
     selecao_editor_limpar(sessao);
+    sessao->documento_modificado = true;
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
-                                          sessao->cursor_editor, erro);
+                                          sessao->cursor_editor, erro) &&
+           atualizar_abas(sessao, erro);
 }
 
 bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {
@@ -695,8 +877,10 @@ bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefE
         return false;
     sessao->cursor_editor = inicio + tamanho;
     selecao_editor_limpar(sessao);
+    sessao->documento_modificado = true;
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
-                                          sessao->cursor_editor, erro);
+                                          sessao->cursor_editor, erro) &&
+           atualizar_abas(sessao, erro);
 }
 
 void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
@@ -719,6 +903,8 @@ void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
     sef_erro_limpar(&descarte);
     sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                    sessao->cursor_editor, &descarte);
+    sessao->documento_modificado = true;
+    atualizar_abas(sessao, &descarte);
 }
 
 static size_t inicio_linha(const TextoIde *texto, size_t posicao) {
@@ -850,7 +1036,9 @@ static bool restaurar_editor(SefSessaoIde *sessao, bool desfazer, SefErro *erro)
         return false;
     sessao->cursor_editor = cursor;
     selecao_editor_limpar(sessao);
-    return texto_definir(&sessao->estado, desfazer ? "Edit undone" : "Edit redone", erro);
+    sessao->documento_modificado = true;
+    return atualizar_abas(sessao, erro) &&
+           texto_definir(&sessao->estado, desfazer ? "Edit undone" : "Edit redone", erro);
 }
 
 bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro) {
@@ -1325,8 +1513,10 @@ bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *e
         sef_erro_definir(erro, 0, 0, "failed to write '%s'", caminho);
         return false;
     }
-    return texto_definir(&sessao->caminho, caminho, erro) &&
-           atualizar_caminho_imagem(sessao, erro) &&
+    if (!texto_definir(&sessao->caminho, caminho, erro) || !atualizar_caminho_imagem(sessao, erro))
+        return false;
+    sessao->documento_modificado = false;
+    return atualizar_abas(sessao, erro) &&
            texto_formatar(&sessao->estado, erro, "Saved: %s", caminho);
 }
 
@@ -1335,6 +1525,11 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
     if (sessao == NULL || caminho == NULL || caminho[0] == '\0') {
         sef_erro_definir(erro, 0, 0, "missing path while opening");
         return false;
+    }
+    for (size_t i = 0; i < sessao->quantidade_documentos; i++) {
+        const char *aberto = documento_caminho(sessao, i);
+        if (i != sessao->documento_ativo && aberto != NULL && strcmp(aberto, caminho) == 0)
+            return sef_sessao_ide_documento_ativar(sessao, i, erro);
     }
     FILE *arquivo = fopen(caminho, "rb");
     if (arquivo == NULL) {
@@ -1371,19 +1566,41 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
         sef_erro_definir(erro, 0, 0, "incomplete read from '%s'", caminho);
         return false;
     }
-    bool abriu = texto_definir_n(&sessao->editor, dados, lidos, erro) &&
-                 texto_definir(&sessao->caminho, caminho, erro) &&
-                 atualizar_caminho_imagem(sessao, erro) &&
-                 texto_formatar(&sessao->estado, erro, "Opened: %s", caminho);
-    if (abriu) {
-        sessao->cursor_editor = lidos;
-        selecao_editor_limpar(sessao);
+    bool mesmo_documento = strcmp(sessao->caminho.dados, caminho) == 0;
+    bool abriu = false;
+    if (mesmo_documento) {
+        abriu = texto_definir_n(&sessao->editor, dados, lidos, erro) &&
+                texto_definir(&sessao->caminho, caminho, erro) &&
+                atualizar_caminho_imagem(sessao, erro);
+        if (abriu) {
+            sessao->cursor_editor = lidos;
+            selecao_editor_limpar(sessao);
+            sessao->documento_modificado = false;
+            sessao->quantidade_formas_executadas = 0;
+            abriu = sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
+                                                   sessao->cursor_editor, erro);
+        }
+    } else {
+        DocumentoIde novo = {0};
+        novo.cursor_editor = lidos;
+        novo.historico_editor = sef_historico_editor_criar(dados, lidos, erro);
+        abriu = novo.historico_editor != NULL &&
+                texto_definir_n(&novo.editor, dados, lidos, erro) &&
+                texto_definir(&novo.caminho, caminho, erro) &&
+                definir_caminho_imagem(&novo.caminho_imagem, &novo.caminho, erro) &&
+                reservar_documentos(sessao, sessao->quantidade_documentos + 1, erro);
+        if (abriu) {
+            size_t indice = sessao->quantidade_documentos++;
+            guardar_documento_ativo(sessao);
+            sessao->documentos[indice] = novo;
+            memset(&novo, 0, sizeof(novo));
+            carregar_documento(sessao, indice);
+        }
+        documento_liberar(&novo);
     }
-    if (abriu) {
-        sessao->quantidade_formas_executadas = 0;
-        abriu = sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
-                                               sessao->cursor_editor, erro);
-    }
+    if (abriu)
+        abriu = atualizar_abas(sessao, erro) && atualizar_navegador_atual(sessao, erro) &&
+                texto_formatar(&sessao->estado, erro, "Opened: %s", caminho);
     free(dados);
     return abriu;
 }

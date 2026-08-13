@@ -96,9 +96,13 @@ same cleanup and stack-boundary rules as every other non-local transfer.
 
 ## IDE session
 
-`sefirah_ide_nucleo` owns the editable buffer, listener input, transcript,
+`sefirah_ide_nucleo` owns the editor documents, listener input, transcript,
 inspector, definition browser, condition history, incremental-installation
-history, current path, and runtime. It can execute, load, save, snapshot, and
+history, active path, and runtime. Each background document retains its text,
+path, image path, cursor, selection, modified flag, editor history, and
+incremental fingerprints. Moving those owned values between a document slot
+and the active editor makes tab switching lossless without duplicating buffers.
+The session can execute, load, save, snapshot, and
 restore without a window, which makes behavior testable on CI. `sefirah_ide`
 only lays out the panels,
 draws the state, and translates X11/Win32/Cocoa events into session actions.

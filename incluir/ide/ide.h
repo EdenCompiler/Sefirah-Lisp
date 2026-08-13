@@ -57,6 +57,12 @@ const char *sef_sessao_ide_navegador(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_depurador(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_abas(const SefSessaoIde *sessao);
+size_t sef_sessao_ide_quantidade_documentos(const SefSessaoIde *sessao);
+size_t sef_sessao_ide_documento_ativo(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_documento_caminho(const SefSessaoIde *sessao, size_t indice);
+bool sef_sessao_ide_documento_modificado(const SefSessaoIde *sessao, size_t indice);
+bool sef_sessao_ide_documento_ativar(SefSessaoIde *sessao, size_t indice, SefErro *erro);
 size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao);
 bool sef_sessao_ide_selecao_editor(const SefSessaoIde *sessao, size_t *inicio, size_t *fim);
 
@@ -65,7 +71,7 @@ bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefE
 void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao);
 void sef_sessao_ide_editor_mover_cursor(SefSessaoIde *sessao, SefMovimentoCursorIde movimento);
 void sef_sessao_ide_editor_mover_cursor_selecionando(SefSessaoIde *sessao,
-                                                      SefMovimentoCursorIde movimento);
+                                                     SefMovimentoCursorIde movimento);
 bool sef_sessao_ide_editor_selecionar_forma(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_nova_linha(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro);

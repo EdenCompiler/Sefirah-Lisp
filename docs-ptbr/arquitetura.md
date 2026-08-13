@@ -101,9 +101,13 @@ as mesmas regras de limpeza e limites das demais transferências não locais.
 
 ## Sessão da IDE
 
-`sefirah_ide_nucleo` possui o buffer editável, entrada do ouvinte, transcrição,
+`sefirah_ide_nucleo` possui os documentos do editor, entrada do ouvinte, transcrição,
 inspetor, navegador de definições, histórico de condições, histórico de
-instalação incremental, caminho atual e runtime. Ele executa, abre, grava,
+instalação incremental, caminho ativo e runtime. Cada documento em segundo
+plano mantém texto, caminho, caminho da imagem, cursor, seleção, indicador de
+alteração, histórico do editor e assinaturas incrementais. A movimentação
+desses valores entre o slot do documento e o editor ativo torna a troca de abas
+sem perda e sem duplicação de buffers. A sessão executa, abre, grava,
 captura e restaura sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
 painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.

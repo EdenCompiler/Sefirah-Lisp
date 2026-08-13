@@ -12,6 +12,15 @@ static void verificar(bool condicao, const char *mensagem) {
     }
 }
 
+static bool gravar_arquivo(const char *caminho, const char *texto) {
+    FILE *arquivo = fopen(caminho, "wb");
+    if (arquivo == NULL)
+        return false;
+    size_t tamanho = strlen(texto);
+    bool gravou = fwrite(texto, 1, tamanho, arquivo) == tamanho;
+    return fclose(arquivo) == 0 && gravou;
+}
+
 int main(void) {
     SefErro erro;
     SefSessaoIde *sessao = sef_sessao_ide_criar(&erro);
@@ -171,7 +180,25 @@ int main(void) {
     verificar(strstr(sef_sessao_ide_editor(sessao), "defun resposta") != NULL &&
                   strcmp(sef_sessao_ide_caminho(sessao), "teste-ide.lisp") == 0,
               "IDE restaurou conteudo e caminho");
+    verificar(gravar_arquivo("teste-aba-2.lisp", "(defun second-tab () 42)\n") &&
+                  sef_sessao_ide_editor_inserir(sessao, "; unsaved", &erro) &&
+                  sef_sessao_ide_abrir(sessao, "teste-aba-2.lisp", &erro) &&
+                  sef_sessao_ide_quantidade_documentos(sessao) == 2 &&
+                  sef_sessao_ide_documento_ativo(sessao) == 1 &&
+                  strstr(sef_sessao_ide_abas(sessao), "teste-ide.lisp *") != NULL &&
+                  strstr(sef_sessao_ide_abas(sessao), ">[2] teste-aba-2.lisp") != NULL,
+              "IDE opened a second file in a visible editor tab");
+    verificar(sef_sessao_ide_documento_ativar(sessao, 0, &erro) &&
+                  strstr(sef_sessao_ide_editor(sessao), "; unsaved") != NULL &&
+                  sef_sessao_ide_documento_modificado(sessao, 0) &&
+                  sef_sessao_ide_salvar(sessao, "teste-ide.lisp", &erro) &&
+                  !sef_sessao_ide_documento_modificado(sessao, 0) &&
+                  strstr(sef_sessao_ide_abas(sessao), "teste-ide.lisp *") == NULL &&
+                  sef_sessao_ide_documento_ativar(sessao, 1, &erro) &&
+                  strstr(sef_sessao_ide_editor(sessao), "second-tab") != NULL,
+              "editor tabs preserved unsaved buffers and independent active state");
     remove("teste-ide.lisp");
+    remove("teste-aba-2.lisp");
 
     verificar(sef_sessao_ide_editor_definir(sessao, "abc\ndef", &erro),
               "editor preparou teste de cursor");

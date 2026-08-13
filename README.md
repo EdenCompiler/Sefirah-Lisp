@@ -46,7 +46,7 @@ the roadmap.
 | Graphics | Custom RGB surface, CPU rasterization, and bitmap font |
 | GUI | Component tree, layout, themes, focus, hit testing, and actions |
 | Platform | X11, Win32, and Cocoa/CoreGraphics raster windows with keyboard, shortcuts, and pointer events |
-| IDE | Editable `.lisp` buffer, incremental structural evaluation, source browser, recursive live-object inspector, rooted condition history, world snapshots, undo/redo, listener history, and file load/save on Linux, Windows, and macOS |
+| IDE | Dark desktop workspace, persistent `.lisp` editor tabs, incremental structural evaluation, source browser, recursive live-object inspector, rooted condition history, world snapshots, undo/redo, listener history, and file load/save on Linux, Windows, and macOS |
 | Delivery | CI builds, tests, installs, and audits the public SDK on Linux, Windows, and macOS |
 
 ## Highlights
@@ -210,8 +210,11 @@ buffer, persistent transcript, multiline listener with navigable event history,
 a recursive multiple-value object inspector, linear undo/redo, structural form
 evaluation, an indexed definition browser, incremental installation of changed
 top-level forms, symbol-at-point definition lookup, structural caller/reference
-navigation, restorable world snapshots, and `.lisp` file load/save. Tab or a
-pointer click changes focus among the editor, inspector, debugger, and listener;
+navigation, restorable world snapshots, and `.lisp` file load/save. The dark
+workspace opens files in persistent editor tabs; each tab preserves its own
+cursor, selection, undo/redo timeline, incremental state, and unsaved marker.
+Clicking a tab activates it. Tab or a pointer click elsewhere changes focus
+among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
 Shift+F6 selects that complete form for structural replacement or deletion;
 F7 runs only forms changed since their last successful installation; F8 and
@@ -352,7 +355,7 @@ nativa permanecem no roteiro.
 | Gráficos | Superfície RGB, rasterização CPU e fonte bitmap próprias |
 | GUI | Árvore de componentes, layout, temas, foco, hit-testing e ações |
 | Plataforma | Janelas raster X11, Win32 e Cocoa/CoreGraphics com teclado, atalhos e eventos de ponteiro |
-| IDE | Buffer `.lisp` editável, avaliação estrutural incremental, navegador de fontes, inspetor recursivo de objetos vivos, histórico enraizado de condições, snapshots do mundo, desfazer/refazer, histórico do ouvinte e abertura/gravação em Linux, Windows e macOS |
+| IDE | Workspace desktop escuro, abas persistentes de edição `.lisp`, avaliação estrutural incremental, navegador de fontes, inspetor recursivo de objetos vivos, histórico enraizado de condições, snapshots do mundo, desfazer/refazer, histórico do ouvinte e abertura/gravação em Linux, Windows e macOS |
 | Entrega | A CI compila, testa, instala e audita o SDK público em Linux, Windows e macOS |
 
 ## Destaques
@@ -519,7 +522,10 @@ eventos, inspetor recursivo dos valores múltiplos, desfazer/refazer linear, ava
 estrutural de formas, navegador indexado de definições, instalação incremental
 das formas de topo alteradas, localização da definição do símbolo no cursor,
 navegação estrutural de callers/referências, snapshots restauráveis do mundo e
-abertura/gravação de `.lisp`. Tab ou clique alterna o foco entre editor,
+abertura/gravação de `.lisp`. O workspace escuro abre arquivos em abas
+persistentes; cada aba preserva cursor, seleção, linha do tempo de
+desfazer/refazer, estado incremental e indicador de alterações não gravadas.
+Clicar em uma aba a ativa. Tab ou clique nas demais áreas alterna o foco entre editor,
 inspetor, depurador e ouvinte; F5 ou Ctrl+Enter
 executa o buffer; F6 executa a forma completa no cursor; Shift+F6 seleciona a
 forma completa para substituição ou remoção estrutural; F7 executa somente as
