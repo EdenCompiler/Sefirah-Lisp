@@ -67,9 +67,9 @@ não significa que o marco inteiro esteja concluído.
 - [x] Emissor x86-64 System V/Microsoft e carregamento W^X nas duas ABIs.
 - [x] Frontend `DEFUN` → SSA → código nativo integrado a `COMPILE`.
 - [x] Emissor AArch64 AAPCS64 com seleção nativa no frontend.
-- [x] Gravador ELF64 relocável x86-64/AArch64 e comando `compilar-elf`.
-- [x] Gravador COFF AMD64/ARM64 e comando `compilar-coff`.
-- [x] Gravador Mach-O x86-64/ARM64 e comando `compilar-macho`.
+- [x] Gravador ELF64 relocável x86-64/AArch64 e comando `compile-elf`.
+- [x] Gravador COFF AMD64/ARM64 e comando `compile-coff`.
+- [x] Gravador Mach-O x86-64/ARM64 e comando `compile-macho`.
 - [x] Relocações desktop e chamadas externas i64 de uma ou duas entradas.
 - [x] Forma Lisp `EXTERNAL-I64` para imports em objetos nativos.
 - [x] Trampolins JIT x86-64/AArch64 com vinculação explícita e W^X.

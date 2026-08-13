@@ -81,7 +81,7 @@ SefAbiX64 sef_abi_x64_hospedeiro(void) {
 static bool reservar(EmissorX64 *emissor, size_t adicional) {
     SefCodigoNativo *codigo = emissor->codigo;
     if (adicional > SIZE_MAX - codigo->tamanho) {
-        erro_definir(emissor->erro, "codigo x86-64 excedeu o limite de tamanho");
+        erro_definir(emissor->erro, "x86-64 code exceeded the size limit");
         return false;
     }
     size_t necessario = codigo->tamanho + adicional;
@@ -97,7 +97,7 @@ static bool reservar(EmissorX64 *emissor, size_t adicional) {
     }
     unsigned char *bytes = realloc(codigo->bytes, capacidade);
     if (bytes == NULL) {
-        erro_definir(emissor->erro, "memoria insuficiente para codigo x86-64");
+        erro_definir(emissor->erro, "not enough memory for x86-64 code");
         return false;
     }
     codigo->bytes = bytes;
@@ -137,7 +137,7 @@ static bool adicionar_relocacao(EmissorX64 *emissor, size_t deslocamento, const 
         SefRelocacaoNativa *relocacoes =
             realloc(codigo->relocacoes, capacidade * sizeof(*relocacoes));
         if (relocacoes == NULL) {
-            erro_definir(emissor->erro, "memoria insuficiente para relocacao x86-64");
+            erro_definir(emissor->erro, "not enough memory for an x86-64 relocation");
             return false;
         }
         codigo->relocacoes = relocacoes;
@@ -146,7 +146,7 @@ static bool adicionar_relocacao(EmissorX64 *emissor, size_t deslocamento, const 
     size_t tamanho = strlen(simbolo) + 1u;
     char *copia = malloc(tamanho);
     if (copia == NULL) {
-        erro_definir(emissor->erro, "memoria insuficiente para simbolo de relocacao x86-64");
+        erro_definir(emissor->erro, "not enough memory for an x86-64 relocation symbol");
         return false;
     }
     memcpy(copia, simbolo, tamanho);
@@ -193,7 +193,7 @@ static bool adicionar_correcao(EmissorX64 *emissor, uint32_t bloco) {
             emissor->capacidade_correcoes == 0 ? 8 : emissor->capacidade_correcoes * 2;
         CorrecaoSalto *correcoes = realloc(emissor->correcoes, capacidade * sizeof(*correcoes));
         if (correcoes == NULL) {
-            erro_definir(emissor->erro, "memoria insuficiente para saltos x86-64");
+            erro_definir(emissor->erro, "not enough memory for x86-64 jumps");
             return false;
         }
         emissor->correcoes = correcoes;
@@ -235,7 +235,7 @@ static bool emitir_instrucao_valor(EmissorX64 *e, SefInstrucaoIr ins) {
     if (ins.operacao == SEF_IR_PARAMETRO) {
         uint64_t deslocamento = (uint64_t)ins.imediato * 8u;
         if (deslocamento > INT32_MAX) {
-            erro_definir(e->erro, "parametro excedeu o alcance do endereco x86-64");
+            erro_definir(e->erro, "parameter exceeded the x86-64 address range");
             return false;
         }
         return emitir_u8(e, 0x4c) && emitir_u8(e, 0x8b) && emitir_u8(e, 0x95) &&
@@ -306,7 +306,7 @@ static bool emitir_bloco(EmissorX64 *e, uint32_t indice) {
                 return false;
             int64_t distancia = (int64_t)e->codigo->tamanho - (int64_t)(posicao_falso + 4);
             if (distancia < INT32_MIN || distancia > INT32_MAX) {
-                erro_definir(e->erro, "ramificacao x86-64 excedeu rel32");
+                erro_definir(e->erro, "x86-64 branch exceeded the rel32 range");
                 return false;
             }
             uint32_t rel = (uint32_t)(int32_t)distancia;
@@ -328,11 +328,11 @@ bool sef_funcao_ir_emitir_x64(const SefFuncaoIr *funcao, SefAbiX64 abi, SefCodig
     erro_limpar(erro);
     if (funcao == NULL || codigo == NULL || codigo->bytes != NULL || codigo->relocacoes != NULL ||
         codigo->memoria_executavel != NULL) {
-        erro_definir(erro, "funcao ausente ou objeto de codigo x86-64 nao esta vazio");
+        erro_definir(erro, "missing function or nonempty x86-64 code object");
         return false;
     }
     if (abi != SEF_ABI_X64_SYSV && abi != SEF_ABI_X64_WINDOWS) {
-        erro_definir(erro, "ABI x86-64 desconhecida");
+        erro_definir(erro, "unknown x86-64 ABI");
         return false;
     }
     if (!sef_funcao_ir_verificar(funcao, erro))
@@ -342,13 +342,13 @@ bool sef_funcao_ir_emitir_x64(const SefFuncaoIr *funcao, SefAbiX64 abi, SefCodig
     if (abi == SEF_ABI_X64_WINDOWS)
         quadro += 32u;
     if (quadro > INT32_MAX) {
-        erro_definir(erro, "quadro de pilha x86-64 grande demais");
+        erro_definir(erro, "x86-64 stack frame is too large");
         return false;
     }
     EmissorX64 e = {codigo, funcao, NULL, NULL, 0, 0, erro};
     e.posicoes_blocos = malloc(funcao->quantidade_blocos * sizeof(*e.posicoes_blocos));
     if (e.posicoes_blocos == NULL) {
-        erro_definir(erro, "memoria insuficiente para blocos x86-64");
+        erro_definir(erro, "not enough memory for x86-64 blocks");
         return false;
     }
     codigo->arquitetura = SEF_ARQUITETURA_X64;
@@ -367,7 +367,7 @@ bool sef_funcao_ir_emitir_x64(const SefFuncaoIr *funcao, SefAbiX64 abi, SefCodig
         int64_t distancia =
             (int64_t)e.posicoes_blocos[correcao.bloco] - (int64_t)(correcao.posicao + 4);
         if (distancia < INT32_MIN || distancia > INT32_MAX) {
-            erro_definir(erro, "salto x86-64 excedeu o alcance rel32");
+            erro_definir(erro, "x86-64 jump exceeded the rel32 range");
             sucesso = false;
             break;
         }
@@ -387,7 +387,7 @@ static bool vincular_externa_i64(SefCodigoNativo *codigo, const char *simbolo,
     erro_limpar(erro);
     if (codigo == NULL || simbolo == NULL || simbolo[0] == '\0' || endereco == NULL ||
         codigo->memoria_executavel != NULL) {
-        erro_definir(erro, "codigo, simbolo ou endereco invalido para vinculacao JIT");
+        erro_definir(erro, "invalid code, symbol, or address for JIT binding");
         return false;
     }
     bool encontrou = false;
@@ -398,7 +398,7 @@ static bool vincular_externa_i64(SefCodigoNativo *codigo, const char *simbolo,
         }
     }
     if (!encontrou)
-        erro_definir(erro, "simbolo externo nao pertence ao codigo nativo");
+        erro_definir(erro, "external symbol does not belong to the native code");
     return encontrou;
 }
 
@@ -412,7 +412,7 @@ bool sef_codigo_nativo_vincular_externa_i64_binaria(SefCodigoNativo *codigo, con
                                                     SefErro *erro) {
     SefFuncaoExternaI64 endereco_armazenado = NULL;
     _Static_assert(sizeof(endereco) == sizeof(endereco_armazenado),
-                   "ponteiros de funcoes i64 devem ter o mesmo tamanho");
+                   "i64 function pointers must have the same size");
     memcpy(&endereco_armazenado, &endereco, sizeof(endereco_armazenado));
     return vincular_externa_i64(codigo, simbolo, endereco_armazenado, erro);
 }
@@ -430,7 +430,7 @@ static void escrever_u64_memoria(unsigned char *destino, uint64_t valor) {
 static uint64_t endereco_externo_u64(SefFuncaoExternaI64 endereco) {
     uint64_t valor = 0;
     _Static_assert(sizeof(endereco) <= sizeof(valor),
-                   "ponteiro de funcao externo deve caber em 64 bits");
+                   "external function pointer must fit in 64 bits");
     memcpy(&valor, &endereco, sizeof(endereco));
     return valor;
 }
@@ -443,17 +443,17 @@ static bool aplicar_trampolins(SefCodigoNativo *codigo, unsigned char *memoria,
         unsigned char *trampolim = memoria + inicio_trampolins + i * tamanho_trampolim;
         if (relocacao.endereco == NULL || relocacao.deslocamento > codigo->tamanho ||
             4u > codigo->tamanho - relocacao.deslocamento) {
-            erro_definir(erro, "simbolo externo ainda nao foi vinculado ao JIT");
+            erro_definir(erro, "external symbol has not been bound to the JIT");
             return false;
         }
         if (codigo->arquitetura == SEF_ARQUITETURA_X64) {
             if (relocacao.tipo != SEF_RELOCACAO_CHAMADA_REL32_X64) {
-                erro_definir(erro, "tipo de relocacao x86-64 invalido para JIT");
+                erro_definir(erro, "invalid x86-64 relocation type for JIT");
                 return false;
             }
             int64_t distancia = (int64_t)(trampolim - (memoria + relocacao.deslocamento + 4u));
             if (distancia < INT32_MIN || distancia > INT32_MAX) {
-                erro_definir(erro, "trampolim x86-64 excedeu o alcance rel32");
+                erro_definir(erro, "x86-64 trampoline exceeded the rel32 range");
                 return false;
             }
             escrever_u32_memoria(memoria + relocacao.deslocamento, (uint32_t)(int32_t)distancia);
@@ -465,13 +465,13 @@ static bool aplicar_trampolins(SefCodigoNativo *codigo, unsigned char *memoria,
         } else {
             if (relocacao.tipo != SEF_RELOCACAO_CHAMADA26_AARCH64 ||
                 relocacao.deslocamento % 4u != 0) {
-                erro_definir(erro, "tipo ou alinhamento de relocacao AArch64 invalido para JIT");
+                erro_definir(erro, "invalid AArch64 relocation type or alignment for JIT");
                 return false;
             }
             int64_t distancia = (int64_t)(trampolim - (memoria + relocacao.deslocamento));
             int64_t palavras = distancia / 4;
             if (distancia % 4 != 0 || palavras < -(1ll << 25) || palavras >= (1ll << 25)) {
-                erro_definir(erro, "trampolim AArch64 excedeu o alcance de BL");
+                erro_definir(erro, "AArch64 trampoline exceeded the BL range");
                 return false;
             }
             escrever_u32_memoria(memoria + relocacao.deslocamento,
@@ -488,40 +488,40 @@ bool sef_codigo_nativo_preparar(SefCodigoNativo *codigo, SefErro *erro) {
     erro_limpar(erro);
     if (codigo == NULL || codigo->bytes == NULL || codigo->tamanho == 0 ||
         codigo->memoria_executavel != NULL) {
-        erro_definir(erro, "codigo nativo ausente ou ja preparado");
+        erro_definir(erro, "native code is missing or already prepared");
         return false;
     }
 #if defined(__x86_64__) || defined(_M_X64)
     if (codigo->arquitetura != SEF_ARQUITETURA_X64 || codigo->abi_x64 != sef_abi_x64_hospedeiro()) {
-        erro_definir(erro, "arquitetura ou ABI do codigo nao corresponde ao hospedeiro JIT");
+        erro_definir(erro, "code architecture or ABI does not match the JIT host");
         return false;
     }
 #elif defined(__aarch64__) || defined(_M_ARM64)
     if (codigo->arquitetura != SEF_ARQUITETURA_AARCH64) {
-        erro_definir(erro, "arquitetura do codigo nao corresponde ao hospedeiro JIT");
+        erro_definir(erro, "code architecture does not match the JIT host");
         return false;
     }
 #else
-    erro_definir(erro, "hospedeiro nao possui backend JIT suportado");
+    erro_definir(erro, "host does not have a supported JIT backend");
     return false;
 #endif
     size_t tamanho_trampolim = codigo->arquitetura == SEF_ARQUITETURA_X64 ? 12u : 16u;
     if (codigo->arquitetura == SEF_ARQUITETURA_AARCH64 && codigo->tamanho > SIZE_MAX - 7u) {
-        erro_definir(erro, "alinhamento dos trampolins excedeu o espaco de enderecamento");
+        erro_definir(erro, "trampoline alignment exceeded the address space");
         return false;
     }
     size_t inicio_trampolins = codigo->arquitetura == SEF_ARQUITETURA_X64
                                    ? codigo->tamanho
                                    : (codigo->tamanho + 7u) & ~(size_t)7u;
     if (codigo->quantidade_relocacoes > (SIZE_MAX - inicio_trampolins) / tamanho_trampolim) {
-        erro_definir(erro, "trampolins excederam o espaco de enderecamento");
+        erro_definir(erro, "trampolines exceeded the address space");
         return false;
     }
     size_t tamanho_total = inicio_trampolins + codigo->quantidade_relocacoes * tamanho_trampolim;
 #ifdef _WIN32
     void *memoria = VirtualAlloc(NULL, tamanho_total, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     if (memoria == NULL) {
-        erro_definir(erro, "Windows recusou memoria para codigo nativo");
+        erro_definir(erro, "Windows refused memory for native code");
         return false;
     }
     if (!aplicar_trampolins(codigo, memoria, inicio_trampolins, tamanho_trampolim, erro)) {
@@ -531,7 +531,7 @@ bool sef_codigo_nativo_preparar(SefCodigoNativo *codigo, SefErro *erro) {
     DWORD protecao_anterior;
     if (!VirtualProtect(memoria, tamanho_total, PAGE_EXECUTE_READ, &protecao_anterior)) {
         VirtualFree(memoria, 0, MEM_RELEASE);
-        erro_definir(erro, "Windows recusou tornar o codigo executavel");
+        erro_definir(erro, "Windows refused to make native code executable");
         return false;
     }
     FlushInstructionCache(GetCurrentProcess(), memoria, tamanho_total);
@@ -539,7 +539,7 @@ bool sef_codigo_nativo_preparar(SefCodigoNativo *codigo, SefErro *erro) {
     void *memoria =
         mmap(NULL, tamanho_total, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (memoria == MAP_FAILED) {
-        erro_definir(erro, "sistema recusou memoria para codigo nativo");
+        erro_definir(erro, "the system refused memory for native code");
         return false;
     }
     if (!aplicar_trampolins(codigo, memoria, inicio_trampolins, tamanho_trampolim, erro)) {
@@ -548,7 +548,7 @@ bool sef_codigo_nativo_preparar(SefCodigoNativo *codigo, SefErro *erro) {
     }
     if (mprotect(memoria, tamanho_total, PROT_READ | PROT_EXEC) != 0) {
         munmap(memoria, tamanho_total);
-        erro_definir(erro, "sistema recusou tornar o codigo executavel");
+        erro_definir(erro, "the system refused to make native code executable");
         return false;
     }
     __builtin___clear_cache((char *)memoria, (char *)memoria + tamanho_total);
@@ -567,12 +567,12 @@ bool sef_codigo_nativo_executar_i64(const SefCodigoNativo *codigo, const int64_t
         quantidade_argumentos != codigo->quantidade_parametros ||
         (quantidade_argumentos > 0 && argumentos == NULL) ||
         codigo->arquitetura != SEF_ARQUITETURA_X64 || codigo->abi_x64 != sef_abi_x64_hospedeiro()) {
-        erro_definir(erro, "codigo nativo ou ABI incompativel com a chamada");
+        erro_definir(erro, "native code or ABI is incompatible with the call");
         return false;
     }
     typedef int64_t (*FuncaoNativa)(const int64_t *);
     _Static_assert(sizeof(FuncaoNativa) == sizeof(void *),
-                   "ponteiro de funcao deve ter o tamanho de void*");
+                   "function pointer must have the size of void*");
     FuncaoNativa funcao;
     memcpy(&funcao, &codigo->memoria_executavel, sizeof(funcao));
     *resultado = funcao(argumentos);
@@ -582,12 +582,12 @@ bool sef_codigo_nativo_executar_i64(const SefCodigoNativo *codigo, const int64_t
         quantidade_argumentos != codigo->quantidade_parametros ||
         (quantidade_argumentos > 0 && argumentos == NULL) ||
         codigo->arquitetura != SEF_ARQUITETURA_AARCH64) {
-        erro_definir(erro, "codigo nativo ou arquitetura incompativel com a chamada");
+        erro_definir(erro, "native code or architecture is incompatible with the call");
         return false;
     }
     typedef int64_t (*FuncaoNativa)(const int64_t *);
     _Static_assert(sizeof(FuncaoNativa) == sizeof(void *),
-                   "ponteiro de funcao deve ter o tamanho de void*");
+                   "function pointer must have the size of void*");
     FuncaoNativa funcao;
     memcpy(&funcao, &codigo->memoria_executavel, sizeof(funcao));
     *resultado = funcao(argumentos);
@@ -597,7 +597,7 @@ bool sef_codigo_nativo_executar_i64(const SefCodigoNativo *codigo, const int64_t
     (void)argumentos;
     (void)quantidade_argumentos;
     (void)resultado;
-    erro_definir(erro, "execucao nativa nao esta disponivel nesta arquitetura");
+    erro_definir(erro, "native execution is unavailable on this architecture");
     return false;
 #endif
 }

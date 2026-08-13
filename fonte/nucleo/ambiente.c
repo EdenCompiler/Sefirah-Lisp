@@ -17,7 +17,7 @@ bool sef_ambiente_definir_funcao(SefRuntime *runtime, SefValor ambiente, SefValo
     (void)runtime;
     if (ambiente == NULL || ambiente->tipo != SEF_TIPO_AMBIENTE || simbolo == NULL ||
         simbolo->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "vinculo de funcao invalido");
+        sef_erro_definir(erro, 0, 0, "invalid function binding");
         return false;
     }
     for (SefVinculo *atual = ambiente->como.ambiente.funcoes; atual != NULL;
@@ -29,7 +29,7 @@ bool sef_ambiente_definir_funcao(SefRuntime *runtime, SefValor ambiente, SefValo
     }
     SefVinculo *novo = malloc(sizeof(*novo));
     if (novo == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao definir funcao");
+        sef_erro_definir(erro, 0, 0, "not enough memory to define function");
         return false;
     }
     novo->simbolo = simbolo;
@@ -44,7 +44,7 @@ bool sef_ambiente_definir(SefRuntime *runtime, SefValor ambiente, SefValor simbo
     (void)runtime;
     if (ambiente == NULL || ambiente->tipo != SEF_TIPO_AMBIENTE || simbolo == NULL ||
         simbolo->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "vinculo de ambiente invalido");
+        sef_erro_definir(erro, 0, 0, "invalid environment binding");
         return false;
     }
 
@@ -58,7 +58,7 @@ bool sef_ambiente_definir(SefRuntime *runtime, SefValor ambiente, SefValor simbo
 
     SefVinculo *novo = malloc(sizeof(*novo));
     if (novo == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao definir simbolo");
+        sef_erro_definir(erro, 0, 0, "not enough memory to define symbol");
         return false;
     }
     novo->simbolo = simbolo;

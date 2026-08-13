@@ -9,14 +9,14 @@ static bool quantidade(SefRuntime *runtime, SefValor argumentos, size_t minimo, 
     size_t obtida = sef_lista_tamanho(runtime, argumentos, &propria);
     if (propria && obtida >= minimo && obtida <= maximo)
         return true;
-    sef_erro_definir(erro, 0, 0, "%s recebeu uma quantidade invalida de argumentos", nome);
+    sef_erro_definir(erro, 0, 0, "%s received an invalid number of arguments", nome);
     return false;
 }
 
 static bool indice_lista(SefValor valor, const char *nome, size_t *indice, SefErro *erro) {
     if (valor->tipo != SEF_TIPO_INTEIRO || valor->como.inteiro < 0 ||
         (uint64_t)valor->como.inteiro > SIZE_MAX) {
-        sef_erro_definir(erro, 0, 0, "%s exige um indice inteiro nao negativo", nome);
+        sef_erro_definir(erro, 0, 0, "%s requires a non-negative integer index", nome);
         return false;
     }
     *indice = (size_t)valor->como.inteiro;
@@ -45,7 +45,7 @@ SefValor sef_primitiva_endp(SefRuntime *runtime, SefValor argumentos, SefErro *e
         return runtime->verdadeiro;
     if (valor->tipo == SEF_TIPO_PAR)
         return runtime->nulo;
-    sef_erro_definir(erro, 0, 0, "ENDP exige uma lista");
+    sef_erro_definir(erro, 0, 0, "ENDP requires a list");
     return NULL;
 }
 
@@ -57,7 +57,7 @@ static SefValor extremidade(SefRuntime *runtime, SefValor argumentos, bool cabec
     if (valor == runtime->nulo)
         return runtime->nulo;
     if (valor->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "%s exige uma lista", nome);
+        sef_erro_definir(erro, 0, 0, "%s requires a list", nome);
         return NULL;
     }
     return cabeca ? primeiro(valor) : resto(valor);
@@ -78,7 +78,7 @@ static SefValor substituir_par(SefRuntime *runtime, SefValor argumentos, bool ca
     SefValor par = primeiro(argumentos);
     SefValor valor = primeiro(resto(argumentos));
     if (par->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "%s exige um par", nome);
+        sef_erro_definir(erro, 0, 0, "%s requires a cons");
         return NULL;
     }
     if (cabeca)
@@ -104,20 +104,20 @@ SefValor sef_primitiva_nthcdr(SefRuntime *runtime, SefValor argumentos, SefErro 
         return NULL;
     SefValor cursor = primeiro(resto(argumentos));
     if (cursor != runtime->nulo && cursor->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "NTHCDR exige uma lista");
+        sef_erro_definir(erro, 0, 0, "NTHCDR requires a list");
         return NULL;
     }
     for (size_t i = 0; i < indice; i++) {
         if (cursor == runtime->nulo)
             return runtime->nulo;
         if (cursor->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "NTHCDR recebeu uma lista impropria");
+            sef_erro_definir(erro, 0, 0, "NTHCDR received an improper list");
             return NULL;
         }
         cursor = resto(cursor);
     }
     if (cursor != runtime->nulo && cursor->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "NTHCDR recebeu uma lista impropria");
+        sef_erro_definir(erro, 0, 0, "NTHCDR received an improper list");
         return NULL;
     }
     return cursor;
@@ -128,7 +128,7 @@ SefValor sef_primitiva_nth(SefRuntime *runtime, SefValor argumentos, SefErro *er
     if (cauda == NULL || cauda == runtime->nulo)
         return cauda;
     if (cauda->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "NTH recebeu uma lista impropria");
+        sef_erro_definir(erro, 0, 0, "NTH received an improper list");
         return NULL;
     }
     return primeiro(cauda);
@@ -141,7 +141,7 @@ SefValor sef_primitiva_last(SefRuntime *runtime, SefValor argumentos, SefErro *e
     bool propria = false;
     size_t tamanho = sef_lista_tamanho(runtime, lista, &propria);
     if (!propria) {
-        sef_erro_definir(erro, 0, 0, "LAST exige uma lista propria");
+        sef_erro_definir(erro, 0, 0, "LAST requires a proper list");
         return NULL;
     }
     size_t quantidade_final = 1;
@@ -157,7 +157,7 @@ SefValor sef_primitiva_last(SefRuntime *runtime, SefValor argumentos, SefErro *e
 
 SefValor sef_primitiva_append(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!sef_e_lista_propria(runtime, argumentos)) {
-        sef_erro_definir(erro, 0, 0, "APPEND recebeu argumentos improprios");
+        sef_erro_definir(erro, 0, 0, "APPEND received improper arguments");
         return NULL;
     }
     if (argumentos == runtime->nulo)
@@ -166,7 +166,7 @@ SefValor sef_primitiva_append(SefRuntime *runtime, SefValor argumentos, SefErro 
     while (resto(argumentos) != runtime->nulo) {
         SefValor lista = primeiro(argumentos);
         if (!sef_e_lista_propria(runtime, lista)) {
-            sef_erro_definir(erro, 0, 0, "argumentos de APPEND, exceto o ultimo, devem ser listas");
+            sef_erro_definir(erro, 0, 0, "all APPEND arguments except the last must be lists");
             return NULL;
         }
         for (; lista != runtime->nulo; lista = resto(lista)) {
@@ -188,13 +188,13 @@ SefValor sef_primitiva_append(SefRuntime *runtime, SefValor argumentos, SefErro 
 
 SefValor sef_primitiva_nconc(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!sef_e_lista_propria(runtime, argumentos)) {
-        sef_erro_definir(erro, 0, 0, "NCONC recebeu argumentos improprios");
+        sef_erro_definir(erro, 0, 0, "NCONC received improper arguments");
         return NULL;
     }
     for (SefValor cursor = argumentos; cursor != runtime->nulo && resto(cursor) != runtime->nulo;
          cursor = resto(cursor)) {
         if (!sef_e_lista_propria(runtime, primeiro(cursor))) {
-            sef_erro_definir(erro, 0, 0, "argumentos de NCONC, exceto o ultimo, devem ser listas");
+            sef_erro_definir(erro, 0, 0, "all NCONC arguments except the last must be lists");
             return NULL;
         }
     }
@@ -223,7 +223,7 @@ SefValor sef_primitiva_member(SefRuntime *runtime, SefValor argumentos, SefErro 
     SefValor lista = primeiro(resto(argumentos));
     for (SefValor cursor = lista; cursor != runtime->nulo; cursor = resto(cursor)) {
         if (cursor->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "MEMBER exige uma lista propria");
+            sef_erro_definir(erro, 0, 0, "MEMBER requires a proper list");
             return NULL;
         }
         if (sef_valores_eql(item, primeiro(cursor)))
@@ -239,14 +239,14 @@ SefValor sef_primitiva_assoc(SefRuntime *runtime, SefValor argumentos, SefErro *
     SefValor alista = primeiro(resto(argumentos));
     for (SefValor cursor = alista; cursor != runtime->nulo; cursor = resto(cursor)) {
         if (cursor->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "ASSOC exige uma lista de associacao propria");
+            sef_erro_definir(erro, 0, 0, "ASSOC requires a proper association list");
             return NULL;
         }
         SefValor entrada = primeiro(cursor);
         if (entrada == runtime->nulo)
             continue;
         if (entrada->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "entrada invalida na lista de associacao");
+            sef_erro_definir(erro, 0, 0, "invalid association-list entry");
             return NULL;
         }
         if (sef_valores_eql(chave, primeiro(entrada)))
@@ -263,7 +263,7 @@ static SefValor mapear(SefRuntime *runtime, SefValor argumentos, bool coletar, c
     SefValor listas = resto(argumentos);
     for (SefValor cursor = listas; cursor != runtime->nulo; cursor = resto(cursor)) {
         if (!sef_e_lista_propria(runtime, primeiro(cursor))) {
-            sef_erro_definir(erro, 0, 0, "%s exige listas proprias", nome);
+            sef_erro_definir(erro, 0, 0, "%s requires proper lists", nome);
             return NULL;
         }
     }

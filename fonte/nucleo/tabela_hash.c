@@ -27,14 +27,14 @@ static size_t calcular_hash(SefValor valor) {
 static bool redimensionar(SefRuntime *runtime, SefValor tabela, SefErro *erro) {
     size_t capacidade_anterior = tabela->como.tabela_hash.capacidade;
     if (capacidade_anterior > SIZE_MAX / 2u) {
-        sef_erro_definir(erro, 0, 0, "tabela hash excedeu a capacidade maxima");
+        sef_erro_definir(erro, 0, 0, "hash table exceeded its maximum capacity");
         return false;
     }
 
     size_t nova_capacidade = capacidade_anterior == 0 ? 16 : capacidade_anterior * 2u;
     SefEntradaHash *novas_entradas = calloc(nova_capacidade, sizeof(*novas_entradas));
     if (novas_entradas == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para tabela hash");
+        sef_erro_definir(erro, 0, 0, "not enough memory for hash table");
         return false;
     }
 
@@ -88,7 +88,7 @@ SefValor sef_tabela_hash_nova(SefRuntime *runtime, SefErro *erro) {
 
 bool sef_tabela_hash_inicializar(SefRuntime *runtime, SefValor tabela, SefErro *erro) {
     if (tabela == NULL || tabela->tipo != SEF_TIPO_TABELA_HASH) {
-        sef_erro_definir(erro, 0, 0, "objeto invalido ao inicializar tabela hash");
+        sef_erro_definir(erro, 0, 0, "invalid object while initializing hash table");
         return false;
     }
     return redimensionar(runtime, tabela, erro);
@@ -97,7 +97,7 @@ bool sef_tabela_hash_inicializar(SefRuntime *runtime, SefValor tabela, SefErro *
 bool sef_tabela_hash_definir(SefRuntime *runtime, SefValor tabela, SefValor chave, SefValor valor,
                              SefErro *erro) {
     if (tabela == NULL || tabela->tipo != SEF_TIPO_TABELA_HASH || chave == NULL || valor == NULL) {
-        sef_erro_definir(erro, 0, 0, "SETF de GETHASH exige tabela, chave e valor");
+        sef_erro_definir(erro, 0, 0, "SETF of GETHASH requires a table, key, and value");
         return false;
     }
     if ((tabela->como.tabela_hash.ocupadas + 1) * 10 >= tabela->como.tabela_hash.capacidade * 7 &&
@@ -121,7 +121,7 @@ SefValor sef_tabela_hash_obter(SefRuntime *runtime, SefValor tabela, SefValor ch
                                SefValor padrao, bool *encontrou, SefErro *erro) {
     (void)runtime;
     if (tabela == NULL || tabela->tipo != SEF_TIPO_TABELA_HASH || chave == NULL) {
-        sef_erro_definir(erro, 0, 0, "GETHASH exige tabela hash e chave");
+        sef_erro_definir(erro, 0, 0, "GETHASH requires a hash table and key");
         return NULL;
     }
 
@@ -136,7 +136,7 @@ bool sef_tabela_hash_remover(SefRuntime *runtime, SefValor tabela, SefValor chav
                              SefErro *erro) {
     (void)runtime;
     if (tabela == NULL || tabela->tipo != SEF_TIPO_TABELA_HASH || chave == NULL) {
-        sef_erro_definir(erro, 0, 0, "REMHASH exige tabela hash e chave");
+        sef_erro_definir(erro, 0, 0, "REMHASH requires a hash table and key");
         return false;
     }
 

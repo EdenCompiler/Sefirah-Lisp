@@ -4,26 +4,26 @@
 #include <string.h>
 
 static void uso(FILE *saida) {
-    fputs("Uso: sefirah <comando> [argumentos]\n"
+    fputs("Usage: sefirah <command> [arguments]\n"
           "\n"
-          "Comandos:\n"
-          "  repl                 abre o ouvinte textual\n"
-          "  avaliar <forma>      le e avalia uma ou mais formas\n"
-          "  executar <arquivo>   executa um arquivo .lisp\n"
-          "  compilar-elf <arquivo.lisp> <funcao> <saida.o>\n"
-          "  compilar-coff <arquivo.lisp> <funcao> <saida.obj>\n"
-          "  compilar-macho <arquivo.lisp> <funcao> <saida.o>\n"
-          "  imagem salvar <imagem> <arquivo.lisp>\n"
-          "  imagem abrir <imagem> [forma]\n"
-          "  versao               mostra a versao\n",
+          "Commands:\n"
+          "  repl                 open the text REPL\n"
+          "  evaluate <form>      read and evaluate one or more forms\n"
+          "  run <file>           execute a .lisp file\n"
+          "  compile-elf <file.lisp> <function> <output.o>\n"
+          "  compile-coff <file.lisp> <function> <output.obj>\n"
+          "  compile-macho <file.lisp> <function> <output.o>\n"
+          "  image save <image> <file.lisp>\n"
+          "  image open <image> [form]\n"
+          "  version              show the version\n",
           saida);
 }
 
 static int mostrar_erro(const SefErro *erro) {
     if (erro->linha > 0) {
-        fprintf(stderr, "Erro em %zu:%zu: %s\n", erro->linha, erro->coluna, erro->mensagem);
+        fprintf(stderr, "Error at %zu:%zu: %s\n", erro->linha, erro->coluna, erro->mensagem);
     } else {
-        fprintf(stderr, "Erro: %s\n", erro->mensagem);
+        fprintf(stderr, "Error: %s\n", erro->mensagem);
     }
     return 1;
 }
@@ -48,11 +48,13 @@ int main(int argc, char **argv) {
         uso(stderr);
         return 2;
     }
-    if (strcmp(argv[1], "versao") == 0 || strcmp(argv[1], "--version") == 0) {
+    if (strcmp(argv[1], "version") == 0 || strcmp(argv[1], "versao") == 0 ||
+        strcmp(argv[1], "--version") == 0) {
         puts("Sefirah Lisp 0.0.1 (bootstrap C17)");
         return 0;
     }
-    if (strcmp(argv[1], "ajuda") == 0 || strcmp(argv[1], "--help") == 0) {
+    if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "ajuda") == 0 ||
+        strcmp(argv[1], "--help") == 0) {
         uso(stdout);
         return 0;
     }
@@ -64,20 +66,20 @@ int main(int argc, char **argv) {
     int resultado = 0;
     if (strcmp(argv[1], "repl") == 0) {
         resultado = sef_runtime_repl(runtime, stdin, stdout);
-    } else if (strcmp(argv[1], "avaliar") == 0) {
+    } else if (strcmp(argv[1], "evaluate") == 0 || strcmp(argv[1], "avaliar") == 0) {
         if (argc != 3) {
-            fputs("avaliar exige uma string com codigo\n", stderr);
+            fputs("evaluate requires a source-code string\n", stderr);
             resultado = 2;
         } else {
             SefValor valor = sef_runtime_avaliar_texto(runtime, argv[2], &erro);
             resultado = valor == NULL ? mostrar_erro(&erro) : imprimir_resultado(runtime, valor);
         }
-    } else if (strcmp(argv[1], "executar") == 0) {
+    } else if (strcmp(argv[1], "run") == 0 || strcmp(argv[1], "executar") == 0) {
         if (argc != 3) {
-            fputs("executar exige o caminho de um arquivo\n", stderr);
+            fputs("run requires a file path\n", stderr);
             resultado = 2;
         } else if (!caminho_e_lisp(argv[2])) {
-            fputs("fontes Sefirah devem usar a extensao .lisp\n", stderr);
+            fputs("Sefirah source files must use the .lisp extension\n", stderr);
             resultado = 2;
         } else {
             SefValor valor = NULL;
@@ -85,12 +87,12 @@ int main(int argc, char **argv) {
                             ? imprimir_resultado(runtime, valor)
                             : mostrar_erro(&erro);
         }
-    } else if (strcmp(argv[1], "compilar-elf") == 0) {
+    } else if (strcmp(argv[1], "compile-elf") == 0 || strcmp(argv[1], "compilar-elf") == 0) {
         if (argc != 5) {
-            fputs("compilar-elf exige arquivo.lisp, nome da funcao e saida.o\n", stderr);
+            fputs("compile-elf requires file.lisp, a function name, and output.o\n", stderr);
             resultado = 2;
         } else if (!caminho_e_lisp(argv[2])) {
-            fputs("fontes Sefirah devem usar a extensao .lisp\n", stderr);
+            fputs("Sefirah source files must use the .lisp extension\n", stderr);
             resultado = 2;
         } else {
             SefValor ignorado = NULL;
@@ -100,16 +102,16 @@ int main(int argc, char **argv) {
                 !sef_funcao_compilada_gravar_elf(funcao, argv[3], argv[4], &erro)) {
                 resultado = mostrar_erro(&erro);
             } else {
-                printf("Objeto ELF salvo em %s\n", argv[4]);
+                printf("ELF object saved to %s\n", argv[4]);
             }
             sef_funcao_compilada_liberar(funcao);
         }
-    } else if (strcmp(argv[1], "compilar-coff") == 0) {
+    } else if (strcmp(argv[1], "compile-coff") == 0 || strcmp(argv[1], "compilar-coff") == 0) {
         if (argc != 5) {
-            fputs("compilar-coff exige arquivo.lisp, nome da funcao e saida.obj\n", stderr);
+            fputs("compile-coff requires file.lisp, a function name, and output.obj\n", stderr);
             resultado = 2;
         } else if (!caminho_e_lisp(argv[2])) {
-            fputs("fontes Sefirah devem usar a extensao .lisp\n", stderr);
+            fputs("Sefirah source files must use the .lisp extension\n", stderr);
             resultado = 2;
         } else {
             SefValor ignorado = NULL;
@@ -119,16 +121,16 @@ int main(int argc, char **argv) {
                 !sef_funcao_compilada_gravar_coff(funcao, argv[3], argv[4], &erro)) {
                 resultado = mostrar_erro(&erro);
             } else {
-                printf("Objeto COFF salvo em %s\n", argv[4]);
+                printf("COFF object saved to %s\n", argv[4]);
             }
             sef_funcao_compilada_liberar(funcao);
         }
-    } else if (strcmp(argv[1], "compilar-macho") == 0) {
+    } else if (strcmp(argv[1], "compile-macho") == 0 || strcmp(argv[1], "compilar-macho") == 0) {
         if (argc != 5) {
-            fputs("compilar-macho exige arquivo.lisp, nome da funcao e saida.o\n", stderr);
+            fputs("compile-macho requires file.lisp, a function name, and output.o\n", stderr);
             resultado = 2;
         } else if (!caminho_e_lisp(argv[2])) {
-            fputs("fontes Sefirah devem usar a extensao .lisp\n", stderr);
+            fputs("Sefirah source files must use the .lisp extension\n", stderr);
             resultado = 2;
         } else {
             SefValor ignorado = NULL;
@@ -138,23 +140,24 @@ int main(int argc, char **argv) {
                 !sef_funcao_compilada_gravar_macho(funcao, argv[3], argv[4], &erro)) {
                 resultado = mostrar_erro(&erro);
             } else {
-                printf("Objeto Mach-O salvo em %s\n", argv[4]);
+                printf("Mach-O object saved to %s\n", argv[4]);
             }
             sef_funcao_compilada_liberar(funcao);
         }
-    } else if (strcmp(argv[1], "imagem") == 0) {
-        if (argc == 5 && strcmp(argv[2], "salvar") == 0) {
+    } else if (strcmp(argv[1], "image") == 0 || strcmp(argv[1], "imagem") == 0) {
+        if (argc == 5 && (strcmp(argv[2], "save") == 0 || strcmp(argv[2], "salvar") == 0)) {
             SefValor valor = NULL;
             if (!caminho_e_lisp(argv[4])) {
-                fputs("fontes Sefirah devem usar a extensao .lisp\n", stderr);
+                fputs("Sefirah source files must use the .lisp extension\n", stderr);
                 resultado = 2;
             } else if (!sef_runtime_executar_arquivo(runtime, argv[4], &valor, &erro) ||
                        !sef_runtime_imagem_salvar(runtime, argv[3], &erro)) {
                 resultado = mostrar_erro(&erro);
             } else {
-                printf("Imagem salva em %s\n", argv[3]);
+                printf("Image saved to %s\n", argv[3]);
             }
-        } else if ((argc == 4 || argc == 5) && strcmp(argv[2], "abrir") == 0) {
+        } else if ((argc == 4 || argc == 5) &&
+                   (strcmp(argv[2], "open") == 0 || strcmp(argv[2], "abrir") == 0)) {
             sef_runtime_destruir(runtime);
             runtime = sef_runtime_imagem_abrir(argv[3], &erro);
             if (runtime == NULL) {
@@ -168,13 +171,13 @@ int main(int argc, char **argv) {
                 resultado = sef_runtime_repl(runtime, stdin, stdout);
             }
         } else {
-            fputs("uso: sefirah imagem salvar <imagem> <arquivo.lisp>\n"
-                  "     sefirah imagem abrir <imagem> [forma]\n",
+            fputs("usage: sefirah image save <image> <file.lisp>\n"
+                  "       sefirah image open <image> [form]\n",
                   stderr);
             resultado = 2;
         }
     } else {
-        fprintf(stderr, "comando desconhecido: %s\n\n", argv[1]);
+        fprintf(stderr, "unknown command: %s\n\n", argv[1]);
         uso(stderr);
         resultado = 2;
     }

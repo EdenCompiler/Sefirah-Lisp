@@ -253,7 +253,7 @@ SefRuntime *sef_runtime_criar(SefErro *erro) {
     sef_erro_limpar(erro);
     SefRuntime *runtime = calloc(1, sizeof(*runtime));
     if (runtime == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao criar runtime");
+        sef_erro_definir(erro, 0, 0, "not enough memory to create runtime");
         return NULL;
     }
 
@@ -364,12 +364,12 @@ void sef_runtime_destruir(SefRuntime *runtime) {
 SefRaiz *sef_raiz_criar(SefRuntime *runtime, SefValor valor, SefErro *erro) {
     sef_erro_limpar(erro);
     if (runtime == NULL || valor == NULL) {
-        sef_erro_definir(erro, 0, 0, "runtime ou valor ausente ao criar raiz");
+        sef_erro_definir(erro, 0, 0, "missing runtime or value while creating root");
         return NULL;
     }
     SefRaiz *raiz = malloc(sizeof(*raiz));
     if (raiz == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para raiz do coletor");
+        sef_erro_definir(erro, 0, 0, "not enough memory for collector root");
         return NULL;
     }
     raiz->runtime = runtime;
@@ -421,7 +421,7 @@ SefValor sef_runtime_ultima_condicao(const SefRuntime *runtime) {
 SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefErro *erro) {
     sef_erro_limpar(erro);
     if (runtime == NULL || codigo == NULL) {
-        sef_erro_definir(erro, 0, 0, "runtime ou codigo ausente");
+        sef_erro_definir(erro, 0, 0, "missing runtime or source code");
         return NULL;
     }
     runtime->ultima_condicao = NULL;
@@ -454,31 +454,31 @@ SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefE
 static char *arquivo_ler(const char *caminho, SefErro *erro) {
     FILE *arquivo = fopen(caminho, "rb");
     if (arquivo == NULL) {
-        sef_erro_definir(erro, 0, 0, "nao foi possivel abrir '%s': %s", caminho, strerror(errno));
+        sef_erro_definir(erro, 0, 0, "could not open '%s': %s", caminho, strerror(errno));
         return NULL;
     }
     if (fseek(arquivo, 0, SEEK_END) != 0) {
         fclose(arquivo);
-        sef_erro_definir(erro, 0, 0, "nao foi possivel medir '%s'", caminho);
+        sef_erro_definir(erro, 0, 0, "could not determine the size of '%s'", caminho);
         return NULL;
     }
     long tamanho = ftell(arquivo);
     if (tamanho < 0 || fseek(arquivo, 0, SEEK_SET) != 0) {
         fclose(arquivo);
-        sef_erro_definir(erro, 0, 0, "arquivo '%s' nao e pesquisavel", caminho);
+        sef_erro_definir(erro, 0, 0, "file '%s' is not seekable", caminho);
         return NULL;
     }
     char *conteudo = malloc((size_t)tamanho + 1);
     if (conteudo == NULL) {
         fclose(arquivo);
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para ler '%s'", caminho);
+        sef_erro_definir(erro, 0, 0, "not enough memory to read '%s'", caminho);
         return NULL;
     }
     size_t lidos = fread(conteudo, 1, (size_t)tamanho, arquivo);
     fclose(arquivo);
     if (lidos != (size_t)tamanho) {
         free(conteudo);
-        sef_erro_definir(erro, 0, 0, "leitura incompleta de '%s'", caminho);
+        sef_erro_definir(erro, 0, 0, "incomplete read from '%s'", caminho);
         return NULL;
     }
     conteudo[lidos] = '\0';
@@ -547,9 +547,9 @@ static bool repl_comando_igual(const char *linha, size_t tamanho, const char *co
 
 static void repl_imprimir_erro(FILE *saida, const SefErro *erro) {
     if (erro->linha > 0)
-        fprintf(saida, "Erro em %zu:%zu: %s\n", erro->linha, erro->coluna, erro->mensagem);
+        fprintf(saida, "Error at %zu:%zu: %s\n", erro->linha, erro->coluna, erro->mensagem);
     else
-        fprintf(saida, "Erro: %s\n", erro->mensagem);
+        fprintf(saida, "Error: %s\n", erro->mensagem);
 }
 
 static bool repl_imprimir_valores(SefRuntime *runtime, FILE *saida, SefErro *erro) {
@@ -572,18 +572,18 @@ int sef_runtime_repl(SefRuntime *runtime, FILE *entrada, FILE *saida) {
     int resultado = 0;
     SefErro erro;
 
-    fputs("Sefirah Lisp 0.0.1 — ambiente interativo\n", saida);
-    fputs("Use :sair ou Ctrl-D para encerrar; :ajuda mostra os comandos.\n", saida);
+    fputs("Sefirah Lisp 0.0.1 — interactive environment\n", saida);
+    fputs("Use :quit or Ctrl-D to exit; :help shows available commands.\n", saida);
 
     for (;;) {
         fputs(tamanho_codigo == 0 ? "sefirah> " : "......> ", saida);
         fflush(saida);
         if (!repl_ler_linha(entrada, &linha, &tamanho_linha, &capacidade_linha)) {
             if (ferror(entrada)) {
-                fputs("Erro: falha ao ler a entrada.\n", saida);
+                fputs("Error: failed to read input.\n", saida);
                 resultado = 1;
             } else if (tamanho_codigo > 0) {
-                fputs("Erro: codigo incompleto ao final da entrada.\n", saida);
+                fputs("Error: incomplete source code at end of input.\n", saida);
                 resultado = 1;
             }
             break;
@@ -595,13 +595,14 @@ int sef_runtime_repl(SefRuntime *runtime, FILE *entrada, FILE *saida) {
                                     repl_comando_igual(linha, tamanho_linha, "(sair)"))) {
             break;
         }
-        if (tamanho_codigo == 0 && repl_comando_igual(linha, tamanho_linha, ":ajuda")) {
-            fputs(":ajuda  mostra esta ajuda\n:sair   encerra o REPL\n", saida);
+        if (tamanho_codigo == 0 && (repl_comando_igual(linha, tamanho_linha, ":help") ||
+                                    repl_comando_igual(linha, tamanho_linha, ":ajuda"))) {
+            fputs(":help  show this help\n:quit  exit the REPL\n", saida);
             continue;
         }
         if (!texto_acrescentar(&codigo, &tamanho_codigo, &capacidade_codigo, linha,
                                tamanho_linha)) {
-            fputs("Erro: memoria insuficiente para a entrada.\n", saida);
+            fputs("Error: not enough memory for input.\n", saida);
             resultado = 1;
             break;
         }
@@ -624,7 +625,7 @@ int sef_runtime_repl(SefRuntime *runtime, FILE *entrada, FILE *saida) {
             continue;
         }
         if (!repl_imprimir_valores(runtime, saida, &erro)) {
-            fprintf(saida, "Erro ao imprimir: %s\n", erro.mensagem);
+            fprintf(saida, "Printing error: %s\n", erro.mensagem);
             continue;
         }
     }

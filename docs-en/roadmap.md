@@ -65,9 +65,9 @@ not mean the entire milestone is complete.
 - [x] System V/Microsoft x86-64 emitter and W^X loading under both ABIs.
 - [x] `DEFUN` → SSA → native-code frontend integrated with `COMPILE`.
 - [x] AArch64 AAPCS64 emitter with native frontend selection.
-- [x] Relocatable x86-64/AArch64 ELF64 writer and `compilar-elf` command.
-- [x] AMD64/ARM64 COFF writer and `compilar-coff` command.
-- [x] x86-64/ARM64 Mach-O writer and `compilar-macho` command.
+- [x] Relocatable x86-64/AArch64 ELF64 writer and `compile-elf` command.
+- [x] AMD64/ARM64 COFF writer and `compile-coff` command.
+- [x] x86-64/ARM64 Mach-O writer and `compile-macho` command.
 - [x] Desktop relocations and external i64 calls with one or two inputs.
 - [x] Lisp `EXTERNAL-I64` form for imports in native objects.
 - [x] x86-64/AArch64 JIT trampolines with explicit binding and W^X.

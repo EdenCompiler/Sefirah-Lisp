@@ -29,10 +29,10 @@ static bool iniciar_componentes(EstadoIde *estado) {
     sef_componente_iniciar(&estado->area_principal, SEF_COMPONENTE_PAINEL, NULL);
     sef_componente_iniciar(&estado->editor, SEF_COMPONENTE_PAINEL, "EDITOR");
     sef_componente_iniciar(&estado->ferramentas, SEF_COMPONENTE_PAINEL, NULL);
-    sef_componente_iniciar(&estado->inspetor, SEF_COMPONENTE_PAINEL, "INSPETOR");
-    sef_componente_iniciar(&estado->navegador, SEF_COMPONENTE_PAINEL, "NAVEGADOR");
-    sef_componente_iniciar(&estado->depurador, SEF_COMPONENTE_PAINEL, "DEPURADOR");
-    sef_componente_iniciar(&estado->ouvinte, SEF_COMPONENTE_PAINEL, "OUVINTE");
+    sef_componente_iniciar(&estado->inspetor, SEF_COMPONENTE_PAINEL, "INSPECTOR");
+    sef_componente_iniciar(&estado->navegador, SEF_COMPONENTE_PAINEL, "BROWSER");
+    sef_componente_iniciar(&estado->depurador, SEF_COMPONENTE_PAINEL, "DEBUGGER");
+    sef_componente_iniciar(&estado->ouvinte, SEF_COMPONENTE_PAINEL, "REPL");
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -156,8 +156,7 @@ static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
         cursor = tamanho;
     size_t inicio_selecao = 0;
     size_t fim_selecao = 0;
-    bool selecionado =
-        sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao);
+    bool selecionado = sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao);
     char *com_cursor = malloc(tamanho + (selecionado ? 4u : 2u));
     if (com_cursor == NULL) {
         desenhar_texto_limitado(superficie, limites, codigo, true);
@@ -190,22 +189,21 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     const SefCor tinta = SEF_COR(43, 54, 45);
     sef_superficie_limpar(superficie, SEF_COR(207, 198, 164));
     sef_superficie_retangulo(superficie, 0, 0, superficie->largura, 30, tinta);
-    sef_superficie_texto(superficie, 12, 8, "SEFIRAH LISP  AMBIENTE VIVO", 2,
+    sef_superficie_texto(superficie, 12, 8, "SEFIRAH LISP  LIVE ENVIRONMENT", 2,
                          SEF_COR(231, 218, 168));
     sef_componente_organizar(&estado->raiz,
                              (SefRetangulo){0, 30, superficie->largura, superficie->altura - 66},
                              &estado->tema);
 
     desenhar_painel(superficie, estado->editor.limites,
-                    "EDITOR [F5 TUDO] [F6 FORMA] [SHIFT+F6 SELEC.]",
-                    estado->foco == FOCO_EDITOR);
-    desenhar_painel(superficie, estado->inspetor.limites, "INSPETOR [ENTER ABRE] [BACK VOLTA]",
+                    "EDITOR [F5 ALL] [F6 FORM] [SHIFT+F6 SELECT]", estado->foco == FOCO_EDITOR);
+    desenhar_painel(superficie, estado->inspetor.limites, "INSPECTOR [ENTER OPEN] [BACK GO BACK]",
                     estado->foco == FOCO_INSPETOR);
-    desenhar_painel(superficie, estado->navegador.limites, "NAVEGADOR [F11 DEF.] [F12 REFS.]",
-                    false);
-    desenhar_painel(superficie, estado->depurador.limites, "DEPURADOR [ENTER]",
+    desenhar_painel(superficie, estado->navegador.limites,
+                    "BROWSER [F11 DEFINITION] [F12 REFERENCES]", false);
+    desenhar_painel(superficie, estado->depurador.limites, "DEBUGGER [ENTER]",
                     estado->foco == FOCO_DEPURADOR);
-    desenhar_painel(superficie, estado->ouvinte.limites, "OUVINTE  [ENTER ENVIA] [CIMA HIST.]",
+    desenhar_painel(superficie, estado->ouvinte.limites, "REPL [ENTER RUN] [UP HISTORY]",
                     estado->foco == FOCO_OUVINTE);
     desenhar_editor(superficie, estado->editor.limites, estado->sessao);
     desenhar_texto_limitado(superficie, estado->inspetor.limites,
@@ -237,7 +235,7 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     sef_superficie_retangulo(superficie, 0, superficie->altura - 34, superficie->largura, 34,
                              SEF_COR(177, 196, 154));
     char estado_barra[768];
-    snprintf(estado_barra, sizeof(estado_barra), "%s  |  %s  |  CTRL+S SALVAR  CTRL+O ABRIR",
+    snprintf(estado_barra, sizeof(estado_barra), "%s  |  %s  |  CTRL+S SAVE  CTRL+O OPEN",
              sef_sessao_ide_caminho(estado->sessao), sef_sessao_ide_estado(estado->sessao));
     size_t colunas_estado = superficie->largura > 20 ? (size_t)(superficie->largura - 20) / 12u : 0;
     limitar_linha(estado_barra, colunas_estado);
@@ -407,15 +405,15 @@ int sef_ide_executar(const char *caminho_inicial) {
     EstadoIde estado = {0};
     estado.sessao = sef_sessao_ide_criar(&erro);
     if (estado.sessao == NULL || !iniciar_componentes(&estado)) {
-        fprintf(stderr, "IDE nao iniciou: %s\n", erro.mensagem);
+        fprintf(stderr, "IDE failed to start: %s\n", erro.mensagem);
         sef_sessao_ide_destruir(estado.sessao);
         return 1;
     }
     if (caminho_inicial != NULL && !sef_sessao_ide_abrir(estado.sessao, caminho_inicial, &erro))
-        fprintf(stderr, "IDE nao abriu '%s': %s\n", caminho_inicial, erro.mensagem);
+        fprintf(stderr, "IDE could not open '%s': %s\n", caminho_inicial, erro.mensagem);
 
     char mensagem[512] = {0};
-    SefConfigJanela configuracao = {"Sefirah Lisp — ambiente vivo", 1120, 760};
+    SefConfigJanela configuracao = {"Sefirah Lisp — live environment", 1120, 760};
     int resultado = sef_janela_executar(&configuracao, desenhar_ide, tratar_evento, &estado,
                                         mensagem, (int)sizeof(mensagem));
     if (resultado != 0 && mensagem[0] != '\0')

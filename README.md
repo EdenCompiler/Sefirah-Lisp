@@ -11,6 +11,13 @@ readable platform for desktop applications on Windows, Linux, and macOS.
 
 **Current version: 0.0.1 — executable bootstrap on the way to 1.0**
 
+Sefirah's implementation uses PT-BR identifiers and comments. Its public
+interface is English: CLI commands and help, REPL messages,
+reader/evaluator/compiler diagnostics, IDE labels and status messages,
+installation checks, and release tooling. Legacy Portuguese CLI command names
+remain accepted as compatibility aliases, while documentation and new
+automation use the English names.
+
 [![Integration](https://github.com/EdenCompiler/Sefirah-Lisp/actions/workflows/ci.yml/badge.svg)](https://github.com/EdenCompiler/Sefirah-Lisp/actions/workflows/ci.yml)
 ![C](https://img.shields.io/badge/C-17-informational)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-blue)
@@ -106,14 +113,14 @@ macOS, the backend links AppKit, Foundation, and CoreGraphics.
 ### Evaluation and REPL
 
 ```bash
-./construir/sefirah avaliar "(+ 20 22)"
-./construir/sefirah executar exemplos/inicio.lisp
+./construir/sefirah evaluate "(+ 20 22)"
+./construir/sefirah run exemplos/inicio.lisp
 ./construir/sefirah repl
 ```
 
 The REPL accepts multiline forms, changes to a continuation prompt while a
-form is open, and prints every value returned by `VALUES`. Use `:ajuda` for
-commands and `:sair` to leave.
+form is open, and prints every value returned by `VALUES`. Use `:help` for
+commands and `:quit` to leave.
 
 ```lisp
 (defun factorial (n)
@@ -149,9 +156,9 @@ relocatable object:
 ```
 
 ```bash
-./construir/sefirah compilar-elf exemplos/nativo.lisp calcular_nativo calcular.o
-./construir/sefirah compilar-coff exemplos/nativo.lisp calcular_nativo calcular.obj
-./construir/sefirah compilar-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
+./construir/sefirah compile-elf exemplos/nativo.lisp calcular_nativo calcular.o
+./construir/sefirah compile-coff exemplos/nativo.lisp calcular_nativo calcular.obj
+./construir/sefirah compile-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
 ```
 
 The C files under `exemplos/integracao-c/` demonstrate consumption of the C17
@@ -178,9 +185,9 @@ after the object and all compiled functions release it.
 ### Live image
 
 ```bash
-./construir/sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
-./construir/sefirah imagem abrir desenvolvimento.imagem "(fatorial 6)"
-./construir/sefirah imagem abrir desenvolvimento.imagem
+./construir/sefirah image save desenvolvimento.imagem exemplos/inicio.lisp
+./construir/sefirah image open desenvolvimento.imagem "(fatorial 6)"
+./construir/sefirah image open desenvolvimento.imagem
 ```
 
 The v10 image preserves the portable Lisp graph, including vectors, characters,
@@ -311,6 +318,13 @@ em uma plataforma legível para aplicações desktop no Windows, Linux e macOS.
 
 **Versão atual: 0.0.1 — bootstrap executável rumo ao 1.0**
 
+A implementação do Sefirah usa identificadores e comentários em PT-BR. A
+interface pública usa inglês: comandos e ajuda da CLI, mensagens do REPL,
+diagnósticos do leitor/avaliador/compilador, rótulos e estados da IDE,
+verificações de instalação e ferramentas de release. Os nomes antigos dos
+comandos em português continuam aceitos como aliases de compatibilidade, mas a
+documentação e novas automações usam os nomes em inglês.
+
 [![Integração](https://github.com/EdenCompiler/Sefirah-Lisp/actions/workflows/ci.yml/badge.svg)](https://github.com/EdenCompiler/Sefirah-Lisp/actions/workflows/ci.yml)
 ![C](https://img.shields.io/badge/C-17-informational)
 ![Plataformas](https://img.shields.io/badge/plataformas-Windows%20%7C%20Linux%20%7C%20macOS-blue)
@@ -406,14 +420,14 @@ macOS, o backend liga AppKit, Foundation e CoreGraphics.
 ### Avaliação e REPL
 
 ```bash
-./construir/sefirah avaliar "(+ 20 22)"
-./construir/sefirah executar exemplos/inicio.lisp
+./construir/sefirah evaluate "(+ 20 22)"
+./construir/sefirah run exemplos/inicio.lisp
 ./construir/sefirah repl
 ```
 
 O REPL aceita formas multilinha, muda para um prompt de continuação enquanto
 uma forma está aberta e imprime todos os valores devolvidos por `VALUES`. Use
-`:ajuda` para consultar comandos e `:sair` para encerrar.
+`:help` para consultar comandos e `:quit` para encerrar.
 
 ```lisp
 (defun fatorial (n)
@@ -449,9 +463,9 @@ relocável:
 ```
 
 ```bash
-./construir/sefirah compilar-elf exemplos/nativo.lisp calcular_nativo calcular.o
-./construir/sefirah compilar-coff exemplos/nativo.lisp calcular_nativo calcular.obj
-./construir/sefirah compilar-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
+./construir/sefirah compile-elf exemplos/nativo.lisp calcular_nativo calcular.o
+./construir/sefirah compile-coff exemplos/nativo.lisp calcular_nativo calcular.obj
+./construir/sefirah compile-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
 ```
 
 Os arquivos C em `exemplos/integracao-c/` demonstram o consumo do SDK C17 e
@@ -478,9 +492,9 @@ descarregado quando o objeto e todas as funções compiladas o liberam.
 ### Imagem viva
 
 ```bash
-./construir/sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
-./construir/sefirah imagem abrir desenvolvimento.imagem "(fatorial 6)"
-./construir/sefirah imagem abrir desenvolvimento.imagem
+./construir/sefirah image save desenvolvimento.imagem exemplos/inicio.lisp
+./construir/sefirah image open desenvolvimento.imagem "(fatorial 6)"
+./construir/sefirah image open desenvolvimento.imagem
 ```
 
 A imagem v10 preserva o grafo Lisp portável, inclusive vetores, caracteres,

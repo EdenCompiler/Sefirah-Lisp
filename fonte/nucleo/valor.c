@@ -9,7 +9,7 @@
 SefValor sef_objeto_novo(SefRuntime *runtime, SefTipo tipo, SefErro *erro) {
     SefValor objeto = calloc(1, sizeof(*objeto));
     if (objeto == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao criar objeto");
+        sef_erro_definir(erro, 0, 0, "not enough memory to create object");
         return NULL;
     }
     objeto->tipo = tipo;
@@ -41,7 +41,7 @@ SefValor sef_texto_novo(SefRuntime *runtime, const char *texto, size_t tamanho, 
 
     valor->como.texto.dados = malloc(tamanho + 1);
     if (valor->como.texto.dados == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao copiar texto");
+        sef_erro_definir(erro, 0, 0, "not enough memory to copy string");
         return NULL;
     }
     memcpy(valor->como.texto.dados, texto, tamanho);
@@ -54,7 +54,7 @@ SefValor sef_texto_novo(SefRuntime *runtime, const char *texto, size_t tamanho, 
 SefValor sef_texto_caractere_obter(SefRuntime *runtime, SefValor texto, size_t indice,
                                    SefErro *erro) {
     if (texto == NULL || texto->tipo != SEF_TIPO_TEXTO) {
-        sef_erro_definir(erro, 0, 0, "acesso de caractere exige uma string");
+        sef_erro_definir(erro, 0, 0, "character access requires a string");
         return NULL;
     }
     uint32_t codigo;
@@ -64,8 +64,8 @@ SefValor sef_texto_caractere_obter(SefRuntime *runtime, SefValor texto, size_t i
         size_t tamanho =
             sef_utf8_quantidade(texto->como.texto.dados, texto->como.texto.tamanho, &valido);
         sef_erro_definir(erro, 0, 0,
-                         valido && indice >= tamanho ? "indice fora dos limites da string"
-                                                     : "string contem UTF-8 invalido");
+                         valido && indice >= tamanho ? "string index out of bounds"
+                                                     : "string contains invalid UTF-8");
         return NULL;
     }
     return sef_caractere_novo(runtime, codigo, erro);
@@ -75,7 +75,7 @@ bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t ind
                                  SefValor caractere, SefErro *erro) {
     if (texto == NULL || texto->tipo != SEF_TIPO_TEXTO || caractere == NULL ||
         caractere->tipo != SEF_TIPO_CARACTERE) {
-        sef_erro_definir(erro, 0, 0, "alteracao de string exige string e caractere");
+        sef_erro_definir(erro, 0, 0, "string mutation requires a string and character");
         return false;
     }
     size_t inicio, anterior;
@@ -85,8 +85,8 @@ bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t ind
         size_t tamanho =
             sef_utf8_quantidade(texto->como.texto.dados, texto->como.texto.tamanho, &valido);
         sef_erro_definir(erro, 0, 0,
-                         valido && indice >= tamanho ? "indice fora dos limites da string"
-                                                     : "string contem UTF-8 invalido");
+                         valido && indice >= tamanho ? "string index out of bounds"
+                                                     : "string contains invalid UTF-8");
         return false;
     }
     char novo[4];
@@ -95,7 +95,7 @@ bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t ind
     if (quantidade_nova != anterior) {
         char *novos_dados = malloc(tamanho_novo + 1);
         if (novos_dados == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente ao alterar string");
+            sef_erro_definir(erro, 0, 0, "not enough memory to modify string");
             return false;
         }
         memcpy(novos_dados, texto->como.texto.dados, inicio);
@@ -113,11 +113,11 @@ bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t ind
 
 SefValor sef_vetor_novo(SefRuntime *runtime, size_t tamanho, SefValor inicial, SefErro *erro) {
     if (runtime == NULL || inicial == NULL) {
-        sef_erro_definir(erro, 0, 0, "runtime ou valor inicial ausente ao criar vetor");
+        sef_erro_definir(erro, 0, 0, "missing runtime or initial value while creating vector");
         return NULL;
     }
     if (tamanho > SIZE_MAX / sizeof(SefValor)) {
-        sef_erro_definir(erro, 0, 0, "vetor grande demais");
+        sef_erro_definir(erro, 0, 0, "vector is too large");
         return NULL;
     }
     SefValor valor = sef_objeto_novo(runtime, SEF_TIPO_VETOR, erro);
@@ -126,7 +126,7 @@ SefValor sef_vetor_novo(SefRuntime *runtime, size_t tamanho, SefValor inicial, S
     if (tamanho > 0) {
         valor->como.vetor.itens = malloc(tamanho * sizeof(SefValor));
         if (valor->como.vetor.itens == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente ao criar vetor");
+            sef_erro_definir(erro, 0, 0, "not enough memory to create vector");
             return NULL;
         }
         for (size_t i = 0; i < tamanho; i++)
@@ -140,7 +140,7 @@ SefValor sef_vetor_novo(SefRuntime *runtime, size_t tamanho, SefValor inicial, S
 SefValor sef_caractere_novo(SefRuntime *runtime, uint32_t codigo, SefErro *erro) {
     char codificado[4];
     if (runtime == NULL || sef_utf8_codificar(codigo, codificado) == 0) {
-        sef_erro_definir(erro, 0, 0, "codigo Unicode invalido ao criar caractere");
+        sef_erro_definir(erro, 0, 0, "invalid Unicode code point while creating character");
         return NULL;
     }
     SefValor valor = sef_objeto_novo(runtime, SEF_TIPO_CARACTERE, erro);
@@ -184,7 +184,7 @@ static bool normalizar_nome_simbolo_lido(const char *nome, size_t tamanho, NomeS
     saida->separador_pacote = SIZE_MAX;
     saida->quantidade_separadores = 0;
     if (saida->dados == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao normalizar nome de simbolo");
+        sef_erro_definir(erro, 0, 0, "not enough memory to normalize symbol name");
         return false;
     }
     bool entre_barras = false;
@@ -194,7 +194,7 @@ static bool normalizar_nome_simbolo_lido(const char *nome, size_t tamanho, NomeS
             if (++i >= tamanho) {
                 free(saida->dados);
                 saida->dados = NULL;
-                sef_erro_definir(erro, 0, 0, "escape incompleto no nome do simbolo");
+                sef_erro_definir(erro, 0, 0, "incomplete escape in symbol name");
                 return false;
             }
             saida->dados[saida->tamanho++] = nome[i];
@@ -214,7 +214,7 @@ static bool normalizar_nome_simbolo_lido(const char *nome, size_t tamanho, NomeS
             } else {
                 free(saida->dados);
                 saida->dados = NULL;
-                sef_erro_definir(erro, 0, 0, "separador de package invalido no simbolo");
+                sef_erro_definir(erro, 0, 0, "invalid package separator in symbol");
                 return false;
             }
         }
@@ -224,7 +224,7 @@ static bool normalizar_nome_simbolo_lido(const char *nome, size_t tamanho, NomeS
     if (entre_barras) {
         free(saida->dados);
         saida->dados = NULL;
-        sef_erro_definir(erro, 0, 0, "simbolo sem barra vertical de fechamento");
+        sef_erro_definir(erro, 0, 0, "symbol is missing its closing vertical bar");
         return false;
     }
     saida->dados[saida->tamanho] = '\0';
@@ -240,7 +240,7 @@ static bool vetor_valores_crescer(SefValor **valores, size_t *capacidade, size_t
         nova *= 2;
     SefValor *realocado = realloc(*valores, nova * sizeof(*realocado));
     if (realocado == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para tabela de objetos");
+        sef_erro_definir(erro, 0, 0, "not enough memory for object table");
         return false;
     }
     *valores = realocado;
@@ -297,7 +297,7 @@ SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tama
 SefValor sef_pacote_novo(SefRuntime *runtime, const char *nome, SefErro *erro) {
     size_t tamanho = strlen(nome);
     if (sef_pacote_encontrar(runtime, nome, tamanho) != NULL) {
-        sef_erro_definir(erro, 0, 0, "pacote %s ja existe", nome);
+        sef_erro_definir(erro, 0, 0, "package %s already exists", nome);
         return NULL;
     }
     char *normalizado = copiar_nome_maiusculo(nome, tamanho);
@@ -338,7 +338,7 @@ bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefEr
     (void)runtime;
     if (pacote == NULL || usado == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
         usado->tipo != SEF_TIPO_PACOTE) {
-        sef_erro_definir(erro, 0, 0, "USE-PACKAGE recebeu objeto que nao e pacote");
+        sef_erro_definir(erro, 0, 0, "USE-PACKAGE received an object that is not a package");
         return false;
     }
     for (size_t i = 0; i < pacote->como.pacote.quantidade_usados; i++) {
@@ -350,21 +350,18 @@ bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefEr
         const char *nome_candidato = NULL;
         size_t tamanho_candidato = 0;
         if (!nome_de_simbolo_armazenado(candidato, &nome_candidato, &tamanho_candidato)) {
-            sef_erro_definir(erro, 0, 0, "pacote usado contem objeto que nao e simbolo");
+            sef_erro_definir(erro, 0, 0, "used package contains an object that is not a symbol");
             return false;
         }
-        SefValor existente =
-            pacote_buscar_simbolo(pacote, nome_candidato, tamanho_candidato);
+        SefValor existente = pacote_buscar_simbolo(pacote, nome_candidato, tamanho_candidato);
         for (size_t j = 0; existente == NULL && j < pacote->como.pacote.quantidade_usados; j++) {
             SefValor origem = pacote->como.pacote.usados[j];
-            SefValor herdado =
-                pacote_buscar_simbolo(origem, nome_candidato, tamanho_candidato);
+            SefValor herdado = pacote_buscar_simbolo(origem, nome_candidato, tamanho_candidato);
             if (herdado != NULL && sef_pacote_simbolo_exportado(origem, herdado))
                 existente = herdado;
         }
         if (existente != NULL && existente != candidato) {
-            sef_erro_definir(erro, 0, 0,
-                             "conflito ao usar pacote: simbolo %.*s ja e acessivel",
+            sef_erro_definir(erro, 0, 0, "package-use conflict: symbol %.*s is already accessible",
                              (int)tamanho_candidato, nome_candidato);
             return false;
         }
@@ -399,13 +396,13 @@ bool sef_pacote_simbolo_exportado(SefValor pacote, SefValor simbolo) {
 }
 
 bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro) {
-    bool nulo_do_common_lisp = runtime != NULL && simbolo == runtime->nulo &&
-                               pacote == runtime->pacote_common_lisp;
+    bool nulo_do_common_lisp =
+        runtime != NULL && simbolo == runtime->nulo && pacote == runtime->pacote_common_lisp;
     bool simbolo_interno = simbolo != NULL && simbolo->tipo == SEF_TIPO_SIMBOLO &&
                            simbolo->como.simbolo.pacote == pacote;
     if (pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
         (!nulo_do_common_lisp && !simbolo_interno)) {
-        sef_erro_definir(erro, 0, 0, "EXPORT exige simbolo interno do pacote");
+        sef_erro_definir(erro, 0, 0, "EXPORT requires a symbol internal to the package");
         return false;
     }
     if (sef_pacote_simbolo_exportado(pacote, simbolo))
@@ -460,14 +457,14 @@ SefValor sef_pacote_localizar_simbolo(SefValor pacote, const char *nome, size_t 
 SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const char *nome,
                                  size_t tamanho, SefErro *erro) {
     if (pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE) {
-        sef_erro_definir(erro, 0, 0, "pacote invalido ao internar simbolo");
+        sef_erro_definir(erro, 0, 0, "invalid package while interning symbol");
         return NULL;
     }
     if (pacote == runtime->pacote_common_lisp && tamanho == 3 && memcmp(nome, "NIL", 3) == 0)
         return runtime->nulo;
     char *copia = copiar_nome_exato(nome, tamanho);
     if (copia == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao internar simbolo");
+        sef_erro_definir(erro, 0, 0, "not enough memory to intern symbol");
         return NULL;
     }
 
@@ -523,7 +520,7 @@ bool sef_pacote_instalar_nulo(SefRuntime *runtime, SefErro *erro) {
     if (runtime == NULL || runtime->nulo == NULL || runtime->nulo->tipo != SEF_TIPO_NULO ||
         runtime->pacote_common_lisp == NULL ||
         runtime->pacote_common_lisp->tipo != SEF_TIPO_PACOTE) {
-        sef_erro_definir(erro, 0, 0, "nao foi possivel instalar NIL em COMMON-LISP");
+        sef_erro_definir(erro, 0, 0, "could not install NIL in COMMON-LISP");
         return false;
     }
     SefValor pacote = runtime->pacote_common_lisp;
@@ -536,8 +533,7 @@ bool sef_pacote_instalar_nulo(SefRuntime *runtime, SefErro *erro) {
         pacote->como.pacote.simbolos[pacote->como.pacote.quantidade_simbolos++] = runtime->nulo;
     } else if (legado != runtime->nulo) {
         substituir_simbolo_em_vetor(pacote->como.pacote.simbolos,
-                                    pacote->como.pacote.quantidade_simbolos, legado,
-                                    runtime->nulo);
+                                    pacote->como.pacote.quantidade_simbolos, legado, runtime->nulo);
         substituir_simbolo_em_vetor(pacote->como.pacote.exportados,
                                     pacote->como.pacote.quantidade_exportados, legado,
                                     runtime->nulo);
@@ -563,7 +559,7 @@ bool sef_pacote_instalar_nulo(SefRuntime *runtime, SefErro *erro) {
 SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho,
                               SefErro *erro) {
     if (runtime->pacote_atual == NULL) {
-        sef_erro_definir(erro, 0, 0, "nao existe pacote atual");
+        sef_erro_definir(erro, 0, 0, "there is no current package");
         return NULL;
     }
     NomeSimboloLido nome_lido;
@@ -585,7 +581,7 @@ SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tama
         SefValor pacote = sef_pacote_encontrar(runtime, normalizado, tamanho_pacote);
         if (pacote == NULL || inicio_nome > tamanho) {
             free(normalizado);
-            sef_erro_definir(erro, 0, 0, "designador de simbolo com pacote invalido");
+            sef_erro_definir(erro, 0, 0, "symbol designator has an invalid package");
             return NULL;
         }
         SefValor simbolo = sef_pacote_localizar_simbolo(pacote, normalizado + inicio_nome,
@@ -593,7 +589,7 @@ SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tama
         if (separadores == 1) {
             if (simbolo == NULL || !sef_pacote_simbolo_exportado(pacote, simbolo)) {
                 free(normalizado);
-                sef_erro_definir(erro, 0, 0, "simbolo nao e externo no pacote indicado");
+                sef_erro_definir(erro, 0, 0, "symbol is not external in the indicated package");
                 return NULL;
             }
             free(normalizado);
@@ -672,7 +668,7 @@ SefValor sef_condicao_nova(SefRuntime *runtime, SefValor classe, const char *men
 
 SefValor sef_reinicio_novo(SefRuntime *runtime, SefValor nome, SefErro *erro) {
     if (!sef_valor_e_simbolo_logico(runtime, nome)) {
-        sef_erro_definir(erro, 0, 0, "nome de reinicio deve ser simbolo ou NIL");
+        sef_erro_definir(erro, 0, 0, "restart name must be a symbol or NIL");
         return NULL;
     }
     SefValor reinicio = sef_objeto_novo(runtime, SEF_TIPO_REINICIO, erro);
@@ -690,7 +686,7 @@ SefValor sef_stream_novo(SefRuntime *runtime, FILE *arquivo, const char *caminho
         size_t tamanho_caminho = strlen(caminho);
         stream->como.stream.caminho = malloc(tamanho_caminho + 1);
         if (stream->como.stream.caminho == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para caminho de stream");
+            sef_erro_definir(erro, 0, 0, "not enough memory for stream path");
             return NULL;
         }
         memcpy(stream->como.stream.caminho, caminho, tamanho_caminho + 1);
@@ -749,7 +745,7 @@ SefValor sef_lista_inverter(SefRuntime *runtime, SefValor lista, SefErro *erro) 
     SefValor resultado = runtime->nulo;
     while (lista != runtime->nulo) {
         if (lista == NULL || lista->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "nao e uma lista propria");
+            sef_erro_definir(erro, 0, 0, "value is not a proper list");
             return NULL;
         }
         resultado = sef_par_novo(runtime, lista->como.par.primeiro, resultado, erro);
@@ -817,15 +813,15 @@ SefValor sef_vetor_obter(SefValor vetor, size_t indice) {
 bool sef_vetor_definir(SefValor vetor, size_t indice, SefValor valor, SefErro *erro) {
     sef_erro_limpar(erro);
     if (!sef_valor_e_vetor(vetor)) {
-        sef_erro_definir(erro, 0, 0, "valor nao e um vetor");
+        sef_erro_definir(erro, 0, 0, "value is not a vector");
         return false;
     }
     if (indice >= vetor->como.vetor.tamanho) {
-        sef_erro_definir(erro, 0, 0, "indice fora dos limites do vetor");
+        sef_erro_definir(erro, 0, 0, "vector index out of bounds");
         return false;
     }
     if (valor == NULL) {
-        sef_erro_definir(erro, 0, 0, "valor ausente ao alterar vetor");
+        sef_erro_definir(erro, 0, 0, "missing value while modifying vector");
         return false;
     }
     vetor->como.vetor.itens[indice] = valor;
@@ -905,7 +901,7 @@ static bool componente_vinculo(SefVinculo *vinculo, size_t indice, const char *c
     bool simbolo = indice % 2 == 0;
     *componente = simbolo ? vinculo->simbolo : vinculo->valor;
     return definir_rotulo(rotulo, capacidade_rotulo, "%s %zu %s", categoria, numero + 1,
-                          simbolo ? "SIMBOLO" : "VALOR");
+                          simbolo ? "SYMBOL" : "VALUE");
 }
 
 static bool componente_hash(SefValor valor, size_t indice, SefValor *componente, char *rotulo,
@@ -920,7 +916,7 @@ static bool componente_hash(SefValor valor, size_t indice, SefValor *componente,
             continue;
         bool chave = indice % 2 == 0;
         *componente = chave ? entrada->chave : entrada->valor;
-        return definir_rotulo(rotulo, capacidade_rotulo, "%s %zu", chave ? "CHAVE" : "VALOR",
+        return definir_rotulo(rotulo, capacidade_rotulo, "%s %zu", chave ? "KEY" : "VALUE",
                               numero + 1);
     }
     return false;
@@ -934,50 +930,49 @@ bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indi
     switch (valor->tipo) {
     case SEF_TIPO_NULO:
         *componente = runtime->pacote_common_lisp;
-        return definir_rotulo(rotulo, capacidade_rotulo, "PACOTE");
+        return definir_rotulo(rotulo, capacidade_rotulo, "PACKAGE");
     case SEF_TIPO_SIMBOLO:
         *componente = valor->como.simbolo.pacote;
-        return definir_rotulo(rotulo, capacidade_rotulo, "PACOTE");
+        return definir_rotulo(rotulo, capacidade_rotulo, "PACKAGE");
     case SEF_TIPO_PAR:
         *componente = indice == 0 ? valor->como.par.primeiro : valor->como.par.resto;
-        return definir_rotulo(rotulo, capacidade_rotulo, "%s", indice == 0 ? "PRIMEIRO" : "RESTO");
+        return definir_rotulo(rotulo, capacidade_rotulo, "%s", indice == 0 ? "CAR" : "CDR");
     case SEF_TIPO_FUNCAO: {
         SefValor componentes[] = {valor->como.funcao.parametros, valor->como.funcao.corpo,
                                   valor->como.funcao.ambiente};
-        const char *rotulos[] = {"PARAMETROS", "CORPO", "AMBIENTE"};
+        const char *rotulos[] = {"PARAMETERS", "BODY", "ENVIRONMENT"};
         *componente = componentes[indice];
         return definir_rotulo(rotulo, capacidade_rotulo, "%s", rotulos[indice]);
     }
     case SEF_TIPO_AMBIENTE: {
         if (indice == 0) {
             *componente = valor->como.ambiente.pai;
-            return definir_rotulo(rotulo, capacidade_rotulo, "PAI");
+            return definir_rotulo(rotulo, capacidade_rotulo, "PARENT");
         }
         indice--;
         size_t quantidade_variaveis = quantidade_vinculos(valor->como.ambiente.vinculos);
         if (indice < 2 * quantidade_variaveis)
-            return componente_vinculo(valor->como.ambiente.vinculos, indice, "VARIAVEL",
-                                      componente, rotulo, capacidade_rotulo);
-        return componente_vinculo(valor->como.ambiente.funcoes,
-                                  indice - 2 * quantidade_variaveis, "FUNCAO", componente,
-                                  rotulo, capacidade_rotulo);
+            return componente_vinculo(valor->como.ambiente.vinculos, indice, "VARIABLE", componente,
+                                      rotulo, capacidade_rotulo);
+        return componente_vinculo(valor->como.ambiente.funcoes, indice - 2 * quantidade_variaveis,
+                                  "FUNCTION", componente, rotulo, capacidade_rotulo);
     }
     case SEF_TIPO_CONDICAO:
         *componente = indice == 0 ? valor->como.condicao.classe : valor->como.condicao.mensagem;
-        return definir_rotulo(rotulo, capacidade_rotulo, "%s", indice == 0 ? "CLASSE" : "MENSAGEM");
+        return definir_rotulo(rotulo, capacidade_rotulo, "%s", indice == 0 ? "CLASS" : "MESSAGE");
     case SEF_TIPO_PACOTE:
         if (indice < valor->como.pacote.quantidade_simbolos) {
             *componente = valor->como.pacote.simbolos[indice];
-            return definir_rotulo(rotulo, capacidade_rotulo, "SIMBOLO %zu", indice + 1);
+            return definir_rotulo(rotulo, capacidade_rotulo, "SYMBOL %zu", indice + 1);
         }
         indice -= valor->como.pacote.quantidade_simbolos;
         if (indice < valor->como.pacote.quantidade_usados) {
             *componente = valor->como.pacote.usados[indice];
-            return definir_rotulo(rotulo, capacidade_rotulo, "USA %zu", indice + 1);
+            return definir_rotulo(rotulo, capacidade_rotulo, "USES %zu", indice + 1);
         }
         indice -= valor->como.pacote.quantidade_usados;
         *componente = valor->como.pacote.exportados[indice];
-        return definir_rotulo(rotulo, capacidade_rotulo, "EXPORTA %zu", indice + 1);
+        return definir_rotulo(rotulo, capacidade_rotulo, "EXPORTS %zu", indice + 1);
     case SEF_TIPO_VETOR:
         *componente = valor->como.vetor.itens[indice];
         return definir_rotulo(rotulo, capacidade_rotulo, "[%zu]", indice);
@@ -986,7 +981,7 @@ bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indi
     case SEF_TIPO_REINICIO:
         if (indice == 0) {
             *componente = valor->como.reinicio.nome;
-            return definir_rotulo(rotulo, capacidade_rotulo, "NOME");
+            return definir_rotulo(rotulo, capacidade_rotulo, "NAME");
         }
         *componente = runtime->nulo;
         for (SefReinicioDinamico *ativo = runtime->reinicios; ativo != NULL;
@@ -996,7 +991,7 @@ bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indi
                 break;
             }
         }
-        return definir_rotulo(rotulo, capacidade_rotulo, "ATIVO");
+        return definir_rotulo(rotulo, capacidade_rotulo, "ACTIVE");
     default:
         return false;
     }

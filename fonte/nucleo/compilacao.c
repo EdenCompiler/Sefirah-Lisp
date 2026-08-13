@@ -33,7 +33,7 @@ static bool quantidade_exata(SefRuntime *runtime, SefValor lista, size_t quantid
 
 static bool novo_registrador(ContextoCompilacao *contexto, uint32_t *registrador) {
     if (contexto->proximo_registrador == UINT32_MAX) {
-        sef_erro_definir(contexto->erro, 0, 0, "funcao excedeu o limite de registradores IR");
+        sef_erro_definir(contexto->erro, 0, 0, "function exceeded the IR register limit");
         return false;
     }
     *registrador = contexto->proximo_registrador++;
@@ -49,7 +49,7 @@ static bool compilar_expressao(ContextoCompilacao *contexto, SefValor forma, uin
 static bool compilar_if(ContextoCompilacao *contexto, SefValor argumentos, uint32_t *resultado) {
     if (!quantidade_exata(contexto->runtime, argumentos, 3)) {
         sef_erro_definir(contexto->erro, 0, 0,
-                         "compilador i64 exige IF com consequente e alternativa");
+                         "i64 compiler requires IF with consequent and alternative");
         return false;
     }
     SefValor teste = primeiro(argumentos);
@@ -98,7 +98,7 @@ static bool compilar_operacao_binaria(ContextoCompilacao *contexto, SefValor ope
                                       SefValor argumentos, uint32_t *resultado) {
     if (!quantidade_exata(contexto->runtime, argumentos, 2)) {
         sef_erro_definir(contexto->erro, 0, 0,
-                         "compilador i64 aceita exatamente dois operandos por operacao");
+                         "i64 compiler accepts exactly two operands per operation");
         return false;
     }
     SefOperacaoIr operacao;
@@ -113,7 +113,8 @@ static bool compilar_operacao_binaria(ContextoCompilacao *contexto, SefValor ope
     else if (sef_simbolo_tem_nome(operador, "<="))
         operacao = SEF_IR_MENOR_OU_IGUAL_I64;
     else {
-        sef_erro_definir(contexto->erro, 0, 0, "operacao ainda nao suportada pelo compilador i64");
+        sef_erro_definir(contexto->erro, 0, 0,
+                         "operation is not yet supported by the i64 compiler");
         return false;
     }
     uint32_t a, b;
@@ -130,13 +131,14 @@ static bool compilar_chamada_externa(ContextoCompilacao *contexto, SefValor argu
     bool propria = false;
     size_t quantidade = sef_lista_tamanho(contexto->runtime, argumentos, &propria);
     if (!propria || quantidade < 2 || quantidade > 3) {
-        sef_erro_definir(contexto->erro, 0, 0, "EXTERNAL-I64 exige nome C e um ou dois argumentos");
+        sef_erro_definir(contexto->erro, 0, 0,
+                         "EXTERNAL-I64 requires a C name and one or two arguments");
         return false;
     }
     SefValor nome = primeiro(argumentos);
     if (nome->tipo != SEF_TIPO_TEXTO || nome->como.texto.tamanho == 0 ||
         memchr(nome->como.texto.dados, '\0', nome->como.texto.tamanho) != NULL) {
-        sef_erro_definir(contexto->erro, 0, 0, "nome de EXTERNAL-I64 deve ser uma string C valida");
+        sef_erro_definir(contexto->erro, 0, 0, "EXTERNAL-I64 name must be a valid C string");
         return false;
     }
     uint32_t argumento_a, argumento_b = 0, externa;
@@ -167,16 +169,16 @@ static bool compilar_expressao(ContextoCompilacao *contexto, SefValor forma, uin
             }
         }
         sef_erro_definir(contexto->erro, 0, 0,
-                         "compilador i64 encontrou variavel livre ou desconhecida");
+                         "i64 compiler encountered a free or unknown variable");
         return false;
     }
     if (forma->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(contexto->erro, 0, 0, "compilador i64 aceita apenas inteiros e formas");
+        sef_erro_definir(contexto->erro, 0, 0, "i64 compiler accepts only integers and forms");
         return false;
     }
     SefValor operador = primeiro(forma);
     if (operador->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(contexto->erro, 0, 0, "operador compilado deve ser um simbolo");
+        sef_erro_definir(contexto->erro, 0, 0, "compiled operator must be a symbol");
         return false;
     }
     if (sef_simbolo_tem_nome(operador, "IF"))
@@ -191,25 +193,25 @@ static bool copiar_parametros(SefRuntime *runtime, SefValor lista, SefValor **pa
     bool propria = false;
     size_t total = sef_lista_tamanho(runtime, lista, &propria);
     if (!propria || total > UINT32_MAX) {
-        sef_erro_definir(erro, 0, 0, "lista de parametros nao pode ser compilada para i64");
+        sef_erro_definir(erro, 0, 0, "parameter list cannot be compiled to i64");
         return false;
     }
     SefValor *itens = total == 0 ? NULL : malloc(total * sizeof(*itens));
     if (total > 0 && itens == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para parametros compilados");
+        sef_erro_definir(erro, 0, 0, "not enough memory for compiled parameters");
         return false;
     }
     for (size_t i = 0; i < total; i++) {
         itens[i] = primeiro(lista);
         if (itens[i]->tipo != SEF_TIPO_SIMBOLO || sef_simbolo_tem_nome(itens[i], "&REST")) {
             free(itens);
-            sef_erro_definir(erro, 0, 0, "compilador i64 exige parametros posicionais simples");
+            sef_erro_definir(erro, 0, 0, "i64 compiler requires simple positional parameters");
             return false;
         }
         for (size_t anterior = 0; anterior < i; anterior++) {
             if (itens[anterior] == itens[i]) {
                 free(itens);
-                sef_erro_definir(erro, 0, 0, "parametro duplicado na funcao compilada");
+                sef_erro_definir(erro, 0, 0, "duplicate parameter in compiled function");
                 return false;
             }
         }
@@ -224,18 +226,18 @@ static SefFuncaoCompilada *compilar_funcao_i64(SefRuntime *runtime, const char *
                                                bool preparar_jit, SefErro *erro) {
     sef_erro_limpar(erro);
     if (runtime == NULL || nome == NULL || nome[0] == '\0') {
-        sef_erro_definir(erro, 0, 0, "runtime ou nome ausente para compilacao");
+        sef_erro_definir(erro, 0, 0, "missing runtime or name for compilation");
         return NULL;
     }
     SefValor simbolo = sef_simbolo_internar(runtime, nome, strlen(nome), erro);
     SefValor valor;
     if (simbolo == NULL || !sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &valor) ||
         valor->tipo != SEF_TIPO_FUNCAO || valor->como.funcao.macro) {
-        sef_erro_definir(erro, 0, 0, "nome nao designa uma funcao Lisp compilavel");
+        sef_erro_definir(erro, 0, 0, "name does not designate a compilable Lisp function");
         return NULL;
     }
     if (!quantidade_exata(runtime, valor->como.funcao.corpo, 1)) {
-        sef_erro_definir(erro, 0, 0, "compilador i64 exige uma unica forma no corpo");
+        sef_erro_definir(erro, 0, 0, "i64 compiler requires exactly one body form");
         return NULL;
     }
     SefValor *parametros = NULL;
@@ -247,7 +249,7 @@ static SefFuncaoCompilada *compilar_funcao_i64(SefRuntime *runtime, const char *
     SefFuncaoCompilada *compilada = calloc(1, sizeof(*compilada));
     if (compilada == NULL) {
         free(parametros);
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para funcao compilada");
+        sef_erro_definir(erro, 0, 0, "not enough memory for compiled function");
         return NULL;
     }
     size_t tamanho_nome = strlen(nome);
@@ -255,7 +257,7 @@ static SefFuncaoCompilada *compilar_funcao_i64(SefRuntime *runtime, const char *
     if (compilada->nome == NULL) {
         free(parametros);
         free(compilada);
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para nome compilado");
+        sef_erro_definir(erro, 0, 0, "not enough memory for compiled name");
         return NULL;
     }
     memcpy(compilada->nome, nome, tamanho_nome + 1);
@@ -309,7 +311,7 @@ bool sef_funcao_compilada_vincular_externa_i64(SefFuncaoCompilada *funcao, const
                                                SefFuncaoExternaI64 endereco, SefErro *erro) {
     if (funcao == NULL) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "funcao compilada ausente para vinculacao externa");
+        sef_erro_definir(erro, 0, 0, "missing compiled function for external binding");
         return false;
     }
     if (!sef_codigo_nativo_vincular_externa_i64(&funcao->codigo, simbolo, endereco, erro))
@@ -327,14 +329,14 @@ bool sef_funcao_compilada_vincular_externa_i64_binaria(SefFuncaoCompilada *funca
                                                        SefErro *erro) {
     if (funcao == NULL) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "funcao compilada ausente para vinculacao externa");
+        sef_erro_definir(erro, 0, 0, "missing compiled function for external binding");
         return false;
     }
     if (!sef_codigo_nativo_vincular_externa_i64_binaria(&funcao->codigo, simbolo, endereco, erro))
         return false;
     SefFuncaoExternaI64 endereco_armazenado = NULL;
     _Static_assert(sizeof(endereco) == sizeof(endereco_armazenado),
-                   "ponteiros de funcoes i64 devem ter o mesmo tamanho");
+                   "i64 function pointers must have the same size");
     memcpy(&endereco_armazenado, &endereco, sizeof(endereco_armazenado));
     for (size_t i = 0; i < funcao->ir.quantidade_externas; i++) {
         if (strcmp(funcao->ir.externas[i].nome, simbolo) == 0)
@@ -348,12 +350,12 @@ static bool vincular_recurso_biblioteca_i64(SefFuncaoCompilada *funcao,
     sef_erro_limpar(erro);
     if (funcao == NULL || recurso == NULL || funcao->biblioteca_externa != NULL ||
         funcao->codigo.memoria_executavel != NULL) {
-        sef_erro_definir(erro, 0, 0, "funcao ou recurso invalido para biblioteca compartilhada");
+        sef_erro_definir(erro, 0, 0, "invalid function or shared-library resource");
         sef_biblioteca_recurso_liberar(recurso);
         return false;
     }
     if (funcao->codigo.quantidade_relocacoes == 0) {
-        sef_erro_definir(erro, 0, 0, "funcao compilada nao possui simbolos externos");
+        sef_erro_definir(erro, 0, 0, "compiled function has no external symbols");
         sef_biblioteca_recurso_liberar(recurso);
         return false;
     }
@@ -385,7 +387,7 @@ static bool vincular_objeto_biblioteca_i64(SefFuncaoCompilada *funcao, SefValor 
     sef_erro_limpar(erro);
     if (biblioteca == NULL || biblioteca->tipo != SEF_TIPO_BIBLIOTECA ||
         biblioteca->como.biblioteca.fechada || biblioteca->como.biblioteca.recurso == NULL) {
-        sef_erro_definir(erro, 0, 0, "biblioteca compartilhada ausente ou fechada");
+        sef_erro_definir(erro, 0, 0, "shared library is missing or closed");
         return false;
     }
     sef_biblioteca_recurso_reter(biblioteca->como.biblioteca.recurso);
@@ -395,7 +397,7 @@ static bool vincular_objeto_biblioteca_i64(SefFuncaoCompilada *funcao, SefValor 
 bool sef_funcao_compilada_preparar_jit(SefFuncaoCompilada *funcao, SefErro *erro) {
     if (funcao == NULL || funcao->possui_codigo_nativo) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "funcao compilada ausente ou JIT ja preparado");
+        sef_erro_definir(erro, 0, 0, "compiled function is missing or JIT is already prepared");
         return false;
     }
     if (!sef_codigo_nativo_preparar(&funcao->codigo, erro))
@@ -409,7 +411,7 @@ bool sef_funcao_compilada_executar_i64(const SefFuncaoCompilada *funcao, const i
                                        SefErro *erro) {
     if (funcao == NULL || resultado == NULL) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "funcao compilada ou resultado ausente");
+        sef_erro_definir(erro, 0, 0, "missing compiled function or result");
         return false;
     }
     int64_t resultado_i64 = 0;
@@ -427,7 +429,7 @@ bool sef_funcao_compilada_gravar_elf(const SefFuncaoCompilada *funcao, const cha
                                      const char *caminho, SefErro *erro) {
     if (funcao == NULL) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "funcao compilada ausente para gravar ELF");
+        sef_erro_definir(erro, 0, 0, "missing compiled function for ELF output");
         return false;
     }
     if (funcao->codigo.arquitetura == SEF_ARQUITETURA_X64 &&
@@ -447,7 +449,7 @@ bool sef_funcao_compilada_gravar_coff(const SefFuncaoCompilada *funcao, const ch
                                       const char *caminho, SefErro *erro) {
     if (funcao == NULL) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "funcao compilada ausente para gravar COFF");
+        sef_erro_definir(erro, 0, 0, "missing compiled function for COFF output");
         return false;
     }
     if (funcao->codigo.arquitetura == SEF_ARQUITETURA_X64 &&
@@ -467,7 +469,7 @@ bool sef_funcao_compilada_gravar_macho(const SefFuncaoCompilada *funcao, const c
                                        const char *caminho, SefErro *erro) {
     if (funcao == NULL) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "funcao compilada ausente para gravar Mach-O");
+        sef_erro_definir(erro, 0, 0, "missing compiled function for Mach-O output");
         return false;
     }
     if (funcao->codigo.arquitetura == SEF_ARQUITETURA_X64 &&
@@ -498,13 +500,13 @@ static SefFuncaoCompilada *compilar_simbolo_para_instalacao(SefRuntime *runtime,
                                                             SefValor *funcao, SefErro *erro) {
     if (runtime == NULL || simbolo == NULL || simbolo->tipo != SEF_TIPO_SIMBOLO) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "%s exige um simbolo de funcao", operacao);
+        sef_erro_definir(erro, 0, 0, "%s requires a function symbol", operacao);
         return NULL;
     }
     if (!sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, funcao) ||
         (*funcao)->tipo != SEF_TIPO_FUNCAO || (*funcao)->como.funcao.macro) {
         sef_erro_limpar(erro);
-        sef_erro_definir(erro, 0, 0, "simbolo nao nomeia funcao Lisp compilavel");
+        sef_erro_definir(erro, 0, 0, "symbol does not name a compilable Lisp function");
         return NULL;
     }
     char *nome = sef_valor_para_texto(runtime, simbolo, true, erro);

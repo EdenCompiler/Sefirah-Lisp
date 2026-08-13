@@ -25,23 +25,23 @@ int main(void) {
     verificar(sef_sessao_ide_executar_editor(sessao, &erro), "IDE executou o editor");
     verificar(strstr(sef_sessao_ide_transcricao(sessao), "42\n") != NULL,
               "transcricao recebeu o resultado do editor");
-    verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 42") != NULL,
+    verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALUE: 42") != NULL,
               "inspetor acompanhou o valor avaliado");
     verificar(sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_PROXIMA, &erro) &&
-                  strstr(sef_sessao_ide_navegador(sessao), "DEFINICOES: 1") != NULL &&
-                  strstr(sef_sessao_ide_navegador(sessao), "FUNCAO     resposta") != NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "DEFINITIONS: 1") != NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "FUNCTION   resposta") != NULL &&
                   sef_sessao_ide_cursor_editor(sessao) == strlen("(defun "),
               "navegador catalogou e visitou uma definicao estrutural");
     verificar(
         sef_sessao_ide_editor_definir(
             sessao, "; (defun falsa ())\n(defun primeira () 1)\n(defmacro segunda (x) x)", &erro) &&
             sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_PROXIMA, &erro) &&
-            strstr(sef_sessao_ide_navegador(sessao), "DEFINICOES: 2") != NULL &&
-            strstr(sef_sessao_ide_navegador(sessao), "L2  FUNCAO     primeira") != NULL &&
+            strstr(sef_sessao_ide_navegador(sessao), "DEFINITIONS: 2") != NULL &&
+            strstr(sef_sessao_ide_navegador(sessao), "L2  FUNCTION   primeira") != NULL &&
             sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_PROXIMA, &erro) &&
-            strstr(sef_sessao_ide_estado(sessao), "Definicao: segunda") != NULL &&
+            strstr(sef_sessao_ide_estado(sessao), "Definition: segunda") != NULL &&
             sef_sessao_ide_navegar_definicao(sessao, SEF_DEFINICAO_ANTERIOR, &erro) &&
-            strstr(sef_sessao_ide_estado(sessao), "Definicao: primeira") != NULL,
+            strstr(sef_sessao_ide_estado(sessao), "Definition: primeira") != NULL,
         "navegador ignorou comentarios e percorreu definicoes nos dois sentidos");
     const char *codigo_referencias = "(defun somar (a b) (+ a b))\n"
                                      "(defun usar-soma (x) (list \"somar\" (somar x 1)))\n"
@@ -55,18 +55,18 @@ int main(void) {
                   primeira_referencia != NULL &&
                   sef_sessao_ide_cursor_editor(sessao) ==
                       (size_t)(primeira_referencia - codigo_referencias + 1) &&
-                  strstr(sef_sessao_ide_navegador(sessao), "REFERENCIAS: 2") != NULL &&
-                  strstr(sef_sessao_ide_navegador(sessao), "FUNCAO     usar-soma") != NULL,
+                  strstr(sef_sessao_ide_navegador(sessao), "REFERENCES: 2") != NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "FUNCTION   usar-soma") != NULL,
               "consulta de callers ignorou texto/comentario e visitou a primeira referencia");
     verificar(sef_sessao_ide_ir_para_definicao(sessao, &erro) &&
                   sef_sessao_ide_cursor_editor(sessao) == strlen("(defun ") &&
-                  strstr(sef_sessao_ide_estado(sessao), "Definicao localizada: somar") != NULL,
+                  strstr(sef_sessao_ide_estado(sessao), "Definition found: somar") != NULL,
               "comando de Lisp Machine localizou a definicao do simbolo no cursor");
     verificar(sef_sessao_ide_navegar_referencia(sessao, SEF_REFERENCIA_ANTERIOR, &erro) &&
                   segunda_referencia != NULL &&
                   sef_sessao_ide_cursor_editor(sessao) ==
                       (size_t)(segunda_referencia - codigo_referencias + 1) &&
-                  strstr(sef_sessao_ide_estado(sessao), "Referencia 2/2") != NULL,
+                  strstr(sef_sessao_ide_estado(sessao), "Reference 2/2") != NULL,
               "consulta de referencias percorreu callers no sentido anterior com retorno");
     verificar(sef_sessao_ide_editor_definir(
                   sessao, "(defun resposta (x)\n  (+ x 2))\n(resposta 40)\n", &erro),
@@ -75,7 +75,7 @@ int main(void) {
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(let ((x 40))", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro),
               "ouvinte reteve primeira linha incompleta");
-    verificar(strstr(sef_sessao_ide_estado(sessao), "continuacao") != NULL,
+    verificar(strstr(sef_sessao_ide_estado(sessao), "continuation") != NULL,
               "estado informou continuacao do ouvinte");
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(+ x 2))", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro),
@@ -87,11 +87,11 @@ int main(void) {
               "ouvinte aceitou valores multiplos");
     verificar(strstr(sef_sessao_ide_transcricao(sessao), "40\n41\n42\n") != NULL,
               "ouvinte mostrou todos os valores");
-    verificar(strstr(sef_sessao_ide_inspetor(sessao), "OBJETOS: 3") != NULL,
+    verificar(strstr(sef_sessao_ide_inspetor(sessao), "OBJECTS: 3") != NULL,
               "inspetor reteve valores multiplos");
     verificar(sef_sessao_ide_inspetor_mover(sessao, SEF_INSPETOR_PROXIMO, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "RAIZ: 2/3") != NULL &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 41") != NULL,
+                  strstr(sef_sessao_ide_inspetor(sessao), "ROOT: 2/3") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALUE: 41") != NULL,
               "inspetor navegou pela prateleira de objetos vivos");
 
     verificar(sef_sessao_ide_ouvinte_mover_historico(sessao, SEF_HISTORICO_ANTERIOR, &erro) &&
@@ -109,45 +109,45 @@ int main(void) {
 
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(values #(10 20) (cons 30 40))", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "COMPONENTES: 2") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "COMPONENTS: 2") != NULL &&
                   strstr(sef_sessao_ide_inspetor(sessao), "> [0]: 10") != NULL,
               "inspetor geral abriu a estrutura do primeiro valor vivo");
     verificar(
         sef_sessao_ide_inspetor_mover_componente(sessao, SEF_COMPONENTE_INSPETOR_PROXIMO, &erro) &&
             strstr(sef_sessao_ide_inspetor(sessao), "> [1]: 20") != NULL &&
             sef_sessao_ide_inspetor_entrar(sessao, &erro) &&
-            strstr(sef_sessao_ide_inspetor(sessao), "PROFUNDIDADE: 1") != NULL &&
-            strstr(sef_sessao_ide_inspetor(sessao), "CAMINHO: RAIZ > [1]") != NULL &&
-            strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 20") != NULL,
+            strstr(sef_sessao_ide_inspetor(sessao), "DEPTH: 1") != NULL &&
+            strstr(sef_sessao_ide_inspetor(sessao), "PATH: ROOT > [1]") != NULL &&
+            strstr(sef_sessao_ide_inspetor(sessao), "VALUE: 20") != NULL,
         "inspetor entrou em componente selecionado e manteve caminho enraizado");
     verificar(sef_sessao_ide_inspetor_voltar(sessao, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "PROFUNDIDADE: 0") != NULL &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: #(10 20)") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "DEPTH: 0") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALUE: #(10 20)") != NULL &&
                   sef_sessao_ide_inspetor_mover(sessao, SEF_INSPETOR_PROXIMO, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: (30 . 40)") != NULL &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "> PRIMEIRO: 30") != NULL,
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALUE: (30 . 40)") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "> CAR: 30") != NULL,
               "inspetor voltou e alternou entre raizes estruturadas");
 
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(error \"falha depuravel\")", &erro) &&
                   !sef_sessao_ide_ouvinte_enviar(sessao, &erro) && erro.ocorreu &&
-                  strstr(sef_sessao_ide_depurador(sessao), "CONDICOES: 1") != NULL &&
-                  strstr(sef_sessao_ide_depurador(sessao), "TIPO: ERROR") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "CONDITIONS: 1") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "TYPE: ERROR") != NULL &&
                   strstr(sef_sessao_ide_depurador(sessao), "falha depuravel") != NULL,
               "depurador reteve uma condicao Lisp nao tratada");
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(+ 20 22)", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
                   sef_sessao_ide_inspecionar_condicao(sessao, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "TIPO: CONDITION") != NULL &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "MENSAGEM: \"falha depuravel\"") != NULL,
+                  strstr(sef_sessao_ide_inspetor(sessao), "TYPE: CONDITION") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "MESSAGE: \"falha depuravel\"") != NULL,
               "condicao historica permaneceu enraizada e abriu no inspetor geral");
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "simbolo-sem-valor", &erro) &&
                   !sef_sessao_ide_ouvinte_enviar(sessao, &erro) && erro.ocorreu &&
-                  strstr(sef_sessao_ide_depurador(sessao), "CONDICOES: 2") != NULL &&
-                  strstr(sef_sessao_ide_depurador(sessao), "simbolo") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "CONDITIONS: 2") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "symbol") != NULL &&
                   sef_sessao_ide_navegar_condicao(sessao, SEF_CONDICAO_ANTERIOR, &erro) &&
-                  strstr(sef_sessao_ide_depurador(sessao), "SELECIONADA: 1/2") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "SELECTED: 1/2") != NULL &&
                   sef_sessao_ide_navegar_condicao(sessao, SEF_CONDICAO_PROXIMA, &erro) &&
-                  strstr(sef_sessao_ide_depurador(sessao), "SELECIONADA: 2/2") != NULL,
+                  strstr(sef_sessao_ide_depurador(sessao), "SELECTED: 2/2") != NULL,
               "depurador sintetizou e navegou por condicoes de falhas internas");
     bool historico_limitado = true;
     for (size_t i = 0; i < 33; i++) {
@@ -157,7 +157,7 @@ int main(void) {
                              !sef_sessao_ide_ouvinte_enviar(sessao, &erro) && erro.ocorreu;
     }
     verificar(historico_limitado &&
-                  strstr(sef_sessao_ide_depurador(sessao), "CONDICOES: 32") != NULL,
+                  strstr(sef_sessao_ide_depurador(sessao), "CONDITIONS: 32") != NULL,
               "historico do depurador descartou condicoes antigas acima do limite");
 
     verificar(sef_sessao_ide_editor_inserir(sessao, "; ação", &erro), "editor inseriu texto UTF-8");
@@ -208,12 +208,11 @@ int main(void) {
     sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_CIMA);
     verificar(sef_sessao_ide_editor_selecionar_forma(sessao, &erro) &&
                   sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
-                  inicio_selecao == 0 &&
-                  fim_selecao == strlen("(defun selecionada () 42)"),
+                  inicio_selecao == 0 && fim_selecao == strlen("(defun selecionada () 42)"),
               "Shift+F6 selecionou a forma Lisp completa no cursor");
     verificar(sef_sessao_ide_editor_inserir(sessao, "(defun substituida () 43)", &erro) &&
-                  strcmp(sef_sessao_ide_editor(sessao),
-                         "(defun substituida () 43)\n(+ 1 2)") == 0 &&
+                  strcmp(sef_sessao_ide_editor(sessao), "(defun substituida () 43)\n(+ 1 2)") ==
+                      0 &&
                   !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
                   sef_sessao_ide_editor_desfazer(sessao, &erro) &&
                   strcmp(sef_sessao_ide_editor(sessao), codigo_estrutural) == 0,
@@ -240,24 +239,24 @@ int main(void) {
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),
               "editor avaliou somente a forma completa no cursor");
-    verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALOR: 15") != NULL,
+    verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALUE: 15") != NULL,
               "avaliacao estrutural atualizou o inspetor");
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n'|Nome com espaço|",
                                             &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "VALOR: |Nome com espaço|") != NULL,
+                  strstr(sef_sessao_ide_inspetor(sessao), "VALUE: |Nome com espaço|") != NULL,
               "avaliacao estrutural aceitou simbolo escapado com espacos");
 
     verificar(sef_sessao_ide_editor_definir(
                   sessao, "(define valor-incremental 40)\n(+ valor-incremental 2)", &erro) &&
                   sef_sessao_ide_executar_editor(sessao, &erro) &&
                   sef_sessao_ide_executar_alteracoes(sessao, &erro) &&
-                  strstr(sef_sessao_ide_estado(sessao), "Nenhuma forma alterada") != NULL,
+                  strstr(sef_sessao_ide_estado(sessao), "No changed forms") != NULL,
               "avaliacao incremental ignorou formas ja instaladas no mundo");
     verificar(sef_sessao_ide_editor_definir(
                   sessao, "(define valor-incremental 41)\n(+ valor-incremental 2)", &erro) &&
                   sef_sessao_ide_executar_alteracoes(sessao, &erro) &&
-                  strstr(sef_sessao_ide_estado(sessao), "1 forma(s)") != NULL &&
+                  strstr(sef_sessao_ide_estado(sessao), "1 changed form(s)") != NULL &&
                   sef_sessao_ide_ouvinte_inserir(sessao, "valor-incremental", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
                   strstr(sef_sessao_ide_transcricao(sessao), "\n41\n") != NULL,
@@ -274,7 +273,7 @@ int main(void) {
                                           "(set 'contador-incremental (+ contador-incremental 1))",
                                           &erro) &&
             sef_sessao_ide_executar_alteracoes(sessao, &erro) &&
-            strstr(sef_sessao_ide_estado(sessao), "1 forma(s)") != NULL &&
+            strstr(sef_sessao_ide_estado(sessao), "1 changed form(s)") != NULL &&
             sef_sessao_ide_ouvinte_inserir(sessao, "contador-incremental", &erro) &&
             sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
             strstr(sef_sessao_ide_transcricao(sessao), "\n2\n") != NULL,
@@ -287,7 +286,7 @@ int main(void) {
                   sef_sessao_ide_ouvinte_inserir(sessao, "(set 'estado-do-mundo 99)", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
                   sef_sessao_ide_imagem_restaurar(sessao, &erro) &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "MUNDO RESTAURADO") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "WORLD RESTORED") != NULL &&
                   sef_sessao_ide_ouvinte_inserir(sessao, "estado-do-mundo", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
                   strstr(sef_sessao_ide_transcricao(sessao), "\n40\n") != NULL,

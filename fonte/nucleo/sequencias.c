@@ -12,14 +12,14 @@ static bool quantidade(SefRuntime *runtime, SefValor argumentos, size_t minimo, 
     size_t obtida = sef_lista_tamanho(runtime, argumentos, &propria);
     if (propria && obtida >= minimo && obtida <= maximo)
         return true;
-    sef_erro_definir(erro, 0, 0, "%s recebeu uma quantidade invalida de argumentos", nome);
+    sef_erro_definir(erro, 0, 0, "%s received an invalid number of arguments", nome);
     return false;
 }
 
 static bool indice(SefValor valor, const char *nome, size_t *resultado, SefErro *erro) {
     if (valor->tipo != SEF_TIPO_INTEIRO || valor->como.inteiro < 0 ||
         (uint64_t)valor->como.inteiro > SIZE_MAX) {
-        sef_erro_definir(erro, 0, 0, "%s exige indices inteiros nao negativos", nome);
+        sef_erro_definir(erro, 0, 0, "%s requires non-negative integer indices", nome);
         return false;
     }
     *resultado = (size_t)valor->como.inteiro;
@@ -38,14 +38,14 @@ static bool tamanho_sequencia(SefRuntime *runtime, SefValor sequencia, const cha
                                        &valido);
         if (valido)
             return true;
-        sef_erro_definir(erro, 0, 0, "%s recebeu string com UTF-8 invalido", nome);
+        sef_erro_definir(erro, 0, 0, "%s received a string with invalid UTF-8", nome);
         return false;
     }
     bool propria = false;
     *tamanho = sef_lista_tamanho(runtime, sequencia, &propria);
     if (propria)
         return true;
-    sef_erro_definir(erro, 0, 0, "%s exige uma sequencia", nome);
+    sef_erro_definir(erro, 0, 0, "%s requires a sequence", nome);
     return false;
 }
 
@@ -53,7 +53,7 @@ static SefValor copiar_lista(SefRuntime *runtime, SefValor lista, bool inverter,
     SefValor acumulada = runtime->nulo;
     for (SefValor cursor = lista; cursor != runtime->nulo; cursor = resto(cursor)) {
         if (cursor->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "operacao de sequencia recebeu lista impropria");
+            sef_erro_definir(erro, 0, 0, "sequence operation received an improper list");
             return NULL;
         }
         acumulada = sef_par_novo(runtime, primeiro(cursor), acumulada, erro);
@@ -98,7 +98,7 @@ SefValor sef_primitiva_reverse(SefRuntime *runtime, SefValor argumentos, SefErro
         size_t tamanho = sequencia->como.texto.tamanho;
         char *dados = tamanho == 0 ? NULL : malloc(tamanho);
         if (tamanho > 0 && dados == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente em REVERSE");
+            sef_erro_definir(erro, 0, 0, "not enough memory in REVERSE");
             return NULL;
         }
         size_t origem = 0;
@@ -109,7 +109,7 @@ SefValor sef_primitiva_reverse(SefRuntime *runtime, SefValor argumentos, SefErro
             if (!sef_utf8_decodificar(sequencia->como.texto.dados + origem, tamanho - origem,
                                       &consumidos, &codigo)) {
                 free(dados);
-                sef_erro_definir(erro, 0, 0, "REVERSE recebeu string com UTF-8 invalido");
+                sef_erro_definir(erro, 0, 0, "REVERSE received a string with invalid UTF-8");
                 return NULL;
             }
             destino -= consumidos;
@@ -134,7 +134,7 @@ static bool intervalo(SefRuntime *runtime, SefValor sequencia, SefValor inicio_v
     if (!possui_fim)
         *fim = tamanho;
     if (*inicio > *fim || *fim > tamanho) {
-        sef_erro_definir(erro, 0, 0, "intervalo invalido em %s", nome);
+        sef_erro_definir(erro, 0, 0, "invalid range in %s", nome);
         return false;
     }
     return true;
@@ -189,7 +189,7 @@ SefValor sef_primitiva_subseq(SefRuntime *runtime, SefValor argumentos, SefErro 
     if (sequencia->tipo == SEF_TIPO_TEXTO) {
         size_t byte_inicio, byte_fim;
         if (!intervalo_texto_bytes(sequencia, inicio, fim, &byte_inicio, &byte_fim)) {
-            sef_erro_definir(erro, 0, 0, "SUBSEQ recebeu string com UTF-8 invalido");
+            sef_erro_definir(erro, 0, 0, "SUBSEQ received a string with invalid UTF-8");
             return NULL;
         }
         return sef_texto_novo(runtime, sequencia->como.texto.dados + byte_inicio,
@@ -221,7 +221,7 @@ SefValor sef_primitiva_fill(SefRuntime *runtime, SefValor argumentos, SefErro *e
         SefValor chave = primeiro(argumentos);
         argumentos = resto(argumentos);
         if (argumentos == runtime->nulo) {
-            sef_erro_definir(erro, 0, 0, "FILL recebeu opcao sem valor");
+            sef_erro_definir(erro, 0, 0, "FILL received an option without a value");
             return NULL;
         }
         SefValor valor = primeiro(argumentos);
@@ -231,7 +231,7 @@ SefValor sef_primitiva_fill(SefRuntime *runtime, SefValor argumentos, SefErro *e
         else if (sef_simbolo_tem_nome(chave, "END"))
             fim_valor = valor;
         else {
-            sef_erro_definir(erro, 0, 0, "opcao desconhecida para FILL");
+            sef_erro_definir(erro, 0, 0, "unknown FILL option");
             return NULL;
         }
     }
@@ -255,7 +255,7 @@ SefValor sef_primitiva_fill(SefRuntime *runtime, SefValor argumentos, SefErro *e
     }
     if (sequencia->tipo == SEF_TIPO_TEXTO) {
         if (item->tipo != SEF_TIPO_CARACTERE) {
-            sef_erro_definir(erro, 0, 0, "FILL de string exige um caractere");
+            sef_erro_definir(erro, 0, 0, "FILL on a string requires a character");
             return NULL;
         }
         for (size_t i = inicio; i < fim; i++) {

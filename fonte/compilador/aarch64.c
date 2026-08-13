@@ -41,7 +41,7 @@ static void erro_definir(SefErro *erro, const char *mensagem) {
 static bool reservar(EmissorAarch64 *emissor, size_t adicional) {
     SefCodigoNativo *codigo = emissor->codigo;
     if (adicional > SIZE_MAX - codigo->tamanho) {
-        erro_definir(emissor->erro, "codigo AArch64 excedeu o limite de tamanho");
+        erro_definir(emissor->erro, "AArch64 code exceeded the size limit");
         return false;
     }
     size_t necessario = codigo->tamanho + adicional;
@@ -57,7 +57,7 @@ static bool reservar(EmissorAarch64 *emissor, size_t adicional) {
     }
     unsigned char *bytes = realloc(codigo->bytes, capacidade);
     if (bytes == NULL) {
-        erro_definir(emissor->erro, "memoria insuficiente para codigo AArch64");
+        erro_definir(emissor->erro, "not enough memory for AArch64 code");
         return false;
     }
     codigo->bytes = bytes;
@@ -82,7 +82,7 @@ static bool adicionar_relocacao(EmissorAarch64 *emissor, size_t deslocamento, co
         SefRelocacaoNativa *relocacoes =
             realloc(codigo->relocacoes, capacidade * sizeof(*relocacoes));
         if (relocacoes == NULL) {
-            erro_definir(emissor->erro, "memoria insuficiente para relocacao AArch64");
+            erro_definir(emissor->erro, "not enough memory for an AArch64 relocation");
             return false;
         }
         codigo->relocacoes = relocacoes;
@@ -91,7 +91,7 @@ static bool adicionar_relocacao(EmissorAarch64 *emissor, size_t deslocamento, co
     size_t tamanho = strlen(simbolo) + 1u;
     char *copia = malloc(tamanho);
     if (copia == NULL) {
-        erro_definir(emissor->erro, "memoria insuficiente para simbolo de relocacao AArch64");
+        erro_definir(emissor->erro, "not enough memory for an AArch64 relocation symbol");
         return false;
     }
     memcpy(copia, simbolo, tamanho);
@@ -151,7 +151,7 @@ static bool adicionar_correcao(EmissorAarch64 *emissor, uint32_t bloco) {
             emissor->capacidade_correcoes == 0 ? 8 : emissor->capacidade_correcoes * 2;
         CorrecaoAarch64 *correcoes = realloc(emissor->correcoes, capacidade * sizeof(*correcoes));
         if (correcoes == NULL) {
-            erro_definir(emissor->erro, "memoria insuficiente para saltos AArch64");
+            erro_definir(emissor->erro, "not enough memory for AArch64 jumps");
             return false;
         }
         emissor->correcoes = correcoes;
@@ -191,7 +191,7 @@ static bool emitir_valor(EmissorAarch64 *emissor, SefInstrucaoIr ins) {
     if (ins.operacao == SEF_IR_PARAMETRO) {
         uint64_t deslocamento = (uint64_t)ins.imediato * 8u;
         if (deslocamento / 8u > 4095u) {
-            erro_definir(emissor->erro, "parametro excedeu o alcance do endereco AArch64");
+            erro_definir(emissor->erro, "parameter exceeded the AArch64 address range");
             return false;
         }
         uint32_t slot_argumentos = deslocamento_argumentos(emissor);
@@ -231,12 +231,12 @@ static bool emitir_valor(EmissorAarch64 *emissor, SefInstrucaoIr ins) {
 static bool corrigir_cbz_local(EmissorAarch64 *emissor, size_t posicao, size_t destino) {
     int64_t distancia = (int64_t)destino - (int64_t)posicao;
     if (distancia % 4 != 0) {
-        erro_definir(emissor->erro, "ramificacao AArch64 perdeu alinhamento");
+        erro_definir(emissor->erro, "AArch64 branch is misaligned");
         return false;
     }
     int64_t palavras = distancia / 4;
     if (palavras < -(1 << 18) || palavras >= (1 << 18)) {
-        erro_definir(emissor->erro, "ramificacao AArch64 excedeu imm19");
+        erro_definir(emissor->erro, "AArch64 branch exceeded the imm19 range");
         return false;
     }
     uint32_t instrucao = 0xb4000000u | (((uint32_t)palavras & 0x7ffffu) << 5u);
@@ -281,7 +281,7 @@ bool sef_funcao_ir_emitir_aarch64(const SefFuncaoIr *funcao, SefCodigoNativo *co
     erro_limpar(erro);
     if (funcao == NULL || codigo == NULL || codigo->bytes != NULL || codigo->relocacoes != NULL ||
         codigo->memoria_executavel != NULL) {
-        erro_definir(erro, "funcao ausente ou objeto de codigo AArch64 nao esta vazio");
+        erro_definir(erro, "missing function or nonempty AArch64 code object");
         return false;
     }
     if (!sef_funcao_ir_verificar(funcao, erro))
@@ -289,13 +289,13 @@ bool sef_funcao_ir_emitir_aarch64(const SefFuncaoIr *funcao, SefCodigoNativo *co
     uint64_t quadro = (uint64_t)funcao->quantidade_registradores * 16u + 8u;
     quadro = (quadro + 15u) & ~(uint64_t)15u;
     if (quadro > 4080u) {
-        erro_definir(erro, "quadro AArch64 excedeu o limite inicial de 4080 bytes");
+        erro_definir(erro, "AArch64 stack frame exceeded the initial 4080-byte limit");
         return false;
     }
     EmissorAarch64 emissor = {codigo, funcao, NULL, NULL, 0, 0, (uint32_t)quadro, erro};
     emissor.posicoes_blocos = malloc(funcao->quantidade_blocos * sizeof(*emissor.posicoes_blocos));
     if (emissor.posicoes_blocos == NULL) {
-        erro_definir(erro, "memoria insuficiente para blocos AArch64");
+        erro_definir(erro, "not enough memory for AArch64 blocks");
         return false;
     }
     codigo->arquitetura = SEF_ARQUITETURA_AARCH64;
@@ -311,13 +311,13 @@ bool sef_funcao_ir_emitir_aarch64(const SefFuncaoIr *funcao, SefCodigoNativo *co
         int64_t distancia =
             (int64_t)emissor.posicoes_blocos[correcao.bloco] - (int64_t)correcao.posicao;
         if (distancia % 4 != 0) {
-            erro_definir(erro, "salto AArch64 perdeu alinhamento");
+            erro_definir(erro, "AArch64 jump is misaligned");
             sucesso = false;
             break;
         }
         int64_t palavras = distancia / 4;
         if (palavras < -(1ll << 25) || palavras >= (1ll << 25)) {
-            erro_definir(erro, "salto AArch64 excedeu imm26");
+            erro_definir(erro, "AArch64 jump exceeded the imm26 range");
             sucesso = false;
             break;
         }

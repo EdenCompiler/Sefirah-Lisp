@@ -49,7 +49,7 @@ typedef struct RegistroImagem {
 static bool escrever_bytes(FILE *arquivo, const void *dados, size_t tamanho, SefErro *erro) {
     if (fwrite(dados, 1, tamanho, arquivo) == tamanho)
         return true;
-    sef_erro_definir(erro, 0, 0, "falha ao escrever imagem: %s", strerror(errno));
+    sef_erro_definir(erro, 0, 0, "failed to write image: %s", strerror(errno));
     return false;
 }
 
@@ -77,7 +77,7 @@ static bool escrever_texto(FILE *arquivo, const char *texto, uint32_t tamanho, S
 static bool ler_bytes(FILE *arquivo, void *dados, size_t tamanho, SefErro *erro) {
     if (fread(dados, 1, tamanho, arquivo) == tamanho)
         return true;
-    sef_erro_definir(erro, 0, 0, "imagem truncada ou ilegivel");
+    sef_erro_definir(erro, 0, 0, "truncated or unreadable image");
     return false;
 }
 
@@ -108,12 +108,12 @@ static bool ler_texto(FILE *arquivo, char **texto, uint32_t *tamanho, SefErro *e
     if (!ler_u32(arquivo, tamanho, erro))
         return false;
     if (*tamanho > SEF_IMAGEM_MAX_TEXTO) {
-        sef_erro_definir(erro, 0, 0, "texto excede o limite da imagem");
+        sef_erro_definir(erro, 0, 0, "string exceeds the image limit");
         return false;
     }
     *texto = malloc((size_t)*tamanho + 1);
     if (*texto == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao abrir imagem");
+        sef_erro_definir(erro, 0, 0, "not enough memory to open image");
         return false;
     }
     if (!ler_bytes(arquivo, *texto, *tamanho, erro)) {
@@ -137,7 +137,7 @@ static bool escrever_referencia(FILE *arquivo, SefValor *objetos, uint32_t quant
                                 SefValor valor, SefErro *erro) {
     uint32_t id = id_de(objetos, quantidade, valor);
     if (id == SEF_ID_INVALIDO) {
-        sef_erro_definir(erro, 0, 0, "imagem encontrou referencia fora do heap");
+        sef_erro_definir(erro, 0, 0, "image encountered a reference outside the heap");
         return false;
     }
     return escrever_u32(arquivo, id, erro);
@@ -176,14 +176,14 @@ static bool escrever_objeto(FILE *arquivo, SefValor objeto, SefValor *objetos, u
         return escrever_u64(arquivo, bits, erro);
     case SEF_TIPO_TEXTO:
         if (objeto->como.texto.tamanho > UINT32_MAX) {
-            sef_erro_definir(erro, 0, 0, "texto grande demais para imagem");
+            sef_erro_definir(erro, 0, 0, "string is too large for image");
             return false;
         }
         return escrever_texto(arquivo, objeto->como.texto.dados,
                               (uint32_t)objeto->como.texto.tamanho, erro);
     case SEF_TIPO_SIMBOLO:
         if (objeto->como.simbolo.tamanho > UINT32_MAX) {
-            sef_erro_definir(erro, 0, 0, "nome de simbolo grande demais para imagem");
+            sef_erro_definir(erro, 0, 0, "symbol name is too large for image");
             return false;
         }
         return escrever_texto(arquivo, objeto->como.simbolo.nome,
@@ -263,21 +263,20 @@ static bool escrever_objeto(FILE *arquivo, SefValor objeto, SefValor *objetos, u
     }
     case SEF_TIPO_STREAM:
         if (objeto->como.stream.padrao == 0 && !objeto->como.stream.fechado) {
-            sef_erro_definir(erro, 0, 0, "feche streams de arquivo antes de salvar a imagem");
+            sef_erro_definir(erro, 0, 0, "close file streams before saving the image");
             return false;
         }
         return escrever_u8(arquivo, objeto->como.stream.padrao, erro) &&
                escrever_u8(arquivo, objeto->como.stream.fechado ? 1 : 0, erro);
     case SEF_TIPO_BIBLIOTECA:
         if (!objeto->como.biblioteca.fechada) {
-            sef_erro_definir(erro, 0, 0,
-                             "feche bibliotecas compartilhadas antes de salvar a imagem");
+            sef_erro_definir(erro, 0, 0, "close shared libraries before saving the image");
             return false;
         }
         return true;
     case SEF_TIPO_VETOR:
         if (objeto->como.vetor.tamanho > UINT32_MAX) {
-            sef_erro_definir(erro, 0, 0, "vetor grande demais para imagem");
+            sef_erro_definir(erro, 0, 0, "vector is too large for image");
             return false;
         }
         if (!escrever_u32(arquivo, (uint32_t)objeto->como.vetor.tamanho, erro))
@@ -311,18 +310,18 @@ static bool escrever_objeto(FILE *arquivo, SefValor objeto, SefValor *objetos, u
 bool sef_runtime_imagem_salvar(SefRuntime *runtime, const char *caminho, SefErro *erro) {
     sef_erro_limpar(erro);
     if (runtime == NULL || caminho == NULL || caminho[0] == '\0') {
-        sef_erro_definir(erro, 0, 0, "runtime ou caminho de imagem ausente");
+        sef_erro_definir(erro, 0, 0, "missing runtime or image path");
         return false;
     }
     sef_runtime_coletar(runtime, runtime->nulo);
     if (runtime->quantidade_objetos > UINT32_MAX) {
-        sef_erro_definir(erro, 0, 0, "heap grande demais para o formato de imagem v1");
+        sef_erro_definir(erro, 0, 0, "heap is too large for the v1 image format");
         return false;
     }
     uint32_t quantidade = (uint32_t)runtime->quantidade_objetos;
     SefValor *objetos = malloc((size_t)quantidade * sizeof(*objetos));
     if (objetos == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para indexar imagem");
+        sef_erro_definir(erro, 0, 0, "not enough memory to index image");
         return false;
     }
     uint32_t indice = 0;
@@ -333,14 +332,13 @@ bool sef_runtime_imagem_salvar(SefRuntime *runtime, const char *caminho, SefErro
     char *temporario = malloc(tamanho_caminho + 6);
     if (temporario == NULL) {
         free(objetos);
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para caminho temporario");
+        sef_erro_definir(erro, 0, 0, "not enough memory for temporary path");
         return false;
     }
     snprintf(temporario, tamanho_caminho + 6, "%s.tmp", caminho);
     FILE *arquivo = fopen(temporario, "wb");
     if (arquivo == NULL) {
-        sef_erro_definir(erro, 0, 0, "nao foi possivel criar '%s': %s", temporario,
-                         strerror(errno));
+        sef_erro_definir(erro, 0, 0, "could not create '%s': %s", temporario, strerror(errno));
         free(temporario);
         free(objetos);
         return false;
@@ -371,16 +369,16 @@ bool sef_runtime_imagem_salvar(SefRuntime *runtime, const char *caminho, SefErro
     for (uint32_t i = 0; sucesso && i < quantidade; i++)
         sucesso = escrever_objeto(arquivo, objetos[i], objetos, quantidade, erro);
     if (sucesso && fflush(arquivo) != 0) {
-        sef_erro_definir(erro, 0, 0, "falha ao sincronizar imagem: %s", strerror(errno));
+        sef_erro_definir(erro, 0, 0, "failed to synchronize image: %s", strerror(errno));
         sucesso = false;
     }
     if (fclose(arquivo) != 0 && sucesso) {
-        sef_erro_definir(erro, 0, 0, "falha ao fechar imagem: %s", strerror(errno));
+        sef_erro_definir(erro, 0, 0, "failed to close image: %s", strerror(errno));
         sucesso = false;
     }
     if (sucesso) {
         if (!arquivo_substituir(temporario, caminho)) {
-            sef_erro_definir(erro, 0, 0, "nao foi possivel instalar imagem: %s", strerror(errno));
+            sef_erro_definir(erro, 0, 0, "could not install image: %s", strerror(errno));
             sucesso = false;
         }
     }
@@ -418,7 +416,7 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
                                        : SEF_TIPO_BIBLIOTECA;
     if (!ler_u8(arquivo, &tipo, erro) || tipo > maior_tipo) {
         if (!erro->ocorreu)
-            sef_erro_definir(erro, 0, 0, "tipo de objeto invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid object type in image");
         return false;
     }
     registro->tipo = (SefTipo)tipo;
@@ -458,12 +456,12 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
             !ler_u32(arquivo, &registro->quantidade_vinculos, erro))
             return false;
         if (registro->quantidade_vinculos > SEF_IMAGEM_MAX_OBJETOS) {
-            sef_erro_definir(erro, 0, 0, "vinculos demais na imagem");
+            sef_erro_definir(erro, 0, 0, "too many bindings in image");
             return false;
         }
         registro->vinculos = malloc((size_t)registro->quantidade_vinculos * 2u * sizeof(uint32_t));
         if (registro->vinculos == NULL && registro->quantidade_vinculos > 0) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para vinculos da imagem");
+            sef_erro_definir(erro, 0, 0, "not enough memory for image bindings");
             return false;
         }
         for (uint32_t i = 0; i < registro->quantidade_vinculos * 2u; i++) {
@@ -473,12 +471,12 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
         if (!ler_u32(arquivo, &registro->quantidade_funcoes, erro))
             return false;
         if (registro->quantidade_funcoes > SEF_IMAGEM_MAX_OBJETOS) {
-            sef_erro_definir(erro, 0, 0, "funcoes demais na imagem");
+            sef_erro_definir(erro, 0, 0, "too many functions in image");
             return false;
         }
         registro->funcoes = malloc((size_t)registro->quantidade_funcoes * 2u * sizeof(uint32_t));
         if (registro->funcoes == NULL && registro->quantidade_funcoes > 0) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para funcoes da imagem");
+            sef_erro_definir(erro, 0, 0, "not enough memory for image functions");
             return false;
         }
         for (uint32_t i = 0; i < registro->quantidade_funcoes * 2u; i++) {
@@ -497,7 +495,7 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
         registro->simbolos_pacote =
             malloc((size_t)registro->quantidade_simbolos_pacote * sizeof(uint32_t));
         if (registro->simbolos_pacote == NULL && registro->quantidade_simbolos_pacote > 0) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para simbolos de pacote");
+            sef_erro_definir(erro, 0, 0, "not enough memory for package symbols");
             return false;
         }
         for (uint32_t i = 0; i < registro->quantidade_simbolos_pacote; i++) {
@@ -509,7 +507,7 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
             return false;
         registro->usados = malloc((size_t)registro->quantidade_usados * sizeof(uint32_t));
         if (registro->usados == NULL && registro->quantidade_usados > 0) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para pacotes usados");
+            sef_erro_definir(erro, 0, 0, "not enough memory for used packages");
             return false;
         }
         for (uint32_t i = 0; i < registro->quantidade_usados; i++) {
@@ -521,7 +519,7 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
             return false;
         registro->exportados = malloc((size_t)registro->quantidade_exportados * sizeof(uint32_t));
         if (registro->exportados == NULL && registro->quantidade_exportados > 0) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para simbolos exportados");
+            sef_erro_definir(erro, 0, 0, "not enough memory for exported symbols");
             return false;
         }
         for (uint32_t i = 0; i < registro->quantidade_exportados; i++) {
@@ -545,7 +543,7 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
             return false;
         registro->itens_vetor = malloc((size_t)registro->quantidade_itens_vetor * sizeof(uint32_t));
         if (registro->itens_vetor == NULL && registro->quantidade_itens_vetor > 0) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para vetor da imagem");
+            sef_erro_definir(erro, 0, 0, "not enough memory for image vector");
             return false;
         }
         for (uint32_t i = 0; i < registro->quantidade_itens_vetor; i++) {
@@ -559,13 +557,13 @@ static bool ler_registro(FILE *arquivo, RegistroImagem *registro, unsigned int v
         if (!ler_u32(arquivo, &registro->quantidade_itens_hash, erro))
             return false;
         if (registro->quantidade_itens_hash > SEF_IMAGEM_MAX_OBJETOS) {
-            sef_erro_definir(erro, 0, 0, "itens demais na tabela hash da imagem");
+            sef_erro_definir(erro, 0, 0, "too many items in image hash table");
             return false;
         }
         registro->itens_hash =
             malloc((size_t)registro->quantidade_itens_hash * 2u * sizeof(uint32_t));
         if (registro->itens_hash == NULL && registro->quantidade_itens_hash > 0) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para tabela hash da imagem");
+            sef_erro_definir(erro, 0, 0, "not enough memory for image hash table");
             return false;
         }
         for (uint32_t i = 0; i < registro->quantidade_itens_hash * 2u; i++) {
@@ -587,20 +585,20 @@ static bool validar_tabelas_de_pacotes(const SefRuntime *runtime, SefErro *erro)
         for (size_t j = 0; j < pacote->como.pacote.quantidade_simbolos; j++) {
             SefValor simbolo = pacote->como.pacote.simbolos[j];
             if (simbolo != runtime->nulo && simbolo->tipo != SEF_TIPO_SIMBOLO) {
-                sef_erro_definir(erro, 0, 0, "tabela de simbolos de pacote corrompida");
+                sef_erro_definir(erro, 0, 0, "corrupt package symbol table");
                 return false;
             }
         }
         for (size_t j = 0; j < pacote->como.pacote.quantidade_exportados; j++) {
             SefValor simbolo = pacote->como.pacote.exportados[j];
             if (simbolo != runtime->nulo && simbolo->tipo != SEF_TIPO_SIMBOLO) {
-                sef_erro_definir(erro, 0, 0, "tabela de exportacoes de pacote corrompida");
+                sef_erro_definir(erro, 0, 0, "corrupt package export table");
                 return false;
             }
         }
         for (size_t j = 0; j < pacote->como.pacote.quantidade_usados; j++) {
             if (pacote->como.pacote.usados[j]->tipo != SEF_TIPO_PACOTE) {
-                sef_erro_definir(erro, 0, 0, "lista de uso de pacote corrompida");
+                sef_erro_definir(erro, 0, 0, "corrupt package use list");
                 return false;
             }
         }
@@ -612,7 +610,7 @@ static bool validar_registro(const RegistroImagem *registro, uint32_t quantidade
     if (registro->tipo == SEF_TIPO_CARACTERE) {
         uint32_t codigo = registro->caractere;
         if (codigo > 0x10ffffu || (codigo >= 0xd800u && codigo <= 0xdfffu)) {
-            sef_erro_definir(erro, 0, 0, "caractere invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid character in image");
             return false;
         }
     }
@@ -627,49 +625,49 @@ static bool validar_registro(const RegistroImagem *registro, uint32_t quantidade
         referencias = 1;
     for (uint32_t i = 0; i < referencias; i++) {
         if (!id_valido(registro->referencias[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "referencia invalida na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid reference in image");
             return false;
         }
     }
     for (uint32_t i = 0; i < registro->quantidade_vinculos * 2u; i++) {
         if (!id_valido(registro->vinculos[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "vinculo invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid binding in image");
             return false;
         }
     }
     for (uint32_t i = 0; i < registro->quantidade_funcoes * 2u; i++) {
         if (!id_valido(registro->funcoes[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "funcao invalida na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid function in image");
             return false;
         }
     }
     for (uint32_t i = 0; i < registro->quantidade_simbolos_pacote; i++) {
         if (!id_valido(registro->simbolos_pacote[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "simbolo de pacote invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid package symbol in image");
             return false;
         }
     }
     for (uint32_t i = 0; i < registro->quantidade_usados; i++) {
         if (!id_valido(registro->usados[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "pacote usado invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid used package in image");
             return false;
         }
     }
     for (uint32_t i = 0; i < registro->quantidade_exportados; i++) {
         if (!id_valido(registro->exportados[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "simbolo exportado invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid exported symbol in image");
             return false;
         }
     }
     for (uint32_t i = 0; i < registro->quantidade_itens_hash * 2u; i++) {
         if (!id_valido(registro->itens_hash[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "item de tabela hash invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid hash-table item in image");
             return false;
         }
     }
     for (uint32_t i = 0; i < registro->quantidade_itens_vetor; i++) {
         if (!id_valido(registro->itens_vetor[i], quantidade)) {
-            sef_erro_definir(erro, 0, 0, "item de vetor invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid vector item in image");
             return false;
         }
     }
@@ -680,8 +678,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
     sef_erro_limpar(erro);
     FILE *arquivo = fopen(caminho, "rb");
     if (arquivo == NULL) {
-        sef_erro_definir(erro, 0, 0, "nao foi possivel abrir imagem '%s': %s", caminho,
-                         strerror(errno));
+        sef_erro_definir(erro, 0, 0, "could not open image '%s': %s", caminho, strerror(errno));
         return NULL;
     }
     unsigned char recebida[8];
@@ -706,23 +703,23 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
     if (sucesso && (quantidade == 0 || quantidade > SEF_IMAGEM_MAX_OBJETOS ||
                     total_simbolos > quantidade || !id_valido(id_nulo, quantidade) ||
                     !id_valido(id_verdadeiro, quantidade) || !id_valido(id_global, quantidade))) {
-        sef_erro_definir(erro, 0, 0, "cabecalho da imagem e invalido");
+        sef_erro_definir(erro, 0, 0, "image header is invalid");
         sucesso = false;
     }
     if (!sucesso && !erro->ocorreu)
-        sef_erro_definir(erro, 0, 0, "assinatura ou versao de imagem invalida");
+        sef_erro_definir(erro, 0, 0, "invalid image signature or version");
 
     uint32_t *ids_simbolos = sucesso ? malloc((size_t)total_simbolos * sizeof(uint32_t)) : NULL;
     RegistroImagem *registros = sucesso ? calloc(quantidade, sizeof(*registros)) : NULL;
     if (sucesso && ((total_simbolos > 0 && ids_simbolos == NULL) || registros == NULL)) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para abrir imagem");
+        sef_erro_definir(erro, 0, 0, "not enough memory to open image");
         sucesso = false;
     }
     for (uint32_t i = 0; sucesso && i < total_simbolos; i++) {
         sucesso =
             ler_u32(arquivo, &ids_simbolos[i], erro) && id_valido(ids_simbolos[i], quantidade);
         if (!sucesso && !erro->ocorreu)
-            sef_erro_definir(erro, 0, 0, "simbolo invalido na imagem");
+            sef_erro_definir(erro, 0, 0, "invalid symbol in image");
     }
     if (sucesso)
         sucesso = ler_u32(arquivo, &id_pacote_atual, erro) &&
@@ -731,10 +728,10 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                   id_valido(id_pacote_atual, quantidade) && id_valido(id_common_lisp, quantidade) &&
                   id_valido(id_keyword, quantidade);
     if (!sucesso && !erro->ocorreu)
-        sef_erro_definir(erro, 0, 0, "cabecalho de pacotes invalido na imagem");
+        sef_erro_definir(erro, 0, 0, "invalid package header in image");
     uint32_t *ids_pacotes = sucesso ? malloc((size_t)total_pacotes * sizeof(uint32_t)) : NULL;
     if (sucesso && total_pacotes > 0 && ids_pacotes == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para tabela de pacotes");
+        sef_erro_definir(erro, 0, 0, "not enough memory for package table");
         sucesso = false;
     }
     for (uint32_t i = 0; sucesso && i < total_pacotes; i++) {
@@ -747,7 +744,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                   id_valido(id_entrada_padrao, quantidade) &&
                   id_valido(id_saida_padrao, quantidade) && id_valido(id_erro_padrao, quantidade);
     if (!sucesso && !erro->ocorreu)
-        sef_erro_definir(erro, 0, 0, "streams padrao invalidos na imagem");
+        sef_erro_definir(erro, 0, 0, "invalid standard streams in image");
     for (uint32_t i = 0; sucesso && i < quantidade; i++)
         sucesso = ler_registro(arquivo, &registros[i], versao, erro) &&
                   validar_registro(&registros[i], quantidade, erro);
@@ -756,7 +753,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
     SefRuntime *runtime = sucesso ? calloc(1, sizeof(*runtime)) : NULL;
     SefValor *objetos = sucesso ? calloc(quantidade, sizeof(*objetos)) : NULL;
     if (sucesso && (runtime == NULL || objetos == NULL)) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para reconstruir imagem");
+        sef_erro_definir(erro, 0, 0, "not enough memory to reconstruct image");
         sucesso = false;
     }
     for (uint32_t i = 0; sucesso && i < quantidade; i++) {
@@ -788,7 +785,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             runtime->bytes_aproximados += registro->tamanho_texto + 1u;
             registro->texto = NULL;
             if (objeto->como.simbolo.pacote->tipo != SEF_TIPO_PACOTE) {
-                sef_erro_definir(erro, 0, 0, "simbolo aponta para pacote invalido");
+                sef_erro_definir(erro, 0, 0, "symbol points to an invalid package");
                 sucesso = false;
             }
             break;
@@ -799,7 +796,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
         case SEF_TIPO_NATIVA: {
             SefFuncaoNativa funcao = sef_primitiva_buscar(registro->texto);
             if (funcao == NULL) {
-                sef_erro_definir(erro, 0, 0, "primitiva '%s' nao existe nesta versao",
+                sef_erro_definir(erro, 0, 0, "primitive '%s' does not exist in this version",
                                  registro->texto);
                 sucesso = false;
                 break;
@@ -819,7 +816,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             for (uint32_t j = 0; sucesso && j < registro->quantidade_vinculos; j++) {
                 SefVinculo *vinculo = malloc(sizeof(*vinculo));
                 if (vinculo == NULL) {
-                    sef_erro_definir(erro, 0, 0, "memoria insuficiente para vinculo da imagem");
+                    sef_erro_definir(erro, 0, 0, "not enough memory for image binding");
                     sucesso = false;
                     break;
                 }
@@ -831,7 +828,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             for (uint32_t j = 0; sucesso && j < registro->quantidade_funcoes; j++) {
                 SefVinculo *vinculo = malloc(sizeof(*vinculo));
                 if (vinculo == NULL) {
-                    sef_erro_definir(erro, 0, 0, "memoria insuficiente para funcao da imagem");
+                    sef_erro_definir(erro, 0, 0, "not enough memory for image function");
                     sucesso = false;
                     break;
                 }
@@ -846,7 +843,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             objeto->como.condicao.mensagem = objetos[registro->referencias[1]];
             if (objeto->como.condicao.classe->tipo != SEF_TIPO_SIMBOLO ||
                 objeto->como.condicao.mensagem->tipo != SEF_TIPO_TEXTO) {
-                sef_erro_definir(erro, 0, 0, "condicao corrompida na imagem");
+                sef_erro_definir(erro, 0, 0, "corrupt condition in image");
                 sucesso = false;
             }
             break;
@@ -859,7 +856,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                 objeto->como.pacote.simbolos =
                     malloc((size_t)registro->quantidade_simbolos_pacote * sizeof(SefValor));
                 if (objeto->como.pacote.simbolos == NULL) {
-                    sef_erro_definir(erro, 0, 0, "memoria insuficiente para simbolos do pacote");
+                    sef_erro_definir(erro, 0, 0, "not enough memory for package symbols");
                     sucesso = false;
                     break;
                 }
@@ -872,7 +869,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                 objeto->como.pacote.usados =
                     malloc((size_t)registro->quantidade_usados * sizeof(SefValor));
                 if (objeto->como.pacote.usados == NULL) {
-                    sef_erro_definir(erro, 0, 0, "memoria insuficiente para usos do pacote");
+                    sef_erro_definir(erro, 0, 0, "not enough memory for package uses");
                     sucesso = false;
                     break;
                 }
@@ -885,7 +882,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                 objeto->como.pacote.exportados =
                     malloc((size_t)registro->quantidade_exportados * sizeof(SefValor));
                 if (objeto->como.pacote.exportados == NULL) {
-                    sef_erro_definir(erro, 0, 0, "memoria insuficiente para exportacoes do pacote");
+                    sef_erro_definir(erro, 0, 0, "not enough memory for package exports");
                     sucesso = false;
                     break;
                 }
@@ -916,7 +913,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
                 objeto->como.vetor.itens =
                     malloc((size_t)registro->quantidade_itens_vetor * sizeof(SefValor));
                 if (objeto->como.vetor.itens == NULL) {
-                    sef_erro_definir(erro, 0, 0, "memoria insuficiente para vetor da imagem");
+                    sef_erro_definir(erro, 0, 0, "not enough memory for image vector");
                     sucesso = false;
                     break;
                 }
@@ -947,7 +944,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             objeto->como.reinicio.nome = objetos[registro->referencias[0]];
             if (objeto->como.reinicio.nome != objetos[id_nulo] &&
                 objeto->como.reinicio.nome->tipo != SEF_TIPO_SIMBOLO) {
-                sef_erro_definir(erro, 0, 0, "reinicio corrompido na imagem");
+                sef_erro_definir(erro, 0, 0, "corrupt restart in image");
                 sucesso = false;
             }
             break;
@@ -972,14 +969,14 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             runtime->entrada_padrao->tipo != SEF_TIPO_STREAM ||
             runtime->saida_padrao->tipo != SEF_TIPO_STREAM ||
             runtime->erro_padrao->tipo != SEF_TIPO_STREAM) {
-            sef_erro_definir(erro, 0, 0, "raizes da imagem possuem tipos invalidos");
+            sef_erro_definir(erro, 0, 0, "image roots have invalid types");
             sucesso = false;
         }
     }
     if (sucesso && total_pacotes > 0) {
         runtime->pacotes = malloc((size_t)total_pacotes * sizeof(*runtime->pacotes));
         if (runtime->pacotes == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para tabela de pacotes");
+            sef_erro_definir(erro, 0, 0, "not enough memory for package table");
             sucesso = false;
         } else {
             runtime->quantidade_pacotes = total_pacotes;
@@ -987,7 +984,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             for (uint32_t i = 0; i < total_pacotes; i++) {
                 runtime->pacotes[i] = objetos[ids_pacotes[i]];
                 if (runtime->pacotes[i]->tipo != SEF_TIPO_PACOTE) {
-                    sef_erro_definir(erro, 0, 0, "tabela de pacotes corrompida");
+                    sef_erro_definir(erro, 0, 0, "corrupt package table");
                     sucesso = false;
                     break;
                 }
@@ -997,7 +994,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
     if (sucesso && total_simbolos > 0) {
         runtime->simbolos = malloc((size_t)total_simbolos * sizeof(*runtime->simbolos));
         if (runtime->simbolos == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para tabela de simbolos");
+            sef_erro_definir(erro, 0, 0, "not enough memory for symbol table");
             sucesso = false;
         } else {
             runtime->quantidade_simbolos = total_simbolos;
@@ -1005,7 +1002,7 @@ SefRuntime *sef_runtime_imagem_abrir(const char *caminho, SefErro *erro) {
             for (uint32_t i = 0; i < total_simbolos; i++) {
                 runtime->simbolos[i] = objetos[ids_simbolos[i]];
                 if (runtime->simbolos[i]->tipo != SEF_TIPO_SIMBOLO) {
-                    sef_erro_definir(erro, 0, 0, "tabela de simbolos corrompida");
+                    sef_erro_definir(erro, 0, 0, "corrupt symbol table");
                     sucesso = false;
                     break;
                 }

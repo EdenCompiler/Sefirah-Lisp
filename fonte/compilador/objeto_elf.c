@@ -84,16 +84,16 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
     erro_limpar(erro);
     if (codigo == NULL || codigo->bytes == NULL || codigo->tamanho == 0 || nome_simbolo == NULL ||
         nome_simbolo[0] == '\0' || caminho == NULL || caminho[0] == '\0') {
-        erro_definir(erro, "codigo, simbolo ou caminho ausente para objeto ELF");
+        erro_definir(erro, "missing code, symbol, or path for ELF object");
         return false;
     }
     if (codigo->arquitetura != SEF_ARQUITETURA_X64 &&
         codigo->arquitetura != SEF_ARQUITETURA_AARCH64) {
-        erro_definir(erro, "arquitetura desconhecida para objeto ELF");
+        erro_definir(erro, "unknown architecture for ELF object");
         return false;
     }
     if (codigo->arquitetura == SEF_ARQUITETURA_X64 && codigo->abi_x64 != SEF_ABI_X64_SYSV) {
-        erro_definir(erro, "objeto ELF x86-64 exige codigo da ABI System V");
+        erro_definir(erro, "x86-64 ELF object requires System V ABI code");
         return false;
     }
     for (size_t i = 0; i < codigo->quantidade_relocacoes; i++) {
@@ -105,7 +105,7 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
         if (!tipo_correto || relocacao.simbolo == NULL || relocacao.simbolo[0] == '\0' ||
             relocacao.deslocamento > codigo->tamanho ||
             tamanho_campo > codigo->tamanho - relocacao.deslocamento) {
-            erro_definir(erro, "relocacao invalida para objeto ELF");
+            erro_definir(erro, "invalid relocation for ELF object");
             return false;
         }
     }
@@ -116,24 +116,24 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
         quantidade_relocacoes > SIZE_MAX / 24u || codigo->tamanho > UINT32_MAX ||
         tamanho_nome > UINT32_MAX - 2u || tamanho_nome > SIZE_MAX - 512u ||
         codigo->tamanho > SIZE_MAX - tamanho_nome - 512u) {
-        erro_definir(erro, "codigo ou nome grande demais para objeto ELF");
+        erro_definir(erro, "code or name is too large for an ELF object");
         return false;
     }
     size_t deslocamento_texto = ELF_TAMANHO_CABECALHO;
     if (codigo->tamanho > SIZE_MAX - deslocamento_texto) {
-        erro_definir(erro, "objeto ELF excedeu o espaco de enderecamento");
+        erro_definir(erro, "ELF object exceeded the address space");
         return false;
     }
     size_t deslocamento_relocacoes = alinhar(deslocamento_texto + codigo->tamanho, 8);
     size_t tamanho_relocacoes = quantidade_relocacoes * 24u;
     if (tamanho_relocacoes > SIZE_MAX - deslocamento_relocacoes) {
-        erro_definir(erro, "relocacoes ELF excederam o espaco de enderecamento");
+        erro_definir(erro, "ELF relocations exceeded the address space");
         return false;
     }
     size_t deslocamento_simbolos = alinhar(deslocamento_relocacoes + tamanho_relocacoes, 8);
     size_t tamanho_simbolos = ELF_TAMANHO_SIMBOLO * (3u + quantidade_relocacoes);
     if (tamanho_simbolos > SIZE_MAX - deslocamento_simbolos) {
-        erro_definir(erro, "simbolos ELF excederam o espaco de enderecamento");
+        erro_definir(erro, "ELF symbols exceeded the address space");
         return false;
     }
     size_t deslocamento_strings = deslocamento_simbolos + tamanho_simbolos;
@@ -142,7 +142,7 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
     if (quantidade_relocacoes > 0) {
         nomes_externos = malloc(quantidade_relocacoes * sizeof(*nomes_externos));
         if (nomes_externos == NULL) {
-            erro_definir(erro, "memoria insuficiente para strings externas ELF");
+            erro_definir(erro, "not enough memory for external ELF strings");
             return false;
         }
     }
@@ -151,7 +151,7 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
         if (tamanho_strings > UINT32_MAX - tamanho_externo ||
             tamanho_strings > SIZE_MAX - tamanho_externo) {
             free(nomes_externos);
-            erro_definir(erro, "tabela de strings ELF grande demais");
+            erro_definir(erro, "ELF string table is too large");
             return false;
         }
         nomes_externos[i] = (uint32_t)tamanho_strings;
@@ -159,28 +159,28 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
     }
     if (tamanho_strings > SIZE_MAX - deslocamento_strings) {
         free(nomes_externos);
-        erro_definir(erro, "tabela de strings ELF grande demais");
+        erro_definir(erro, "ELF string table is too large");
         return false;
     }
     size_t deslocamento_nomes_secoes = deslocamento_strings + tamanho_strings;
     size_t tamanho_nomes_secoes = sizeof(nomes_secoes) - 1u;
     if (tamanho_nomes_secoes > SIZE_MAX - deslocamento_nomes_secoes) {
         free(nomes_externos);
-        erro_definir(erro, "nomes de secoes ELF excederam o limite");
+        erro_definir(erro, "ELF section names exceeded the limit");
         return false;
     }
     size_t deslocamento_secoes = alinhar(deslocamento_nomes_secoes + tamanho_nomes_secoes, 8);
     size_t tamanho_secoes = ELF_TAMANHO_SECAO * ELF_QUANTIDADE_SECOES;
     if (tamanho_secoes > SIZE_MAX - deslocamento_secoes) {
         free(nomes_externos);
-        erro_definir(erro, "objeto ELF excedeu o espaco de enderecamento");
+        erro_definir(erro, "ELF object exceeded the address space");
         return false;
     }
     size_t tamanho_total = deslocamento_secoes + tamanho_secoes;
     unsigned char *objeto = calloc(tamanho_total, 1);
     if (objeto == NULL) {
         free(nomes_externos);
-        erro_definir(erro, "memoria insuficiente para objeto ELF");
+        erro_definir(erro, "not enough memory for an ELF object");
         return false;
     }
 
@@ -246,7 +246,7 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
     if (temporario == NULL) {
         free(nomes_externos);
         free(objeto);
-        erro_definir(erro, "memoria insuficiente para caminho ELF temporario");
+        erro_definir(erro, "not enough memory for a temporary ELF path");
         return false;
     }
     snprintf(temporario, tamanho_caminho + 5u, "%s.tmp", caminho);
@@ -260,9 +260,9 @@ bool sef_codigo_nativo_gravar_elf(const SefCodigoNativo *codigo, const char *nom
     if (!sucesso) {
         remove(temporario);
         if (arquivo == NULL)
-            erro_definir(erro, "nao foi possivel criar objeto ELF");
+            erro_definir(erro, "could not create ELF object");
         else
-            erro_definir(erro, "falha ao gravar ou instalar objeto ELF");
+            erro_definir(erro, "failed to write or install ELF object");
     }
     free(temporario);
     free(nomes_externos);

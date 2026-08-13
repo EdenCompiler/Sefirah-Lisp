@@ -109,9 +109,9 @@ W^X e executa o código diretamente.
 Uma função compatível pode ser gravada nos três formatos desktop:
 
 ```bash
-sefirah compilar-elf exemplos/nativo.lisp calcular_nativo calcular.o
-sefirah compilar-coff exemplos/nativo.lisp calcular_nativo calcular.obj
-sefirah compilar-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
+sefirah compile-elf exemplos/nativo.lisp calcular_nativo calcular.o
+sefirah compile-coff exemplos/nativo.lisp calcular_nativo calcular.obj
+sefirah compile-macho exemplos/nativo.lisp calcular_nativo calcular-macos.o
 ```
 
 | Formato | Arquiteturas | Relocações externas |

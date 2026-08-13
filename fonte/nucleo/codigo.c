@@ -29,7 +29,7 @@ static bool delimitador(unsigned char caractere) {
 SefEstadoCodigo sef_runtime_estado_codigo(const char *codigo, SefErro *erro) {
     sef_erro_limpar(erro);
     if (codigo == NULL) {
-        sef_erro_definir(erro, 0, 0, "codigo ausente");
+        sef_erro_definir(erro, 0, 0, "missing source code");
         return SEF_CODIGO_INVALIDO;
     }
 
@@ -66,12 +66,12 @@ SefEstadoCodigo sef_runtime_estado_codigo(const char *codigo, SefErro *erro) {
         if (caractere == ')') {
             if (prefixos_pendentes > 0) {
                 sef_erro_definir(erro, posicao.linha, posicao.coluna,
-                                 "prefixo de leitura sem forma antes do fechamento");
+                                 "reader prefix has no form before the closing delimiter");
                 return SEF_CODIGO_INVALIDO;
             }
             if (profundidade == 0) {
                 sef_erro_definir(erro, posicao.linha, posicao.coluna,
-                                 "parenteses de fechamento inesperado");
+                                 "unexpected closing parenthesis");
                 return SEF_CODIGO_INVALIDO;
             }
             profundidade--;

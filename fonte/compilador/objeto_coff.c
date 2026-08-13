@@ -57,16 +57,16 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
     erro_limpar(erro);
     if (codigo == NULL || codigo->bytes == NULL || codigo->tamanho == 0 || nome_simbolo == NULL ||
         nome_simbolo[0] == '\0' || caminho == NULL || caminho[0] == '\0') {
-        erro_definir(erro, "codigo, simbolo ou caminho ausente para objeto COFF");
+        erro_definir(erro, "missing code, symbol, or path for COFF object");
         return false;
     }
     if (codigo->arquitetura != SEF_ARQUITETURA_X64 &&
         codigo->arquitetura != SEF_ARQUITETURA_AARCH64) {
-        erro_definir(erro, "arquitetura desconhecida para objeto COFF");
+        erro_definir(erro, "unknown architecture for COFF object");
         return false;
     }
     if (codigo->arquitetura == SEF_ARQUITETURA_X64 && codigo->abi_x64 != SEF_ABI_X64_WINDOWS) {
-        erro_definir(erro, "objeto COFF x86-64 exige codigo da ABI Microsoft");
+        erro_definir(erro, "x86-64 COFF object requires Microsoft ABI code");
         return false;
     }
     for (size_t i = 0; i < codigo->quantidade_relocacoes; i++) {
@@ -77,7 +77,7 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
         if (!tipo_correto || relocacao.simbolo == NULL || relocacao.simbolo[0] == '\0' ||
             relocacao.deslocamento > codigo->tamanho ||
             4u > codigo->tamanho - relocacao.deslocamento) {
-            erro_definir(erro, "relocacao invalida para objeto COFF");
+            erro_definir(erro, "invalid relocation for COFF object");
             return false;
         }
     }
@@ -90,14 +90,14 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
         quantidade_relocacoes > SIZE_MAX / COFF_SIMBOLO || codigo->tamanho > UINT32_MAX ||
         tamanho_nome > UINT32_MAX - 5u || tamanho_nome > SIZE_MAX - 128u ||
         codigo->tamanho > SIZE_MAX - tamanho_nome - 128u) {
-        erro_definir(erro, "codigo ou nome grande demais para objeto COFF");
+        erro_definir(erro, "code or name is too large for a COFF object");
         return false;
     }
     uint32_t *nomes_externos = NULL;
     if (quantidade_relocacoes > 0) {
         nomes_externos = calloc(quantidade_relocacoes, sizeof(*nomes_externos));
         if (nomes_externos == NULL) {
-            erro_definir(erro, "memoria insuficiente para strings externas COFF");
+            erro_definir(erro, "not enough memory for external COFF strings");
             return false;
         }
     }
@@ -107,7 +107,7 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
             if (tamanho_strings > UINT32_MAX - tamanho_externo - 1u ||
                 tamanho_strings > SIZE_MAX - tamanho_externo - 1u) {
                 free(nomes_externos);
-                erro_definir(erro, "tabela de strings COFF grande demais");
+                erro_definir(erro, "COFF string table is too large");
                 return false;
             }
             nomes_externos[i] = (uint32_t)tamanho_strings;
@@ -119,7 +119,7 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
     size_t tamanho_relocacoes = quantidade_relocacoes * COFF_RELOCACAO;
     if (tamanho_relocacoes > SIZE_MAX - deslocamento_relocacoes) {
         free(nomes_externos);
-        erro_definir(erro, "objeto COFF excedeu o espaco de enderecamento");
+        erro_definir(erro, "COFF object exceeded the address space");
         return false;
     }
     size_t deslocamento_simbolos = deslocamento_relocacoes + tamanho_relocacoes;
@@ -128,14 +128,14 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
     if (deslocamento_simbolos > UINT32_MAX || tamanho_simbolos > SIZE_MAX - deslocamento_simbolos ||
         tamanho_strings > SIZE_MAX - deslocamento_simbolos - tamanho_simbolos) {
         free(nomes_externos);
-        erro_definir(erro, "objeto COFF excedeu o espaco de enderecamento");
+        erro_definir(erro, "COFF object exceeded the address space");
         return false;
     }
     size_t tamanho_total = deslocamento_simbolos + tamanho_simbolos + tamanho_strings;
     unsigned char *objeto = calloc(tamanho_total, 1);
     if (objeto == NULL) {
         free(nomes_externos);
-        erro_definir(erro, "memoria insuficiente para objeto COFF");
+        erro_definir(erro, "not enough memory for a COFF object");
         return false;
     }
 
@@ -203,7 +203,7 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
     if (temporario == NULL) {
         free(nomes_externos);
         free(objeto);
-        erro_definir(erro, "memoria insuficiente para caminho COFF temporario");
+        erro_definir(erro, "not enough memory for a temporary COFF path");
         return false;
     }
     snprintf(temporario, tamanho_caminho + 5u, "%s.tmp", caminho);
@@ -216,8 +216,8 @@ bool sef_codigo_nativo_gravar_coff(const SefCodigoNativo *codigo, const char *no
         sucesso = substituir_arquivo(temporario, caminho);
     if (!sucesso) {
         remove(temporario);
-        erro_definir(erro, arquivo == NULL ? "nao foi possivel criar objeto COFF"
-                                           : "falha ao gravar ou instalar objeto COFF");
+        erro_definir(erro, arquivo == NULL ? "could not create COFF object"
+                                           : "failed to write or install COFF object");
     }
     free(temporario);
     free(nomes_externos);

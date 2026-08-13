@@ -19,7 +19,7 @@ static bool reservar(TextoDinamico *texto, size_t adicional, SefErro *erro) {
         capacidade *= 2;
     char *novos = realloc(texto->dados, capacidade);
     if (novos == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao imprimir valor");
+        sef_erro_definir(erro, 0, 0, "not enough memory to print value");
         return false;
     }
     texto->dados = novos;
@@ -113,7 +113,7 @@ static bool imprimir_caractere(TextoDinamico *texto, uint32_t codigo, bool legiv
     char codificado[4];
     size_t tamanho = sef_utf8_codificar(codigo, codificado);
     if (tamanho == 0) {
-        sef_erro_definir(erro, 0, 0, "objeto CHARACTER possui codigo Unicode invalido");
+        sef_erro_definir(erro, 0, 0, "CHARACTER object has an invalid Unicode code point");
         return false;
     }
     if (!legivel)
@@ -180,10 +180,10 @@ static bool imprimir_nome_simbolo(TextoDinamico *texto, const char *nome, size_t
 static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor valor, bool legivel,
                            int profundidade, SefErro *erro) {
     if (profundidade > 512) {
-        return anexar(texto, "#<PROFUNDIDADE-EXCEDIDA>", erro);
+        return anexar(texto, "#<DEPTH-EXCEEDED>", erro);
     }
     if (valor == NULL)
-        return anexar(texto, "#<VALOR-C-INVALIDO>", erro);
+        return anexar(texto, "#<INVALID-C-VALUE>", erro);
     char numero[128];
     switch (valor->tipo) {
     case SEF_TIPO_NULO:
@@ -218,15 +218,15 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
     case SEF_TIPO_PAR:
         return imprimir_lista(texto, runtime, valor, legivel, profundidade, erro);
     case SEF_TIPO_NATIVA:
-        return anexar(texto, "#<FUNCAO-NATIVA ", erro) &&
+        return anexar(texto, "#<NATIVE-FUNCTION ", erro) &&
                anexar(texto, valor->como.nativa.nome, erro) && anexar(texto, ">", erro);
     case SEF_TIPO_FUNCAO:
         if (valor->como.funcao.compilada_i64 != NULL)
-            return anexar(texto, "#<FUNCAO-SEFIRAH COMPILADA-I64>", erro);
-        return anexar(texto, valor->como.funcao.macro ? "#<MACRO-SEFIRAH>" : "#<FUNCAO-SEFIRAH>",
+            return anexar(texto, "#<SEFIRAH-FUNCTION COMPILED-I64>", erro);
+        return anexar(texto, valor->como.funcao.macro ? "#<SEFIRAH-MACRO>" : "#<SEFIRAH-FUNCTION>",
                       erro);
     case SEF_TIPO_AMBIENTE:
-        return anexar(texto, "#<AMBIENTE>", erro);
+        return anexar(texto, "#<ENVIRONMENT>", erro);
     case SEF_TIPO_CONDICAO:
         return anexar(texto, "#<", erro) &&
                imprimir_valor(texto, runtime, valor->como.condicao.classe, false, profundidade + 1,
@@ -263,11 +263,11 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
         if (valor->como.reinicio.nome == runtime->nulo)
             return anexar(texto, "#<RESTART ANONIMO>", erro);
         return anexar(texto, "#<RESTART ", erro) &&
-               imprimir_valor(texto, runtime, valor->como.reinicio.nome, false,
-                              profundidade + 1, erro) &&
+               imprimir_valor(texto, runtime, valor->como.reinicio.nome, false, profundidade + 1,
+                              erro) &&
                anexar(texto, ">", erro);
     }
-    return anexar(texto, "#<DESCONHECIDO>", erro);
+    return anexar(texto, "#<UNKNOWN>", erro);
 }
 
 char *sef_valor_para_texto(SefRuntime *runtime, SefValor valor, bool legivel, SefErro *erro) {
@@ -280,7 +280,7 @@ char *sef_valor_para_texto(SefRuntime *runtime, SefValor valor, bool legivel, Se
     if (texto.dados == NULL) {
         texto.dados = malloc(1);
         if (texto.dados == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente ao imprimir");
+            sef_erro_definir(erro, 0, 0, "not enough memory while printing");
             return NULL;
         }
         texto.dados[0] = '\0';

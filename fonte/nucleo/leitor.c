@@ -68,7 +68,7 @@ static SefValor ler_texto(SefLeitor *leitor, SefErro *erro) {
     size_t tamanho = 0;
     char *dados = malloc(capacidade);
     if (dados == NULL) {
-        sef_erro_definir(erro, linha, coluna, "memoria insuficiente para texto");
+        sef_erro_definir(erro, linha, coluna, "not enough memory for string");
         return NULL;
     }
 
@@ -92,7 +92,7 @@ static SefValor ler_texto(SefLeitor *leitor, SefErro *erro) {
             char *novos = realloc(dados, capacidade);
             if (novos == NULL) {
                 free(dados);
-                sef_erro_definir(erro, linha, coluna, "memoria insuficiente para texto");
+                sef_erro_definir(erro, linha, coluna, "not enough memory for string");
                 return NULL;
             }
             dados = novos;
@@ -102,7 +102,7 @@ static SefValor ler_texto(SefLeitor *leitor, SefErro *erro) {
 
     if (atual(leitor) != '"') {
         free(dados);
-        sef_erro_definir(erro, linha, coluna, "texto sem aspas de fechamento");
+        sef_erro_definir(erro, linha, coluna, "unterminated string");
         return NULL;
     }
     avancar(leitor);
@@ -136,19 +136,19 @@ static SefValor ler_atomo(SefLeitor *leitor, SefErro *erro) {
     }
     if (entre_barras || escape) {
         sef_erro_definir(erro, linha, coluna,
-                         entre_barras ? "simbolo sem barra vertical de fechamento"
-                                      : "escape incompleto no nome do simbolo");
+                         entre_barras ? "symbol is missing its closing vertical bar"
+                                      : "incomplete escape in symbol name");
         return NULL;
     }
     size_t tamanho = (size_t)(leitor->atual - inicio);
     if (tamanho == 0) {
-        sef_erro_definir(erro, linha, coluna, "atomo vazio");
+        sef_erro_definir(erro, linha, coluna, "empty atom");
         return NULL;
     }
 
     char *token = malloc(tamanho + 1);
     if (token == NULL) {
-        sef_erro_definir(erro, linha, coluna, "memoria insuficiente para token");
+        sef_erro_definir(erro, linha, coluna, "not enough memory for token");
         return NULL;
     }
     memcpy(token, inicio, tamanho);
@@ -196,7 +196,7 @@ static SefValor ler_lista(SefLeitor *leitor, SefErro *erro) {
         if (atual(leitor) == '.' && delimitador(leitor->atual[1])) {
             if (cabeca == leitor->runtime->nulo) {
                 sef_erro_definir(erro, leitor->linha, leitor->coluna,
-                                 "ponto sem elemento anterior");
+                                 "dot has no preceding element");
                 return NULL;
             }
             avancar(leitor);
@@ -207,7 +207,7 @@ static SefValor ler_lista(SefLeitor *leitor, SefErro *erro) {
             ignorar_espaco(leitor);
             if (atual(leitor) != ')') {
                 sef_erro_definir(erro, leitor->linha, leitor->coluna,
-                                 "lista pontuada deve terminar apos a cauda");
+                                 "dotted list must end after its tail");
                 return NULL;
             }
             avancar(leitor);
@@ -230,7 +230,7 @@ static SefValor ler_lista(SefLeitor *leitor, SefErro *erro) {
     }
 
     if (atual(leitor) != ')') {
-        sef_erro_definir(erro, linha, coluna, "lista sem parenteses de fechamento");
+        sef_erro_definir(erro, linha, coluna, "list is missing its closing parenthesis");
         return NULL;
     }
     avancar(leitor);
@@ -246,7 +246,7 @@ static SefValor ler_vetor(SefLeitor *leitor, SefErro *erro) {
     size_t tamanho = sef_lista_tamanho(leitor->runtime, itens, &propria);
     if (!propria) {
         sef_erro_definir(erro, leitor->linha, leitor->coluna,
-                         "vetor literal nao aceita cauda pontuada");
+                         "vector literal does not accept a dotted tail");
         return NULL;
     }
     SefValor vetor = sef_vetor_novo(leitor->runtime, tamanho, leitor->runtime->nulo, erro);
@@ -298,7 +298,7 @@ static SefValor ler_caractere(SefLeitor *leitor, SefErro *erro) {
     avancar(leitor);
     avancar(leitor);
     if (atual(leitor) == '\0') {
-        sef_erro_definir(erro, linha, coluna, "literal de caractere incompleto");
+        sef_erro_definir(erro, linha, coluna, "incomplete character literal");
         return NULL;
     }
 
@@ -333,7 +333,7 @@ static SefValor ler_caractere(SefLeitor *leitor, SefErro *erro) {
         /* O construtor valida o valor escalar. */
     } else if (!sef_utf8_decodificar(inicio, tamanho, &consumidos, &codigo) ||
                consumidos != tamanho) {
-        sef_erro_definir(erro, linha, coluna, "nome de caractere desconhecido");
+        sef_erro_definir(erro, linha, coluna, "unknown character name");
         return NULL;
     }
     return sef_caractere_novo(leitor->runtime, codigo, erro);
@@ -343,14 +343,13 @@ static SefValor ler_interno(SefLeitor *leitor, SefErro *erro) {
     ignorar_espaco(leitor);
     char caractere = atual(leitor);
     if (caractere == '\0') {
-        sef_erro_definir(erro, leitor->linha, leitor->coluna, "fim inesperado da entrada");
+        sef_erro_definir(erro, leitor->linha, leitor->coluna, "unexpected end of input");
         return NULL;
     }
     if (caractere == '(')
         return ler_lista(leitor, erro);
     if (caractere == ')') {
-        sef_erro_definir(erro, leitor->linha, leitor->coluna,
-                         "parenteses de fechamento inesperado");
+        sef_erro_definir(erro, leitor->linha, leitor->coluna, "unexpected closing parenthesis");
         return NULL;
     }
     if (caractere == '"')

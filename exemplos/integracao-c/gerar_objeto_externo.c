@@ -8,13 +8,14 @@ static bool emitir(SefFuncaoIr *funcao, uint32_t bloco, SefInstrucaoIr instrucao
 }
 
 static int falhar(const SefErro *erro) {
-    fprintf(stderr, "Erro: %s\n", erro->mensagem);
+    fprintf(stderr, "Error: %s\n", erro->mensagem);
     return 1;
 }
 
 int main(int argc, char **argv) {
     if (argc != 4) {
-        fputs("uso: exemplo_gerar_objeto_externo <elf|coff|macho> <x64|arm64> <saida>\n", stderr);
+        fputs("usage: exemplo_gerar_objeto_externo <elf|coff|macho> <x64|arm64> <output>\n",
+              stderr);
         return 2;
     }
 
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
     } else if (sucesso && strcmp(argv[2], "arm64") == 0) {
         sucesso = sef_funcao_ir_emitir_aarch64(&funcao, &codigo, &erro);
     } else if (sucesso) {
-        fputs("arquitetura deve ser x64 ou arm64\n", stderr);
+        fputs("architecture must be x64 or arm64\n", stderr);
         sucesso = false;
         erro.ocorreu = false;
     }
@@ -50,7 +51,7 @@ int main(int argc, char **argv) {
     else if (sucesso && strcmp(argv[1], "macho") == 0)
         sucesso = sef_codigo_nativo_gravar_macho(&codigo, "chamar_dobro", argv[3], &erro);
     else if (sucesso) {
-        fputs("formato deve ser elf, coff ou macho\n", stderr);
+        fputs("format must be elf, coff, or macho\n", stderr);
         sucesso = false;
         erro.ocorreu = false;
     }
@@ -59,6 +60,6 @@ int main(int argc, char **argv) {
     sef_funcao_ir_liberar(&funcao);
     if (!sucesso)
         return erro.ocorreu ? falhar(&erro) : 2;
-    printf("Objeto %s/%s salvo em %s\n", argv[1], argv[2], argv[3]);
+    printf("%s/%s object saved to %s\n", argv[1], argv[2], argv[3]);
     return 0;
 }

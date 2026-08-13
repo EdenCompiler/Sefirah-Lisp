@@ -27,12 +27,12 @@ struct SefHistoricoEditorIde {
 
 static char *duplicar_n(const char *texto, size_t tamanho, SefErro *erro) {
     if (tamanho == SIZE_MAX) {
-        sef_erro_definir(erro, 0, 0, "texto excede o limite do historico da IDE");
+        sef_erro_definir(erro, 0, 0, "text exceeds the IDE history limit");
         return NULL;
     }
     char *copia = malloc(tamanho + 1);
     if (copia == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para o historico da IDE");
+        sef_erro_definir(erro, 0, 0, "not enough memory for IDE history");
         return NULL;
     }
     if (tamanho > 0)
@@ -49,7 +49,7 @@ static bool reservar_textos(SefHistoricoTextoIde *historico, size_t quantidade, 
         capacidade = quantidade;
     char **itens = realloc(historico->itens, capacidade * sizeof(*itens));
     if (itens == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para o historico do ouvinte");
+        sef_erro_definir(erro, 0, 0, "not enough memory for REPL history");
         return false;
     }
     historico->itens = itens;
@@ -60,7 +60,7 @@ static bool reservar_textos(SefHistoricoTextoIde *historico, size_t quantidade, 
 SefHistoricoTextoIde *sef_historico_texto_criar(SefErro *erro) {
     SefHistoricoTextoIde *historico = calloc(1, sizeof(*historico));
     if (historico == NULL)
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para o historico do ouvinte");
+        sef_erro_definir(erro, 0, 0, "not enough memory for REPL history");
     return historico;
 }
 
@@ -132,7 +132,7 @@ static bool reservar_editor(SefHistoricoEditorIde *historico, size_t quantidade,
         capacidade = quantidade;
     EntradaEditorIde *itens = realloc(historico->itens, capacidade * sizeof(*itens));
     if (itens == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para a linha do tempo do editor");
+        sef_erro_definir(erro, 0, 0, "not enough memory for editor timeline");
         return false;
     }
     historico->itens = itens;
@@ -143,7 +143,7 @@ static bool reservar_editor(SefHistoricoEditorIde *historico, size_t quantidade,
 SefHistoricoEditorIde *sef_historico_editor_criar(const char *texto, size_t cursor, SefErro *erro) {
     SefHistoricoEditorIde *historico = calloc(1, sizeof(*historico));
     if (historico == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para a linha do tempo do editor");
+        sef_erro_definir(erro, 0, 0, "not enough memory for editor timeline");
         return NULL;
     }
     if (!sef_historico_editor_registrar(historico, texto, cursor, erro)) {

@@ -20,15 +20,15 @@ static void *abrir_handle(const char *caminho, SefErro *erro) {
 #ifdef _WIN32
     HMODULE biblioteca = LoadLibraryA(caminho);
     if (biblioteca == NULL)
-        sef_erro_definir(erro, 0, 0, "Windows nao abriu a biblioteca compartilhada");
+        sef_erro_definir(erro, 0, 0, "Windows could not open the shared library");
     return biblioteca;
 #else
     dlerror();
     void *biblioteca = dlopen(caminho, RTLD_NOW | RTLD_LOCAL);
     if (biblioteca == NULL) {
         const char *mensagem = dlerror();
-        sef_erro_definir(erro, 0, 0, "nao foi possivel abrir biblioteca: %s",
-                         mensagem != NULL ? mensagem : "erro desconhecido");
+        sef_erro_definir(erro, 0, 0, "could not open library: %s",
+                         mensagem != NULL ? mensagem : "unknown error");
     }
     return biblioteca;
 #endif
@@ -45,7 +45,7 @@ static void fechar_handle(void *handle) {
 SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro *erro) {
     sef_erro_limpar(erro);
     if (caminho == NULL || caminho[0] == '\0') {
-        sef_erro_definir(erro, 0, 0, "caminho de biblioteca compartilhada ausente");
+        sef_erro_definir(erro, 0, 0, "missing shared-library path");
         return NULL;
     }
     void *handle = abrir_handle(caminho, erro);
@@ -58,7 +58,7 @@ SefRecursoBiblioteca *sef_biblioteca_recurso_abrir(const char *caminho, SefErro 
         free(recurso);
         free(copia);
         fechar_handle(handle);
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para biblioteca compartilhada");
+        sef_erro_definir(erro, 0, 0, "not enough memory for shared library");
         return NULL;
     }
     memcpy(copia, caminho, tamanho_caminho + 1u);
@@ -88,28 +88,28 @@ SefFuncaoExternaI64 sef_biblioteca_recurso_resolver(SefRecursoBiblioteca *recurs
                                                     const char *simbolo, SefErro *erro) {
     sef_erro_limpar(erro);
     if (recurso == NULL || simbolo == NULL || simbolo[0] == '\0') {
-        sef_erro_definir(erro, 0, 0, "biblioteca ou simbolo ausente para resolucao");
+        sef_erro_definir(erro, 0, 0, "missing library or symbol for resolution");
         return NULL;
     }
     SefFuncaoExternaI64 endereco = NULL;
 #ifdef _WIN32
     FARPROC encontrado = GetProcAddress((HMODULE)recurso->handle, simbolo);
     _Static_assert(sizeof(encontrado) == sizeof(endereco),
-                   "ponteiros de simbolo Windows devem ter o mesmo tamanho");
+                   "Windows symbol pointers must have the same size");
     if (encontrado != NULL)
         memcpy(&endereco, &encontrado, sizeof(endereco));
     else
-        sef_erro_definir(erro, 0, 0, "simbolo %s nao existe na biblioteca Windows", simbolo);
+        sef_erro_definir(erro, 0, 0, "symbol %s does not exist in the Windows library", simbolo);
 #else
     dlerror();
     void *encontrado = dlsym(recurso->handle, simbolo);
     const char *mensagem = dlerror();
     _Static_assert(sizeof(encontrado) == sizeof(endereco),
-                   "ponteiros de simbolo POSIX devem ter o mesmo tamanho");
+                   "POSIX symbol pointers must have the same size");
     if (mensagem == NULL)
         memcpy(&endereco, &encontrado, sizeof(endereco));
     else
-        sef_erro_definir(erro, 0, 0, "simbolo %s nao foi resolvido: %s", simbolo, mensagem);
+        sef_erro_definir(erro, 0, 0, "symbol %s could not be resolved: %s", simbolo, mensagem);
 #endif
     return endereco;
 }
@@ -134,7 +134,7 @@ SefValor sef_biblioteca_nova(SefRuntime *runtime, const char *caminho, SefErro *
 bool sef_biblioteca_fechar(SefValor biblioteca, SefErro *erro) {
     sef_erro_limpar(erro);
     if (biblioteca == NULL || biblioteca->tipo != SEF_TIPO_BIBLIOTECA) {
-        sef_erro_definir(erro, 0, 0, "CLOSE-SHARED-LIBRARY exige uma biblioteca");
+        sef_erro_definir(erro, 0, 0, "CLOSE-SHARED-LIBRARY requires a library");
         return false;
     }
     if (biblioteca->como.biblioteca.fechada)

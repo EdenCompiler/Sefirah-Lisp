@@ -302,7 +302,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                         SefAoEvento ao_evento, void *dados, char *mensagem_erro,
                         int capacidade_erro) {
     if (configuracao == NULL || ao_desenhar == NULL) {
-        snprintf(mensagem_erro, (size_t)capacidade_erro, "configuracao de janela invalida");
+        snprintf(mensagem_erro, (size_t)capacidade_erro, "invalid window configuration");
         return 1;
     }
     id pool = ENVIAR0(id, (id)objc_getClass("NSAutoreleasePool"), "new");
@@ -313,7 +313,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     Class classe_vista = classe_vista_sefirah();
     if (classe_delegada == Nil || classe_vista == Nil) {
         snprintf(mensagem_erro, (size_t)capacidade_erro,
-                 "runtime Objective-C recusou as classes da janela");
+                 "Objective-C runtime refused the window classes");
         ENVIAR0(void, pool, "drain");
         return 1;
     }
@@ -325,7 +325,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     estado.ao_evento = ao_evento;
     estado.dados = dados;
     if (!sef_superficie_criar(&estado.superficie, configuracao->largura, configuracao->altura)) {
-        snprintf(mensagem_erro, (size_t)capacidade_erro, "memoria insuficiente para superficie");
+        snprintf(mensagem_erro, (size_t)capacidade_erro, "not enough memory for the surface");
         ENVIAR0(void, delegada, "release");
         ENVIAR0(void, pool, "drain");
         return 1;
@@ -338,7 +338,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
         janela_alocada, sel_registerName("initWithContentRect:styleMask:backing:defer:"), quadro,
         1ul | 2ul | 4ul, 2ul, 0);
     if (estado.janela == NULL) {
-        snprintf(mensagem_erro, (size_t)capacidade_erro, "AppKit recusou a janela");
+        snprintf(mensagem_erro, (size_t)capacidade_erro, "AppKit refused the window");
         sef_superficie_destruir(&estado.superficie);
         ENVIAR0(void, delegada, "release");
         ENVIAR0(void, pool, "drain");
@@ -356,7 +356,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     ENVIAR1(void, estado.vista, "setImageScaling:", long, 1);
     ENVIAR1(void, estado.janela, "setContentView:", id, estado.vista);
     if (!redesenhar(&estado)) {
-        snprintf(mensagem_erro, (size_t)capacidade_erro, "CoreGraphics recusou a imagem da janela");
+        snprintf(mensagem_erro, (size_t)capacidade_erro, "CoreGraphics refused the window image");
         object_setInstanceVariable(estado.vista, "estadoSefirah", NULL);
         ENVIAR0(void, estado.vista, "release");
         ENVIAR0(void, estado.janela, "release");

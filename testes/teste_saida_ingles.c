@@ -1,0 +1,84 @@
+#include "ide/ide.h"
+#include "sefirah/runtime.h"
+
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+
+static int falhas = 0;
+
+static void verificar(bool condicao, const char *mensagem) {
+    if (!condicao) {
+        fprintf(stderr, "FAILED: %s\n", mensagem);
+        falhas++;
+    }
+}
+
+static bool texto_contem(const char *texto, const char *trecho) {
+    return texto != NULL && strstr(texto, trecho) != NULL;
+}
+
+static bool texto_contem_portugues(const char *texto) {
+    static const char *marcadores[] = {
+        " memoria ", " nao ",      " exige ",    " invalido", " invalida",
+        " simbolo",  " funcao",    " arquivo",   " caminho",  " condicao",
+        " reinicio", " nenhum",    " nenhuma",   " erro:",    " falha",
+        " esperava ", " recebeu ", " argumento", " codigo",   " objeto",
+    };
+    char normalizado[sizeof(((SefErro *)0)->mensagem) + 3];
+    size_t tamanho = texto == NULL ? 0 : strlen(texto);
+    if (tamanho > sizeof(((SefErro *)0)->mensagem))
+        tamanho = sizeof(((SefErro *)0)->mensagem);
+    normalizado[0] = ' ';
+    for (size_t i = 0; i < tamanho; i++)
+        normalizado[i + 1] = (char)tolower((unsigned char)texto[i]);
+    normalizado[tamanho + 1] = ' ';
+    normalizado[tamanho + 2] = '\0';
+    for (size_t i = 0; i < sizeof(marcadores) / sizeof(marcadores[0]); i++) {
+        if (strstr(normalizado, marcadores[i]) != NULL)
+            return true;
+    }
+    return false;
+}
+
+int main(void) {
+    SefErro erro;
+    SefRuntime *runtime = sef_runtime_criar(&erro);
+    verificar(runtime != NULL, "runtime starts for language-policy checks");
+    if (runtime != NULL) {
+        SefValor resultado = sef_runtime_avaliar_texto(runtime, "(+ 1 'word)", &erro);
+        verificar(resultado == NULL && erro.ocorreu && texto_contem(erro.mensagem, "numbers") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "evaluator diagnostics are English");
+
+        resultado = sef_runtime_avaliar_texto(runtime, "(list 1", &erro);
+        verificar(resultado == NULL && erro.ocorreu && texto_contem(erro.mensagem, "closing") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "reader diagnostics are English");
+
+        SefFuncaoCompilada *funcao =
+            sef_runtime_compilar_funcao_i64(runtime, "missing-function", &erro);
+        verificar(funcao == NULL && erro.ocorreu && texto_contem(erro.mensagem, "compilable") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "compiler diagnostics are English");
+        sef_runtime_destruir(runtime);
+    }
+
+    SefSessaoIde *sessao = sef_sessao_ide_criar(&erro);
+    verificar(sessao != NULL, "IDE session starts for language-policy checks");
+    if (sessao != NULL) {
+        verificar(texto_contem(sef_sessao_ide_inspetor(sessao), "OBJECTS") &&
+                      texto_contem(sef_sessao_ide_navegador(sessao), "DEFINITIONS") &&
+                      texto_contem(sef_sessao_ide_depurador(sessao), "CONDITIONS"),
+                  "IDE panels use English labels");
+        verificar(!sef_sessao_ide_editor_selecionar_forma(sessao, &erro) && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "complete Lisp form") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "IDE diagnostics are English");
+        sef_sessao_ide_destruir(sessao);
+    }
+
+    if (falhas == 0)
+        puts("english output: all tests passed");
+    return falhas == 0 ? 0 : 1;
+}

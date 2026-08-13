@@ -6,14 +6,19 @@ O bootstrap atual estabelece o primeiro caminho vertical da linguagem ao
 desktop. Ele ainda não é ANSI Common Lisp completo: este guia descreve apenas
 o comportamento implementado e testado no repositório.
 
+Os identificadores e comentários da implementação são escritos em PT-BR. Todos
+os comandos públicos, ajuda, diagnósticos, textos do REPL e da IDE e saídas de
+ferramentas usam inglês. As grafias antigas da CLI em português permanecem
+como aliases de compatibilidade.
+
 Programas usam exclusivamente a extensão `.lisp`. A extensão antiga `.sef` não
 faz parte do formato público.
 
 ## Início rápido
 
 ```bash
-./construir/sefirah avaliar "(+ 20 22)"
-./construir/sefirah executar exemplos/inicio.lisp
+./construir/sefirah evaluate "(+ 20 22)"
+./construir/sefirah run exemplos/inicio.lisp
 ./construir/sefirah repl
 ```
 
@@ -229,16 +234,16 @@ abrir a imagem em outra arquitetura, chame `COMPILE` novamente.
 O frontend i64 pode produzir objetos relocáveis para os três formatos desktop:
 
 ```bash
-sefirah compilar-elf exemplos/nativo.lisp calcular_nativo calcular.o
+sefirah compile-elf exemplos/nativo.lisp calcular_nativo calcular.o
 cc exemplos/integracao-c/chamar_nativo.c calcular.o -o chamar-nativo
 ./chamar-nativo
 
-sefirah compilar-coff exemplos/nativo.lisp calcular_nativo calcular.obj
+sefirah compile-coff exemplos/nativo.lisp calcular_nativo calcular.obj
 x86_64-w64-mingw32-gcc \
   exemplos/integracao-c/chamar_nativo.c calcular.obj \
   -o chamar-nativo.exe
 
-sefirah compilar-macho \
+sefirah compile-macho \
   exemplos/nativo.lisp calcular_nativo calcular-macos.o
 ```
 
@@ -265,7 +270,7 @@ i64:
 Para produzir um objeto com símbolo indefinido:
 
 ```bash
-sefirah compilar-elf exemplos/externa.lisp chamar_dobro chamar-dobro.o
+sefirah compile-elf exemplos/externa.lisp chamar_dobro chamar-dobro.o
 cc exemplos/integracao-c/chamar_externa.c chamar-dobro.o -o chamar-externa
 ```
 
@@ -429,9 +434,9 @@ de `NIL` ao package, além dos símbolos exportados de formas especiais novas,
 enquanto uma nova gravação atualiza o resultado para v10.
 
 ```bash
-sefirah imagem salvar desenvolvimento.imagem exemplos/inicio.lisp
-sefirah imagem abrir desenvolvimento.imagem "(fatorial 6)"
-sefirah imagem abrir desenvolvimento.imagem
+sefirah image save desenvolvimento.imagem exemplos/inicio.lisp
+sefirah image open desenvolvimento.imagem "(fatorial 6)"
+sefirah image open desenvolvimento.imagem
 ```
 
 Antes de salvar:
@@ -448,8 +453,8 @@ fechados permanecem objetos fechados.
 O REPL textual aceita programas Lisp completos em vez de linhas físicas
 isoladas. Lista, string, vetor ou prefixo de leitura aberto muda `sefirah>` para
 o prompt de continuação `......>`. A avaliação ocorre somente quando a forma
-está completa e imprime todos os valores devolvidos. `:ajuda` lista os comandos
-e `:sair` encerra a sessão.
+está completa e imprime todos os valores devolvidos. `:help` lista os comandos
+e `:quit` encerra a sessão.
 
 A IDE gráfica está dividida entre um motor de sessão independente da plataforma
 e a apresentação em janela. Ela oferece buffer `.lisp` editável, ouvinte

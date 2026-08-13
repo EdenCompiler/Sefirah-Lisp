@@ -226,19 +226,19 @@ static void classificar_forma(const char *codigo, SefFormaEstruturalIde *forma) 
 
     const char *categoria = NULL;
     if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFUN"))
-        categoria = "FUNCAO";
+        categoria = "FUNCTION";
     else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFMACRO"))
         categoria = "MACRO";
     else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFVAR"))
-        categoria = "VARIAVEL";
+        categoria = "VARIABLE";
     else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFPARAMETER"))
-        categoria = "PARAMETRO";
+        categoria = "PARAMETER";
     else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFCONSTANT"))
-        categoria = "CONSTANTE";
+        categoria = "CONSTANT";
     else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFPACKAGE"))
-        categoria = "PACOTE";
+        categoria = "PACKAGE";
     else if (atomos_iguais_ascii(codigo, inicio_operador, fim_operador, "DEFINE"))
-        categoria = "VALOR";
+        categoria = "VALUE";
     if (categoria == NULL)
         return;
 
@@ -253,7 +253,7 @@ bool sef_ide_catalogar_formas(const char *codigo, SefFormaEstruturalIde **formas
                               size_t *quantidade, SefErro *erro) {
     sef_erro_limpar(erro);
     if (codigo == NULL || formas == NULL || quantidade == NULL) {
-        sef_erro_definir(erro, 0, 0, "argumento ausente ao catalogar formas da IDE");
+        sef_erro_definir(erro, 0, 0, "missing argument while cataloging IDE forms");
         return false;
     }
     *formas = NULL;
@@ -276,26 +276,24 @@ bool sef_ide_catalogar_formas(const char *codigo, SefFormaEstruturalIde **formas
             free(*formas);
             *formas = NULL;
             *quantidade = 0;
-            sef_erro_definir(erro, linha_forma, 1, "forma Lisp incompleta no catalogo da IDE");
+            sef_erro_definir(erro, linha_forma, 1, "incomplete Lisp form in IDE catalog");
             return false;
         }
         if (*quantidade == capacidade) {
             size_t nova_capacidade = capacidade == 0 ? 16 : capacidade * 2;
-            if (nova_capacidade < capacidade ||
-                nova_capacidade > SIZE_MAX / sizeof(**formas)) {
+            if (nova_capacidade < capacidade || nova_capacidade > SIZE_MAX / sizeof(**formas)) {
                 free(*formas);
                 *formas = NULL;
                 *quantidade = 0;
-                sef_erro_definir(erro, 0, 0, "catalogo estrutural da IDE excedeu o limite");
+                sef_erro_definir(erro, 0, 0, "IDE structural catalog exceeded the limit");
                 return false;
             }
-            SefFormaEstruturalIde *novas =
-                realloc(*formas, nova_capacidade * sizeof(**formas));
+            SefFormaEstruturalIde *novas = realloc(*formas, nova_capacidade * sizeof(**formas));
             if (novas == NULL) {
                 free(*formas);
                 *formas = NULL;
                 *quantidade = 0;
-                sef_erro_definir(erro, 0, 0, "memoria insuficiente para catalogo da IDE");
+                sef_erro_definir(erro, 0, 0, "not enough memory for IDE catalog");
                 return false;
             }
             *formas = novas;
@@ -409,8 +407,8 @@ bool sef_ide_atomos_iguais(const char *codigo, size_t primeiro_inicio, size_t pr
     return true;
 }
 
-static bool nome_de_definicao(const SefFormaEstruturalIde *formas, size_t quantidade,
-                              size_t inicio, size_t fim) {
+static bool nome_de_definicao(const SefFormaEstruturalIde *formas, size_t quantidade, size_t inicio,
+                              size_t fim) {
     for (size_t i = 0; i < quantidade; i++)
         if (formas[i].definicao && formas[i].inicio_nome == inicio && formas[i].fim_nome == fim)
             return true;
@@ -432,7 +430,7 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
     sef_erro_limpar(erro);
     if (codigo == NULL || referencias == NULL || quantidade_referencias == NULL ||
         (quantidade_formas > 0 && formas == NULL) || nome_fim <= nome_inicio) {
-        sef_erro_definir(erro, 0, 0, "consulta estrutural de referencias invalida");
+        sef_erro_definir(erro, 0, 0, "invalid structural reference query");
         return false;
     }
     *referencias = NULL;
@@ -440,7 +438,7 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
     size_t capacidade = 0;
     size_t tamanho = strlen(codigo);
     if (nome_fim > tamanho) {
-        sef_erro_definir(erro, 0, 0, "simbolo consultado esta fora do buffer");
+        sef_erro_definir(erro, 0, 0, "queried symbol is outside the buffer");
         return false;
     }
     size_t posicao = 0;
@@ -463,7 +461,7 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
                 free(*referencias);
                 *referencias = NULL;
                 *quantidade_referencias = 0;
-                sef_erro_definir(erro, 0, 0, "catalogo de referencias excedeu o limite");
+                sef_erro_definir(erro, 0, 0, "reference catalog exceeded the limit");
                 return false;
             }
             SefReferenciaEstruturalIde *novas =
@@ -472,15 +470,14 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
                 free(*referencias);
                 *referencias = NULL;
                 *quantidade_referencias = 0;
-                sef_erro_definir(erro, 0, 0, "memoria insuficiente para referencias da IDE");
+                sef_erro_definir(erro, 0, 0, "not enough memory for IDE references");
                 return false;
             }
             *referencias = novas;
             capacidade = nova_capacidade;
         }
-        (*referencias)[(*quantidade_referencias)++] =
-            (SefReferenciaEstruturalIde){inicio, fim, linha,
-                                         forma_que_contem(formas, quantidade_formas, inicio)};
+        (*referencias)[(*quantidade_referencias)++] = (SefReferenciaEstruturalIde){
+            inicio, fim, linha, forma_que_contem(formas, quantidade_formas, inicio)};
     }
     return true;
 }

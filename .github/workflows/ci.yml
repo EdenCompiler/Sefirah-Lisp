@@ -1,28 +1,28 @@
-name: integracao
+name: Integration
 
 on:
   push:
   pull_request:
 
 jobs:
-  compilar-e-testar:
+  build-and-test:
     strategy:
       fail-fast: false
       matrix:
-        sistema: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.sistema }}
+        system: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.system }}
     steps:
       - uses: actions/checkout@v6
-      - name: Dependencias Linux
+      - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libx11-dev
-      - name: Configurar
+      - name: Configure
         run: cmake -S . -B construir -DCMAKE_BUILD_TYPE=Debug -DSEFIRAH_AVISOS_COMO_ERROS=ON
-      - name: Compilar
+      - name: Build
         run: cmake --build construir --config Debug --parallel
-      - name: Testar
+      - name: Test
         run: ctest --test-dir construir -C Debug --output-on-failure
-      - name: Instalar
+      - name: Install
         run: cmake --install construir --config Debug --prefix "${{ runner.temp }}/sefirah-install"
-      - name: Verificar instalacao
+      - name: Verify installation
         run: cmake -DSEFIRAH_PREFIXO="${{ runner.temp }}/sefirah-install" -P cmake/verificar_instalacao.cmake

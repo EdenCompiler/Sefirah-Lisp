@@ -10,15 +10,15 @@ file(GLOB_RECURSE SEFIRAH_EXTENSOES_ANTIGAS CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/testes/*.sef"
 )
 if(SEFIRAH_EXTENSOES_ANTIGAS)
-    message(FATAL_ERROR "Fontes Sefirah devem usar .lisp, nunca .sef: ${SEFIRAH_EXTENSOES_ANTIGAS}")
+    message(FATAL_ERROR "Sefirah source files must use .lisp, never .sef: ${SEFIRAH_EXTENSOES_ANTIGAS}")
 endif()
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-option(SEFIRAH_AVISOS_COMO_ERROS "Trata avisos do compilador como erros" OFF)
-option(SEFIRAH_CONSTRUIR_TESTES "Constroi os testes automatizados" ON)
+option(SEFIRAH_AVISOS_COMO_ERROS "Treat compiler warnings as errors" OFF)
+option(SEFIRAH_CONSTRUIR_TESTES "Build automated tests" ON)
 
 if(WIN32 AND CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
     find_program(SEFIRAH_WINE_EXECUTAVEL wine)
@@ -129,27 +129,34 @@ if(SEFIRAH_CONSTRUIR_TESTES)
         target_compile_options(teste_nucleo PRIVATE /utf-8)
     endif()
     target_link_libraries(teste_nucleo PRIVATE sefirah_nucleo)
-    add_test(NAME nucleo COMMAND teste_nucleo "./$<TARGET_FILE_NAME:teste_ffi>")
-    set_tests_properties(nucleo PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:teste_ffi>")
+    add_test(NAME core COMMAND teste_nucleo "./$<TARGET_FILE_NAME:teste_ffi>")
+    set_tests_properties(core PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:teste_ffi>")
 
     add_executable(teste_graficos testes/teste_graficos.c)
     target_link_libraries(teste_graficos PRIVATE sefirah_graficos)
-    add_test(NAME graficos COMMAND teste_graficos)
+    add_test(NAME graphics COMMAND teste_graficos)
 
     add_executable(teste_compilador testes/teste_compilador.c)
     target_link_libraries(teste_compilador PRIVATE sefirah_compilador)
-    add_test(NAME compilador COMMAND teste_compilador)
+    add_test(NAME compiler COMMAND teste_compilador)
 
     add_executable(teste_ide testes/teste_ide.c)
     target_link_libraries(teste_ide PRIVATE sefirah_ide_nucleo)
     add_test(NAME ide COMMAND teste_ide)
 
+    add_executable(teste_saida_ingles testes/teste_saida_ingles.c)
+    target_link_libraries(teste_saida_ingles PRIVATE sefirah_ide_nucleo)
+    add_test(NAME english_output COMMAND teste_saida_ingles)
+
     add_executable(teste_imagem_legada testes/teste_imagem_legada.c)
     target_link_libraries(teste_imagem_legada PRIVATE sefirah_nucleo)
-    add_test(NAME imagem_legada COMMAND teste_imagem_legada)
+    add_test(NAME legacy_image COMMAND teste_imagem_legada)
 
-    add_test(NAME cli_sem_ide COMMAND sefirah --help)
-    set_tests_properties(cli_sem_ide PROPERTIES PASS_REGULAR_EXPRESSION "compilar-elf")
+    add_test(NAME cli_without_ide COMMAND sefirah --help)
+    set_tests_properties(cli_without_ide PROPERTIES
+        PASS_REGULAR_EXPRESSION "Usage: sefirah.*compile-elf"
+        FAIL_REGULAR_EXPRESSION "Uso:;Comandos:;compilar-elf"
+    )
 
     add_executable(exemplo_gerar_objeto_externo exemplos/integracao-c/gerar_objeto_externo.c)
     target_link_libraries(exemplo_gerar_objeto_externo PRIVATE sefirah_compilador)

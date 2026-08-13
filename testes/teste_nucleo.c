@@ -69,7 +69,7 @@ static void testar_repl(SefRuntime *runtime) {
     fputs("(defun soma-repl\n  (a b)\n  (+ a b))\n", entrada);
     fputs("(soma-repl 40 2)\n", entrada);
     fputs("(values 40 41 42)\n", entrada);
-    fputs(":ajuda\n:sair\n", entrada);
+    fputs(":help\n:quit\n", entrada);
     rewind(entrada);
     verificar(sef_runtime_repl(runtime, entrada, saida) == 0, "REPL executou sessao completa");
     rewind(saida);
@@ -82,7 +82,7 @@ static void testar_repl(SefRuntime *runtime) {
     verificar(strstr(transcricao, "42\n") != NULL, "REPL executou a funcao definida");
     verificar(strstr(transcricao, "40\n41\n42\n") != NULL,
               "REPL imprimiu todos os valores retornados");
-    verificar(strstr(transcricao, ":ajuda  mostra esta ajuda") != NULL,
+    verificar(strstr(transcricao, ":help  show this help") != NULL,
               "REPL reconheceu comando interativo");
     fclose(entrada);
     fclose(saida);
@@ -316,28 +316,27 @@ int main(int argc, char **argv) {
                   sef_valor_como_inteiro(sef_vetor_obter(vetor_criado, 0)) == 42,
               "SDK criou vetor inicializado");
     SefValor par_sdk = avaliar(runtime, "(cons 40 42)");
-    verificar(sef_valor_quantidade_componentes(runtime, par_sdk) == 2 &&
-                  sef_valor_componente(runtime, par_sdk, 0, &componente_sdk, rotulo_componente,
-                                       sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "PRIMEIRO") == 0 &&
-                  sef_valor_como_inteiro(componente_sdk) == 40 &&
-                  sef_valor_componente(runtime, par_sdk, 1, &componente_sdk, rotulo_componente,
-                                       sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "RESTO") == 0 &&
-                  sef_valor_como_inteiro(componente_sdk) == 42,
-              "SDK expôs os dois componentes de um par");
+    verificar(
+        sef_valor_quantidade_componentes(runtime, par_sdk) == 2 &&
+            sef_valor_componente(runtime, par_sdk, 0, &componente_sdk, rotulo_componente,
+                                 sizeof(rotulo_componente)) &&
+            strcmp(rotulo_componente, "CAR") == 0 && sef_valor_como_inteiro(componente_sdk) == 40 &&
+            sef_valor_componente(runtime, par_sdk, 1, &componente_sdk, rotulo_componente,
+                                 sizeof(rotulo_componente)) &&
+            strcmp(rotulo_componente, "CDR") == 0 && sef_valor_como_inteiro(componente_sdk) == 42,
+        "SDK expôs os dois componentes de um par");
     SefValor nulo_sdk = avaliar(runtime, "nil");
     verificar(sef_valor_quantidade_componentes(runtime, nulo_sdk) == 1 &&
                   sef_valor_componente(runtime, nulo_sdk, 0, &componente_sdk, rotulo_componente,
                                        sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "PACOTE") == 0 &&
+                  strcmp(rotulo_componente, "PACKAGE") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "PACKAGE") == 0,
               "SDK preservou a identidade simbolica de NIL na introspeccao");
     SefValor funcao_sdk = avaliar(runtime, "#'(lambda (x) (+ x 1))");
     verificar(sef_valor_quantidade_componentes(runtime, funcao_sdk) == 3 &&
                   sef_valor_componente(runtime, funcao_sdk, 2, &componente_sdk, rotulo_componente,
                                        sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "AMBIENTE") == 0 &&
+                  strcmp(rotulo_componente, "ENVIRONMENT") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "SEFIRAH::ENVIRONMENT") == 0 &&
                   sef_valor_quantidade_componentes(runtime, componente_sdk) >= 1,
               "SDK inspecionou funcao e seu ambiente lexico");
@@ -345,7 +344,7 @@ int main(int argc, char **argv) {
     verificar(sef_valor_quantidade_componentes(runtime, condicao_sdk) == 2 &&
                   sef_valor_componente(runtime, condicao_sdk, 1, &componente_sdk, rotulo_componente,
                                        sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "MENSAGEM") == 0 &&
+                  strcmp(rotulo_componente, "MESSAGE") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "STRING") == 0,
               "SDK expôs classe e mensagem da condicao");
     SefValor falha_condicao = sef_runtime_avaliar_texto(runtime, "(error \"nao tratada\")", &erro);
@@ -362,10 +361,10 @@ int main(int argc, char **argv) {
     verificar(sef_valor_quantidade_componentes(runtime, hash_sdk) == 2 &&
                   sef_valor_componente(runtime, hash_sdk, 0, &componente_sdk, rotulo_componente,
                                        sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "CHAVE 1") == 0 &&
+                  strcmp(rotulo_componente, "KEY 1") == 0 &&
                   sef_valor_componente(runtime, hash_sdk, 1, &componente_sdk, rotulo_componente,
                                        sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "VALOR 1") == 0 &&
+                  strcmp(rotulo_componente, "VALUE 1") == 0 &&
                   sef_valor_como_inteiro(componente_sdk) == 42,
               "SDK inspecionou pares de chave e valor da hash table");
     verificar_texto(runtime, "(define vetor-v7 #(40 41 42))", "VETOR-V7");
@@ -553,13 +552,13 @@ int main(int argc, char **argv) {
     SefValor reinicio_sdk = avaliar(runtime, "reinicio-salvo");
     verificar(reinicio_sdk != NULL && strcmp(sef_valor_nome_tipo(reinicio_sdk), "RESTART") == 0 &&
                   sef_valor_quantidade_componentes(runtime, reinicio_sdk) == 2 &&
-                  sef_valor_componente(runtime, reinicio_sdk, 0, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "NOME") == 0 &&
+                  sef_valor_componente(runtime, reinicio_sdk, 0, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "NAME") == 0 &&
                   strcmp(sef_valor_nome_tipo(componente_sdk), "SYMBOL") == 0 &&
-                  sef_valor_componente(runtime, reinicio_sdk, 1, &componente_sdk,
-                                       rotulo_componente, sizeof(rotulo_componente)) &&
-                  strcmp(rotulo_componente, "ATIVO") == 0 &&
+                  sef_valor_componente(runtime, reinicio_sdk, 1, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "ACTIVE") == 0 &&
                   sef_valor_e_nulo(runtime, componente_sdk),
               "SDK inspecionou nome e atividade do objeto RESTART");
     verificar_texto(runtime,
@@ -568,8 +567,7 @@ int main(int argc, char **argv) {
                     ":REINICIO-INATIVO");
     verificar(sef_runtime_imagem_salvar(runtime, "teste-sefirah-v10.imagem", &erro),
               "imagem v10 persistiu objeto RESTART inativo");
-    SefRuntime *runtime_v10 =
-        sef_runtime_imagem_abrir("teste-sefirah-v10.imagem", &erro);
+    SefRuntime *runtime_v10 = sef_runtime_imagem_abrir("teste-sefirah-v10.imagem", &erro);
     verificar(runtime_v10 != NULL, "leitor abriu imagem v10 com objeto RESTART");
     if (runtime_v10 != NULL) {
         verificar_texto(runtime_v10,

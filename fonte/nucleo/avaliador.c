@@ -17,13 +17,13 @@ static SefValor valor_unico(SefRuntime *runtime, SefValor valor, SefErro *erro) 
 static bool exigir_lista(SefRuntime *runtime, SefValor lista, const char *contexto, SefErro *erro) {
     if (sef_e_lista_propria(runtime, lista))
         return true;
-    sef_erro_definir(erro, 0, 0, "%s exige uma lista propria", contexto);
+    sef_erro_definir(erro, 0, 0, "%s requires a proper list", contexto);
     return false;
 }
 
 static SefValor avaliar_sequencia(SefRuntime *runtime, SefValor formas, SefValor ambiente,
                                   SefErro *erro) {
-    if (!exigir_lista(runtime, formas, "sequencia", erro))
+    if (!exigir_lista(runtime, formas, "sequence", erro))
         return NULL;
     if (formas == runtime->nulo)
         return valor_unico(runtime, runtime->nulo, erro);
@@ -39,7 +39,7 @@ static SefValor avaliar_sequencia(SefRuntime *runtime, SefValor formas, SefValor
 
 static SefValor avaliar_argumentos(SefRuntime *runtime, SefValor formas, SefValor ambiente,
                                    SefErro *erro) {
-    if (!exigir_lista(runtime, formas, "chamada", erro))
+    if (!exigir_lista(runtime, formas, "call", erro))
         return NULL;
     SefValor invertida = runtime->nulo;
     while (formas != runtime->nulo) {
@@ -60,7 +60,7 @@ static bool contar_exato(SefRuntime *runtime, SefValor argumentos, size_t espera
     size_t obtido = sef_lista_tamanho(runtime, argumentos, &propria);
     if (propria && obtido == esperado)
         return true;
-    sef_erro_definir(erro, 0, 0, "%s esperava %zu argumento(s), recebeu %zu", nome, esperado,
+    sef_erro_definir(erro, 0, 0, "%s expected %zu argument(s), received %zu", nome, esperado,
                      obtido);
     return false;
 }
@@ -68,11 +68,11 @@ static bool contar_exato(SefRuntime *runtime, SefValor argumentos, size_t espera
 static bool exigir_nome_variavel(SefRuntime *runtime, SefValor nome, const char *contexto,
                                  SefErro *erro) {
     if (!sef_valor_e_simbolo_logico(runtime, nome)) {
-        sef_erro_definir(erro, 0, 0, "%s exige um simbolo", contexto);
+        sef_erro_definir(erro, 0, 0, "%s requires a symbol", contexto);
         return false;
     }
     if (sef_simbolo_e_constante(runtime, nome)) {
-        sef_erro_definir(erro, 0, 0, "%s nao pode vincular um simbolo constante", contexto);
+        sef_erro_definir(erro, 0, 0, "%s cannot bind a constant symbol", contexto);
         return false;
     }
     return true;
@@ -116,7 +116,7 @@ static SefValor avaliar_quasiquote(SefRuntime *runtime, SefValor forma, SefValor
         return interno == NULL ? NULL : lista_unaria(runtime, "QUASIQUOTE", interno, erro);
     }
     if (sef_simbolo_tem_nome(operador, "UNQUOTE-SPLICING") && profundidade == 1) {
-        sef_erro_definir(erro, 0, 0, "UNQUOTE-SPLICING so pode aparecer dentro de uma lista");
+        sef_erro_definir(erro, 0, 0, "UNQUOTE-SPLICING may only appear inside a list");
         return NULL;
     }
 
@@ -134,7 +134,7 @@ static SefValor avaliar_quasiquote(SefRuntime *runtime, SefValor forma, SefValor
             if (avaliados == NULL)
                 return NULL;
             if (!sef_e_lista_propria(runtime, avaliados)) {
-                sef_erro_definir(erro, 0, 0, "UNQUOTE-SPLICING exige uma lista");
+                sef_erro_definir(erro, 0, 0, "UNQUOTE-SPLICING requires a list");
                 return NULL;
             }
             while (avaliados != runtime->nulo) {
@@ -187,7 +187,7 @@ static SefValor especial_if(SefRuntime *runtime, SefValor argumentos, SefValor a
     bool propria = false;
     size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
     if (!propria || (quantidade != 2 && quantidade != 3)) {
-        sef_erro_definir(erro, 0, 0, "IF espera teste, consequente e alternativa opcional");
+        sef_erro_definir(erro, 0, 0, "IF expects a test, consequent, and optional alternative");
         return NULL;
     }
     SefValor teste = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
@@ -205,11 +205,11 @@ static SefValor especial_if(SefRuntime *runtime, SefValor argumentos, SefValor a
 static SefValor especial_lambda(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                 bool macro, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "LAMBDA exige parametros e corpo");
+        sef_erro_definir(erro, 0, 0, "LAMBDA requires parameters and a body");
         return NULL;
     }
     SefValor parametros = primeiro(argumentos);
-    if (!exigir_lista(runtime, parametros, "lista de parametros", erro))
+    if (!exigir_lista(runtime, parametros, "parameter list", erro))
         return NULL;
     return sef_funcao_nova(runtime, parametros, resto(argumentos), ambiente, macro, erro);
 }
@@ -217,13 +217,13 @@ static SefValor especial_lambda(SefRuntime *runtime, SefValor argumentos, SefVal
 static SefValor especial_definicao(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                    bool macro, SefErro *erro) {
     if (argumentos == runtime->nulo || resto(argumentos) == runtime->nulo) {
-        sef_erro_definir(erro, 0, 0, "%s exige nome, parametros e corpo",
+        sef_erro_definir(erro, 0, 0, "%s requires a name, parameters, and a body",
                          macro ? "DEFMACRO" : "DEFUN");
         return NULL;
     }
     SefValor nome = primeiro(argumentos);
     if (nome->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "nome da definicao deve ser simbolo");
+        sef_erro_definir(erro, 0, 0, "definition name must be a symbol");
         return NULL;
     }
     SefValor funcao = especial_lambda(runtime, resto(argumentos), ambiente, macro, erro);
@@ -256,12 +256,12 @@ static SefValor especial_variavel_global(SefRuntime *runtime, SefValor argumento
     bool propria = false;
     size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
     if (!propria || quantidade < 1 || quantidade > 3 || (sempre_atribuir && quantidade < 2)) {
-        sef_erro_definir(erro, 0, 0, "%s possui lista de argumentos invalida",
+        sef_erro_definir(erro, 0, 0, "%s has an invalid argument list",
                          sempre_atribuir ? "DEFPARAMETER" : "DEFVAR");
         return NULL;
     }
     SefValor nome = primeiro(argumentos);
-    if (!exigir_nome_variavel(runtime, nome, "definicao de variavel global", erro)) {
+    if (!exigir_nome_variavel(runtime, nome, "global variable definition", erro)) {
         return NULL;
     }
     SefValor existente;
@@ -283,7 +283,7 @@ static SefValor especial_setq(SefRuntime *runtime, SefValor argumentos, SefValor
     bool propria = false;
     size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
     if (!propria || quantidade == 0 || quantidade % 2 != 0) {
-        sef_erro_definir(erro, 0, 0, "SETQ exige pares de simbolo e forma");
+        sef_erro_definir(erro, 0, 0, "SETQ requires symbol and form pairs");
         return NULL;
     }
     SefValor resultado = runtime->nulo;
@@ -297,7 +297,7 @@ static SefValor especial_setq(SefRuntime *runtime, SefValor argumentos, SefValor
         if (resultado == NULL)
             return NULL;
         if (!sef_ambiente_atribuir(ambiente, nome, resultado)) {
-            sef_erro_definir(erro, 0, 0, "simbolo %s nao esta vinculado", nome->como.simbolo.nome);
+            sef_erro_definir(erro, 0, 0, "symbol %s is unbound", nome->como.simbolo.nome);
             return NULL;
         }
         argumentos = resto(argumentos);
@@ -314,21 +314,21 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
         if (valor == NULL)
             return NULL;
         if (!sef_ambiente_atribuir(ambiente, lugar, valor)) {
-            sef_erro_definir(erro, 0, 0, "simbolo %s nao esta vinculado", lugar->como.simbolo.nome);
+            sef_erro_definir(erro, 0, 0, "symbol %s is unbound", lugar->como.simbolo.nome);
             return NULL;
         }
         return valor;
     }
     if (lugar == runtime->nulo || lugar->tipo != SEF_TIPO_PAR ||
         !sef_e_lista_propria(runtime, lugar)) {
-        sef_erro_definir(erro, 0, 0, "lugar invalido em SETF");
+        sef_erro_definir(erro, 0, 0, "invalid SETF place");
         return NULL;
     }
 
     SefValor operador = primeiro(lugar);
     SefValor argumentos = resto(lugar);
     if (operador->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "operador de lugar invalido em SETF");
+        sef_erro_definir(erro, 0, 0, "invalid SETF place operator");
         return NULL;
     }
     bool lugar_aref =
@@ -337,7 +337,7 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
         sef_simbolo_tem_nome(operador, "CHAR") || sef_simbolo_tem_nome(operador, "SCHAR");
     bool lugar_elt = sef_simbolo_tem_nome(operador, "ELT");
     if (sef_simbolo_tem_nome(operador, "GETHASH")) {
-        if (!contar_exato(runtime, argumentos, 2, "lugar GETHASH de SETF", erro))
+        if (!contar_exato(runtime, argumentos, 2, "SETF GETHASH place", erro))
             return NULL;
         SefValor chave = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
         SefValor tabela = chave == NULL
@@ -348,7 +348,7 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
                                                                                              : NULL;
     }
     if (lugar_aref || lugar_texto || lugar_elt) {
-        if (!contar_exato(runtime, argumentos, 2, "lugar indexado de SETF", erro))
+        if (!contar_exato(runtime, argumentos, 2, "indexed SETF place", erro))
             return NULL;
         SefValor sequencia = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
         if (sequencia == NULL)
@@ -361,21 +361,21 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
             return NULL;
         if (indice->tipo != SEF_TIPO_INTEIRO || indice->como.inteiro < 0 ||
             (uint64_t)indice->como.inteiro > SIZE_MAX) {
-            sef_erro_definir(erro, 0, 0, "SETF indexado exige indice inteiro nao negativo");
+            sef_erro_definir(erro, 0, 0, "indexed SETF requires a non-negative integer index");
             return NULL;
         }
         size_t posicao = (size_t)indice->como.inteiro;
         if (lugar_aref && sequencia->tipo != SEF_TIPO_VETOR) {
-            sef_erro_definir(erro, 0, 0, "SETF de AREF exige um vetor");
+            sef_erro_definir(erro, 0, 0, "SETF of AREF requires a vector");
             return NULL;
         }
         if (lugar_texto && sequencia->tipo != SEF_TIPO_TEXTO) {
-            sef_erro_definir(erro, 0, 0, "SETF de CHAR exige uma string");
+            sef_erro_definir(erro, 0, 0, "SETF of CHAR requires a string");
             return NULL;
         }
         if ((lugar_aref || (lugar_elt && sequencia->tipo == SEF_TIPO_VETOR)) &&
             posicao >= sequencia->como.vetor.tamanho) {
-            sef_erro_definir(erro, 0, 0, "indice fora dos limites em SETF de AREF");
+            sef_erro_definir(erro, 0, 0, "index out of bounds in SETF of AREF");
             return NULL;
         }
         if (lugar_aref || (lugar_elt && sequencia->tipo == SEF_TIPO_VETOR)) {
@@ -390,13 +390,13 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
             for (size_t i = 0; i < posicao; i++) {
                 if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
                     sef_erro_definir(erro, 0, 0,
-                                     "indice fora dos limites ou lista impropria em SETF de ELT");
+                                     "index out of bounds or improper list in SETF of ELT");
                     return NULL;
                 }
                 cursor = resto(cursor);
             }
             if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
-                sef_erro_definir(erro, 0, 0, "SETF de ELT exige uma sequencia e indice valido");
+                sef_erro_definir(erro, 0, 0, "SETF of ELT requires a sequence and valid index");
                 return NULL;
             }
             cursor->como.par.primeiro = valor;
@@ -404,7 +404,7 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
         }
     }
     if (sef_simbolo_tem_nome(operador, "CAR") || sef_simbolo_tem_nome(operador, "CDR")) {
-        if (!contar_exato(runtime, argumentos, 1, "lugar de lista em SETF", erro))
+        if (!contar_exato(runtime, argumentos, 1, "list SETF place", erro))
             return NULL;
         SefValor par = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
         if (par == NULL)
@@ -413,7 +413,7 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
         if (valor == NULL)
             return NULL;
         if (par->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "SETF de CAR ou CDR exige um par");
+            sef_erro_definir(erro, 0, 0, "SETF of CAR or CDR requires a cons");
             return NULL;
         }
         if (sef_simbolo_tem_nome(operador, "CAR"))
@@ -422,7 +422,7 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
             par->como.par.resto = valor;
         return valor;
     }
-    sef_erro_definir(erro, 0, 0, "lugar ainda nao suportado por SETF: %s",
+    sef_erro_definir(erro, 0, 0, "place is not yet supported by SETF: %s",
                      operador->como.simbolo.nome);
     return NULL;
 }
@@ -432,7 +432,7 @@ static SefValor especial_setf(SefRuntime *runtime, SefValor argumentos, SefValor
     bool propria = false;
     size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
     if (!propria || quantidade == 0 || quantidade % 2 != 0) {
-        sef_erro_definir(erro, 0, 0, "SETF exige pares de lugar e forma");
+        sef_erro_definir(erro, 0, 0, "SETF requires place and form pairs");
         return NULL;
     }
     SefValor resultado = runtime->nulo;
@@ -450,11 +450,11 @@ static SefValor especial_setf(SefRuntime *runtime, SefValor argumentos, SefValor
 static SefValor especial_let(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                              bool sequencial, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "LET exige vinculos e corpo");
+        sef_erro_definir(erro, 0, 0, "LET requires bindings and a body");
         return NULL;
     }
     SefValor descricoes = primeiro(argumentos);
-    if (!exigir_lista(runtime, descricoes, "vinculos de LET", erro))
+    if (!exigir_lista(runtime, descricoes, "LET bindings", erro))
         return NULL;
     SefValor novo = sef_ambiente_novo(runtime, ambiente, erro);
     if (novo == NULL)
@@ -470,7 +470,7 @@ static SefValor especial_let(SefRuntime *runtime, SefValor argumentos, SefValor 
             bool propria = false;
             size_t tamanho = sef_lista_tamanho(runtime, descricao, &propria);
             if (!propria || tamanho < 1 || tamanho > 2) {
-                sef_erro_definir(erro, 0, 0, "vinculo LET invalido");
+                sef_erro_definir(erro, 0, 0, "invalid LET binding");
                 return NULL;
             }
             nome = primeiro(descricao);
@@ -481,7 +481,7 @@ static SefValor especial_let(SefRuntime *runtime, SefValor argumentos, SefValor 
                     return NULL;
             }
         } else {
-            sef_erro_definir(erro, 0, 0, "vinculo LET invalido");
+            sef_erro_definir(erro, 0, 0, "invalid LET binding");
             return NULL;
         }
         if (!exigir_nome_variavel(runtime, nome, "LET", erro) ||
@@ -498,11 +498,11 @@ static SefValor especial_multiple_value_bind(SefRuntime *runtime, SefValor argum
     size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
     if (!propria || quantidade < 2) {
         sef_erro_definir(erro, 0, 0,
-                         "MULTIPLE-VALUE-BIND exige variaveis, forma de valores e corpo");
+                         "MULTIPLE-VALUE-BIND requires variables, a value form, and a body");
         return NULL;
     }
     SefValor variaveis = primeiro(argumentos);
-    if (!exigir_lista(runtime, variaveis, "variaveis de MULTIPLE-VALUE-BIND", erro))
+    if (!exigir_lista(runtime, variaveis, "MULTIPLE-VALUE-BIND variables", erro))
         return NULL;
 
     SefValor forma_valores = primeiro(resto(argumentos));
@@ -556,7 +556,7 @@ static SefValor especial_multiple_value_prog1(SefRuntime *runtime, SefValor argu
                                               SefValor ambiente, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR ||
         !sef_e_lista_propria(runtime, argumentos)) {
-        sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-PROG1 exige ao menos uma forma");
+        sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-PROG1 requires at least one form");
         return NULL;
     }
     if (sef_avaliar(runtime, primeiro(argumentos), ambiente, erro) == NULL)
@@ -578,7 +578,7 @@ static SefValor especial_multiple_value_call(SefRuntime *runtime, SefValor argum
                                              SefValor ambiente, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR ||
         !sef_e_lista_propria(runtime, argumentos)) {
-        sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-CALL exige uma forma de funcao");
+        sef_erro_definir(erro, 0, 0, "MULTIPLE-VALUE-CALL requires a function form");
         return NULL;
     }
     SefValor funcao = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
@@ -614,7 +614,7 @@ static SefValor especial_nth_value(SefRuntime *runtime, SefValor argumentos, Sef
         return NULL;
     if (indice->tipo != SEF_TIPO_INTEIRO || indice->como.inteiro < 0 ||
         (uint64_t)indice->como.inteiro > SIZE_MAX) {
-        sef_erro_definir(erro, 0, 0, "NTH-VALUE exige indice inteiro nao negativo");
+        sef_erro_definir(erro, 0, 0, "NTH-VALUE requires a non-negative integer index");
         return NULL;
     }
     if (sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro) == NULL)
@@ -633,7 +633,7 @@ static SefValor especial_cond(SefRuntime *runtime, SefValor clausulas, SefValor 
         SefValor clausula = primeiro(clausulas);
         if (clausula == runtime->nulo || clausula->tipo != SEF_TIPO_PAR ||
             !sef_e_lista_propria(runtime, clausula)) {
-            sef_erro_definir(erro, 0, 0, "clausula COND invalida");
+            sef_erro_definir(erro, 0, 0, "invalid COND clause");
             return NULL;
         }
         SefValor teste = sef_avaliar(runtime, primeiro(clausula), ambiente, erro);
@@ -653,7 +653,7 @@ static SefValor especial_cond(SefRuntime *runtime, SefValor clausulas, SefValor 
 static SefValor especial_when(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                               bool quando_verdadeiro, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "%s exige um teste", quando_verdadeiro ? "WHEN" : "UNLESS");
+        sef_erro_definir(erro, 0, 0, "%s requires a test", quando_verdadeiro ? "WHEN" : "UNLESS");
         return NULL;
     }
     SefValor teste = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
@@ -756,12 +756,12 @@ static SefValor executar_com_controle(SefRuntime *runtime, SefTipoControle tipo,
 static SefValor especial_block(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "BLOCK exige um nome");
+        sef_erro_definir(erro, 0, 0, "BLOCK requires a name");
         return NULL;
     }
     SefValor nome = primeiro(argumentos);
     if (nome != runtime->nulo && nome->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "nome de BLOCK deve ser simbolo ou NIL");
+        sef_erro_definir(erro, 0, 0, "BLOCK name must be a symbol or NIL");
         return NULL;
     }
     return executar_com_controle(runtime, SEF_CONTROLE_BLOCO, nome, resto(argumentos), ambiente,
@@ -773,12 +773,12 @@ static SefValor especial_return_from(SefRuntime *runtime, SefValor argumentos, S
     bool propria = false;
     size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
     if (!propria || quantidade < 1 || quantidade > 2) {
-        sef_erro_definir(erro, 0, 0, "RETURN-FROM exige nome e valor opcional");
+        sef_erro_definir(erro, 0, 0, "RETURN-FROM requires a name and optional value");
         return NULL;
     }
     SefValor nome = primeiro(argumentos);
     if (nome != runtime->nulo && nome->tipo != SEF_TIPO_SIMBOLO) {
-        sef_erro_definir(erro, 0, 0, "nome de RETURN-FROM deve ser simbolo ou NIL");
+        sef_erro_definir(erro, 0, 0, "RETURN-FROM name must be a symbol or NIL");
         return NULL;
     }
     SefValor valor = quantidade == 2
@@ -793,14 +793,14 @@ static SefValor especial_return_from(SefRuntime *runtime, SefValor argumentos, S
             transferir_controle(runtime, quadro);
         }
     }
-    sef_erro_definir(erro, 0, 0, "nao existe BLOCK ativo com esse nome");
+    sef_erro_definir(erro, 0, 0, "no active BLOCK has that name");
     return NULL;
 }
 
 static SefValor especial_catch(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "CATCH exige uma etiqueta");
+        sef_erro_definir(erro, 0, 0, "CATCH requires a tag");
         return NULL;
     }
     SefValor etiqueta = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
@@ -828,14 +828,14 @@ static SefValor especial_throw(SefRuntime *runtime, SefValor argumentos, SefValo
             transferir_controle(runtime, quadro);
         }
     }
-    sef_erro_definir(erro, 0, 0, "nenhum CATCH ativo aceita essa etiqueta");
+    sef_erro_definir(erro, 0, 0, "no active CATCH accepts that tag");
     return NULL;
 }
 
 static SefValor especial_unwind_protect(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                         SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "UNWIND-PROTECT exige uma forma protegida");
+        sef_erro_definir(erro, 0, 0, "UNWIND-PROTECT requires a protected form");
         return NULL;
     }
     SefValor protegida = primeiro(argumentos);
@@ -889,18 +889,18 @@ static bool clausula_reinicio_analisar(SefRuntime *runtime, SefValor clausula, S
     bool propria = false;
     if (clausula == runtime->nulo || clausula->tipo != SEF_TIPO_PAR ||
         sef_lista_tamanho(runtime, clausula, &propria) < 2 || !propria) {
-        sef_erro_definir(erro, 0, 0, "clausula RESTART-CASE invalida");
+        sef_erro_definir(erro, 0, 0, "invalid RESTART-CASE clause");
         return false;
     }
     *nome = primeiro(clausula);
     if (!sef_valor_e_simbolo_logico(runtime, *nome)) {
-        sef_erro_definir(erro, 0, 0, "nome de reinicio deve ser simbolo ou NIL");
+        sef_erro_definir(erro, 0, 0, "restart name must be a symbol or NIL");
         return false;
     }
     SefValor cauda = resto(clausula);
     *parametros = primeiro(cauda);
     if (!sef_e_lista_propria(runtime, *parametros)) {
-        sef_erro_definir(erro, 0, 0, "parametros de reinicio devem formar lista propria");
+        sef_erro_definir(erro, 0, 0, "restart parameters must form a proper list");
         return false;
     }
     *corpo = resto(cauda);
@@ -913,7 +913,7 @@ static bool clausula_reinicio_analisar(SefRuntime *runtime, SefValor clausula, S
                               sef_simbolo_tem_nome(primeira_forma, "REPORT") ||
                               sef_simbolo_tem_nome(primeira_forma, "TEST"))) {
             sef_erro_definir(erro, 0, 0,
-                             "opcoes :INTERACTIVE, :REPORT e :TEST ainda nao sao suportadas");
+                             ":INTERACTIVE, :REPORT, and :TEST options are not yet supported");
             return false;
         }
     }
@@ -923,11 +923,11 @@ static bool clausula_reinicio_analisar(SefRuntime *runtime, SefValor clausula, S
 static SefValor especial_restart_case(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                       SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "RESTART-CASE exige uma forma protegida");
+        sef_erro_definir(erro, 0, 0, "RESTART-CASE requires a protected form");
         return NULL;
     }
     if (!sef_e_lista_propria(runtime, argumentos)) {
-        sef_erro_definir(erro, 0, 0, "RESTART-CASE exige argumentos proprios");
+        sef_erro_definir(erro, 0, 0, "RESTART-CASE requires proper arguments");
         return NULL;
     }
 
@@ -962,7 +962,7 @@ static SefValor especial_restart_case(SefRuntime *runtime, SefValor argumentos, 
                 free(primeiro_reinicio);
                 primeiro_reinicio = proximo;
             }
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para registrar reinicio");
+            sef_erro_definir(erro, 0, 0, "not enough memory to register restart");
             return NULL;
         }
         reinicio->objeto = sef_reinicio_novo(runtime, nome, erro);
@@ -1035,7 +1035,7 @@ SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor
     bool por_objeto = designador != NULL && designador->tipo == SEF_TIPO_REINICIO;
     if (!por_nome && !por_objeto) {
         sef_erro_definir(erro, 0, 0,
-                         "designador de reinicio deve ser simbolo nao-NIL ou objeto RESTART");
+                         "restart designator must be a non-NIL symbol or RESTART object");
         return NULL;
     }
     for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
@@ -1050,7 +1050,7 @@ SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor
         runtime->ambiente_transferencia = reinicio->ambiente;
         transferir_controle(runtime, reinicio->destino);
     }
-    sef_erro_definir(erro, 0, 0, "reinicio solicitado nao esta ativo");
+    sef_erro_definir(erro, 0, 0, "requested restart is not active");
     return NULL;
 }
 
@@ -1066,7 +1066,7 @@ static bool handler_aceita_condicao(SefValor tipo, SefValor condicao) {
 
 bool sef_condicao_sinalizar(SefRuntime *runtime, SefValor condicao, SefErro *erro) {
     if (condicao == NULL || condicao->tipo != SEF_TIPO_CONDICAO) {
-        sef_erro_definir(erro, 0, 0, "SIGNAL exige um objeto de condicao");
+        sef_erro_definir(erro, 0, 0, "SIGNAL requires a condition object");
         return false;
     }
     SefHandlerDinamico *handler = runtime->handlers_visiveis;
@@ -1099,12 +1099,12 @@ static void handlers_liberar_lista(SefHandlerDinamico *primeiro_handler) {
 static SefValor especial_handler_bind(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                       SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "HANDLER-BIND exige uma lista de bindings");
+        sef_erro_definir(erro, 0, 0, "HANDLER-BIND requires a binding list");
         return NULL;
     }
     SefValor bindings = primeiro(argumentos);
     if (!sef_e_lista_propria(runtime, bindings) || !sef_e_lista_propria(runtime, argumentos)) {
-        sef_erro_definir(erro, 0, 0, "HANDLER-BIND exige listas proprias");
+        sef_erro_definir(erro, 0, 0, "HANDLER-BIND requires proper lists");
         return NULL;
     }
 
@@ -1117,13 +1117,13 @@ static SefValor especial_handler_bind(SefRuntime *runtime, SefValor argumentos, 
         if (binding == runtime->nulo || binding->tipo != SEF_TIPO_PAR ||
             sef_lista_tamanho(runtime, binding, &proprio) != 2 || !proprio) {
             handlers_liberar_lista(primeiro_handler);
-            sef_erro_definir(erro, 0, 0, "binding de HANDLER-BIND deve ser (tipo handler)");
+            sef_erro_definir(erro, 0, 0, "HANDLER-BIND binding must be (type handler)");
             return NULL;
         }
         SefValor tipo = primeiro(binding);
         if (!sef_valor_e_simbolo_logico(runtime, tipo)) {
             handlers_liberar_lista(primeiro_handler);
-            sef_erro_definir(erro, 0, 0, "tipo de handler deve ser simbolo");
+            sef_erro_definir(erro, 0, 0, "handler type must be a symbol");
             return NULL;
         }
         SefValor funcao = sef_avaliar(runtime, primeiro(resto(binding)), ambiente, erro);
@@ -1135,20 +1135,20 @@ static SefValor especial_handler_bind(SefRuntime *runtime, SefValor argumentos, 
             SefValor designada = NULL;
             if (!sef_ambiente_obter_funcao(ambiente, funcao, &designada)) {
                 handlers_liberar_lista(primeiro_handler);
-                sef_erro_definir(erro, 0, 0, "funcao designada para handler nao existe");
+                sef_erro_definir(erro, 0, 0, "function designated as handler does not exist");
                 return NULL;
             }
             funcao = designada;
         }
         if (funcao->tipo != SEF_TIPO_FUNCAO && funcao->tipo != SEF_TIPO_NATIVA) {
             handlers_liberar_lista(primeiro_handler);
-            sef_erro_definir(erro, 0, 0, "handler deve avaliar para uma funcao");
+            sef_erro_definir(erro, 0, 0, "handler must evaluate to a function");
             return NULL;
         }
         SefHandlerDinamico *handler = calloc(1, sizeof(*handler));
         if (handler == NULL) {
             handlers_liberar_lista(primeiro_handler);
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para registrar handler");
+            sef_erro_definir(erro, 0, 0, "not enough memory to register handler");
             return NULL;
         }
         handler->tipo = tipo;
@@ -1191,7 +1191,7 @@ static SefValor especial_ignore_errors(SefRuntime *runtime, SefValor argumentos,
 static SefValor especial_handler_case(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                       SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "HANDLER-CASE exige uma forma protegida");
+        sef_erro_definir(erro, 0, 0, "HANDLER-CASE requires a protected form");
         return NULL;
     }
     SefErro capturado;
@@ -1209,14 +1209,14 @@ static SefValor especial_handler_case(SefRuntime *runtime, SefValor argumentos, 
     SefValor clausulas = resto(argumentos);
     while (clausulas != runtime->nulo) {
         if (clausulas->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "clausulas de HANDLER-CASE improprias");
+            sef_erro_definir(erro, 0, 0, "improper HANDLER-CASE clauses");
             return NULL;
         }
         SefValor clausula = primeiro(clausulas);
         bool propria = false;
         if (clausula == runtime->nulo || clausula->tipo != SEF_TIPO_PAR ||
             sef_lista_tamanho(runtime, clausula, &propria) < 2 || !propria) {
-            sef_erro_definir(erro, 0, 0, "clausula HANDLER-CASE invalida");
+            sef_erro_definir(erro, 0, 0, "invalid HANDLER-CASE clause");
             return NULL;
         }
         SefValor tipo = primeiro(clausula);
@@ -1228,7 +1228,7 @@ static SefValor especial_handler_case(SefRuntime *runtime, SefValor argumentos, 
             bool parametros_proprios = false;
             size_t total_parametros = sef_lista_tamanho(runtime, parametros, &parametros_proprios);
             if (!parametros_proprios || total_parametros > 1) {
-                sef_erro_definir(erro, 0, 0, "handler aceita zero ou um parametro");
+                sef_erro_definir(erro, 0, 0, "handler accepts zero or one parameter");
                 return NULL;
             }
             SefValor local = sef_ambiente_novo(runtime, ambiente, erro);
@@ -1268,7 +1268,7 @@ static SefValor especial_in_package(SefRuntime *runtime, SefValor argumentos, Se
     const char *nome = nome_pacote_literal(primeiro(argumentos), &tamanho);
     SefValor pacote = nome == NULL ? NULL : sef_pacote_encontrar(runtime, nome, tamanho);
     if (pacote == NULL) {
-        sef_erro_definir(erro, 0, 0, "IN-PACKAGE nomeia pacote inexistente");
+        sef_erro_definir(erro, 0, 0, "IN-PACKAGE names a nonexistent package");
         return NULL;
     }
     runtime->pacote_atual = pacote;
@@ -1276,7 +1276,7 @@ static SefValor especial_in_package(SefRuntime *runtime, SefValor argumentos, Se
         sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, "*PACKAGE*", 9, erro);
     if (simbolo_pacote == NULL ||
         !sef_ambiente_atribuir(runtime->ambiente_global, simbolo_pacote, pacote)) {
-        sef_erro_definir(erro, 0, 0, "nao foi possivel atualizar *PACKAGE*");
+        sef_erro_definir(erro, 0, 0, "could not update *PACKAGE*");
         return NULL;
     }
     return pacote;
@@ -1284,20 +1284,20 @@ static SefValor especial_in_package(SefRuntime *runtime, SefValor argumentos, Se
 
 static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "DEFPACKAGE exige um nome");
+        sef_erro_definir(erro, 0, 0, "DEFPACKAGE requires a name");
         return NULL;
     }
     size_t tamanho = 0;
     const char *nome = nome_pacote_literal(primeiro(argumentos), &tamanho);
     if (nome == NULL || tamanho == 0) {
-        sef_erro_definir(erro, 0, 0, "nome de DEFPACKAGE invalido");
+        sef_erro_definir(erro, 0, 0, "invalid DEFPACKAGE name");
         return NULL;
     }
     SefValor pacote = sef_pacote_encontrar(runtime, nome, tamanho);
     if (pacote == NULL) {
         char *copia = malloc(tamanho + 1);
         if (copia == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para DEFPACKAGE");
+            sef_erro_definir(erro, 0, 0, "not enough memory for DEFPACKAGE");
             return NULL;
         }
         memcpy(copia, nome, tamanho);
@@ -1310,13 +1310,13 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
     SefValor opcoes = resto(argumentos);
     while (opcoes != runtime->nulo) {
         if (opcoes->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "opcoes de DEFPACKAGE improprias");
+            sef_erro_definir(erro, 0, 0, "improper DEFPACKAGE options");
             return NULL;
         }
         SefValor opcao = primeiro(opcoes);
         if (opcao == runtime->nulo || opcao->tipo != SEF_TIPO_PAR ||
             !sef_e_lista_propria(runtime, opcao)) {
-            sef_erro_definir(erro, 0, 0, "opcao de DEFPACKAGE invalida");
+            sef_erro_definir(erro, 0, 0, "invalid DEFPACKAGE option");
             return NULL;
         }
         SefValor chave = primeiro(opcao);
@@ -1330,7 +1330,7 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
                                      : sef_pacote_encontrar(runtime, nome_usado, tamanho_usado);
                 if (usado == NULL || !sef_pacote_usar(runtime, pacote, usado, erro)) {
                     if (!erro->ocorreu)
-                        sef_erro_definir(erro, 0, 0, "pacote de :USE nao existe");
+                        sef_erro_definir(erro, 0, 0, ":USE package does not exist");
                     return NULL;
                 }
                 itens = resto(itens);
@@ -1349,7 +1349,7 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
                 itens = resto(itens);
             }
         } else {
-            sef_erro_definir(erro, 0, 0, "esta versao aceita as opcoes :USE e :EXPORT");
+            sef_erro_definir(erro, 0, 0, "this version accepts the :USE and :EXPORT options");
             return NULL;
         }
         opcoes = resto(opcoes);
@@ -1360,11 +1360,11 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
 static SefValor especial_funcoes_locais(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                         bool recursivas, bool macros, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "forma de funcoes locais exige definicoes e corpo");
+        sef_erro_definir(erro, 0, 0, "local-function form requires definitions and a body");
         return NULL;
     }
     SefValor definicoes = primeiro(argumentos);
-    if (!exigir_lista(runtime, definicoes, "definicoes locais", erro))
+    if (!exigir_lista(runtime, definicoes, "local definitions", erro))
         return NULL;
     SefValor local = sef_ambiente_novo(runtime, ambiente, erro);
     if (local == NULL)
@@ -1374,12 +1374,12 @@ static SefValor especial_funcoes_locais(SefRuntime *runtime, SefValor argumentos
         bool propria = false;
         if (definicao == runtime->nulo || definicao->tipo != SEF_TIPO_PAR ||
             sef_lista_tamanho(runtime, definicao, &propria) < 2 || !propria) {
-            sef_erro_definir(erro, 0, 0, "definicao de funcao local invalida");
+            sef_erro_definir(erro, 0, 0, "invalid local function definition");
             return NULL;
         }
         SefValor nome = primeiro(definicao);
         if (nome->tipo != SEF_TIPO_SIMBOLO) {
-            sef_erro_definir(erro, 0, 0, "nome de funcao local deve ser simbolo");
+            sef_erro_definir(erro, 0, 0, "local function name must be a symbol");
             return NULL;
         }
         SefValor funcao =
@@ -1396,7 +1396,7 @@ static SefValor especial_logico(SefRuntime *runtime, SefValor argumentos, SefVal
     SefValor resultado = e_logico ? runtime->verdadeiro : runtime->nulo;
     while (argumentos != runtime->nulo) {
         if (argumentos->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "lista de argumentos impropria");
+            sef_erro_definir(erro, 0, 0, "improper argument list");
             return NULL;
         }
         resultado = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
@@ -1419,7 +1419,7 @@ static SefValor especial_function(SefRuntime *runtime, SefValor argumentos, SefV
     if (designador->tipo == SEF_TIPO_SIMBOLO) {
         SefValor funcao = NULL;
         if (!sef_ambiente_obter_funcao(ambiente, designador, &funcao)) {
-            sef_erro_definir(erro, 0, 0, "funcao %s nao definida", designador->como.simbolo.nome);
+            sef_erro_definir(erro, 0, 0, "function %s is undefined", designador->como.simbolo.nome);
             return NULL;
         }
         return funcao;
@@ -1427,7 +1427,7 @@ static SefValor especial_function(SefRuntime *runtime, SefValor argumentos, SefV
     if (designador->tipo == SEF_TIPO_PAR && sef_simbolo_tem_nome(primeiro(designador), "LAMBDA")) {
         return especial_lambda(runtime, resto(designador), ambiente, false, erro);
     }
-    sef_erro_definir(erro, 0, 0, "designador FUNCTION invalido");
+    sef_erro_definir(erro, 0, 0, "invalid FUNCTION designator");
     return NULL;
 }
 
@@ -1435,7 +1435,7 @@ static bool vincular_parametros(SefRuntime *runtime, SefValor ambiente, SefValor
                                 SefValor argumentos, SefErro *erro) {
     while (parametros != runtime->nulo) {
         if (parametros->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "lista de parametros impropria");
+            sef_erro_definir(erro, 0, 0, "improper parameter list");
             return false;
         }
         SefValor parametro = primeiro(parametros);
@@ -1445,7 +1445,7 @@ static bool vincular_parametros(SefRuntime *runtime, SefValor ambiente, SefValor
                 !exigir_nome_variavel(runtime, primeiro(parametros), "&REST", erro) ||
                 resto(parametros) != runtime->nulo) {
                 if (!erro->ocorreu)
-                    sef_erro_definir(erro, 0, 0, "uso invalido de &REST");
+                    sef_erro_definir(erro, 0, 0, "invalid use of &REST");
                 return false;
             }
             return sef_ambiente_definir(runtime, ambiente, primeiro(parametros), argumentos, erro);
@@ -1454,7 +1454,7 @@ static bool vincular_parametros(SefRuntime *runtime, SefValor ambiente, SefValor
             return false;
         }
         if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "faltam argumentos para a funcao");
+            sef_erro_definir(erro, 0, 0, "not enough arguments for function");
             return false;
         }
         if (!sef_ambiente_definir(runtime, ambiente, parametro, primeiro(argumentos), erro))
@@ -1462,7 +1462,7 @@ static bool vincular_parametros(SefRuntime *runtime, SefValor ambiente, SefValor
         argumentos = resto(argumentos);
     }
     if (argumentos != runtime->nulo) {
-        sef_erro_definir(erro, 0, 0, "argumentos demais para a funcao");
+        sef_erro_definir(erro, 0, 0, "too many arguments for function");
         return false;
     }
     return true;
@@ -1476,19 +1476,19 @@ static SefValor aplicar_funcao(SefRuntime *runtime, SefValor funcao, SefValor ar
         return funcao->como.nativa.funcao(runtime, argumentos, erro);
     }
     if (funcao->tipo != SEF_TIPO_FUNCAO) {
-        sef_erro_definir(erro, 0, 0, "objeto chamado nao e uma funcao");
+        sef_erro_definir(erro, 0, 0, "called object is not a function");
         return NULL;
     }
     if (funcao->como.funcao.compilada_i64 != NULL) {
         bool propria = false;
         size_t quantidade = sef_lista_tamanho(runtime, argumentos, &propria);
         if (!propria || quantidade > SIZE_MAX / sizeof(int64_t)) {
-            sef_erro_definir(erro, 0, 0, "argumentos invalidos para funcao compilada");
+            sef_erro_definir(erro, 0, 0, "invalid arguments for compiled function");
             return NULL;
         }
         int64_t *inteiros = quantidade == 0 ? NULL : malloc(quantidade * sizeof(*inteiros));
         if (quantidade > 0 && inteiros == NULL) {
-            sef_erro_definir(erro, 0, 0, "memoria insuficiente para chamada compilada");
+            sef_erro_definir(erro, 0, 0, "not enough memory for compiled call");
             return NULL;
         }
         SefValor cursor = argumentos;
@@ -1496,7 +1496,7 @@ static SefValor aplicar_funcao(SefRuntime *runtime, SefValor funcao, SefValor ar
             SefValor argumento = primeiro(cursor);
             if (argumento->tipo != SEF_TIPO_INTEIRO) {
                 free(inteiros);
-                sef_erro_definir(erro, 0, 0, "funcao compilada i64 exige argumentos inteiros");
+                sef_erro_definir(erro, 0, 0, "compiled i64 function requires integer arguments");
                 return NULL;
             }
             inteiros[i] = argumento->como.inteiro;
@@ -1550,7 +1550,7 @@ static SefValor avaliar_forma(SefRuntime *runtime, SefValor forma, SefValor ambi
         SefValor valor = NULL;
         if (sef_ambiente_obter(ambiente, forma, &valor))
             return valor;
-        sef_erro_definir(erro, 0, 0, "simbolo %s nao esta vinculado", forma->como.simbolo.nome);
+        sef_erro_definir(erro, 0, 0, "symbol %s is unbound", forma->como.simbolo.nome);
         return NULL;
     }
     case SEF_TIPO_PAR:
@@ -1650,8 +1650,7 @@ static SefValor avaliar_forma(SefRuntime *runtime, SefValor forma, SefValor ambi
     SefValor funcao = NULL;
     if (operador->tipo == SEF_TIPO_SIMBOLO) {
         if (!sef_ambiente_obter_funcao(ambiente, operador, &funcao)) {
-            sef_erro_definir(erro, 0, 0, "funcao %s nao esta definida",
-                             operador->como.simbolo.nome);
+            sef_erro_definir(erro, 0, 0, "function %s is undefined", operador->como.simbolo.nome);
             return NULL;
         }
     } else {

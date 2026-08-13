@@ -154,7 +154,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     descricao.lpszClassName = classe;
     descricao.hCursor = LoadCursorW(NULL, MAKEINTRESOURCEW(32512));
     if (!RegisterClassW(&descricao) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
-        snprintf(mensagem_erro, (size_t)capacidade_erro, "falha ao registrar janela Win32");
+        snprintf(mensagem_erro, (size_t)capacidade_erro, "failed to register Win32 window");
         return 1;
     }
 
@@ -173,7 +173,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                                   NULL, instancia, &estado);
     if (janela == NULL) {
         sef_superficie_destruir(&estado.superficie);
-        snprintf(mensagem_erro, (size_t)capacidade_erro, "falha ao criar janela Win32");
+        snprintf(mensagem_erro, (size_t)capacidade_erro, "failed to create Win32 window");
         return 1;
     }
     ShowWindow(janela, SW_SHOW);

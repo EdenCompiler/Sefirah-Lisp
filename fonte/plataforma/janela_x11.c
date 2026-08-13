@@ -12,7 +12,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     Display *exibidor = XOpenDisplay(NULL);
     if (exibidor == NULL) {
         snprintf(mensagem_erro, (size_t)capacidade_erro,
-                 "nao foi possivel conectar ao servidor X11; verifique DISPLAY");
+                 "could not connect to the X11 server; check DISPLAY");
         return 1;
     }
 
@@ -33,7 +33,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     SefSuperficie superficie = {0};
     if (!sef_superficie_criar(&superficie, configuracao->largura, configuracao->altura)) {
         snprintf(mensagem_erro, (size_t)capacidade_erro,
-                 "memoria insuficiente para a superficie da janela");
+                 "not enough memory for the window surface");
         XDestroyWindow(exibidor, janela);
         XCloseDisplay(exibidor);
         return 1;
@@ -132,7 +132,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                 int altura = evento.xconfigure.height;
                 if (!sef_superficie_redimensionar(&superficie, largura, altura)) {
                     snprintf(mensagem_erro, (size_t)capacidade_erro,
-                             "memoria insuficiente ao redimensionar janela");
+                             "not enough memory to resize the window");
                     executando = false;
                 }
                 redesenhar = true;
@@ -148,8 +148,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                 ZPixmap, 0, (char *)superficie.pixels, (unsigned int)superficie.largura,
                 (unsigned int)superficie.altura, 32, superficie.passo * 4);
             if (imagem == NULL) {
-                snprintf(mensagem_erro, (size_t)capacidade_erro,
-                         "X11 recusou a imagem da superficie");
+                snprintf(mensagem_erro, (size_t)capacidade_erro, "X11 refused the surface image");
                 executando = false;
             } else {
                 XPutImage(exibidor, janela, contexto, imagem, 0, 0, 0, 0,

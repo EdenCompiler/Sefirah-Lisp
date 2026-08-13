@@ -16,9 +16,10 @@ static bool quantidade(SefRuntime *runtime, SefValor argumentos, size_t minimo, 
     if (propria && obtida >= minimo && obtida <= maximo)
         return true;
     if (minimo == maximo) {
-        sef_erro_definir(erro, 0, 0, "%s espera %zu argumento(s)", nome, minimo);
+        sef_erro_definir(erro, 0, 0, "%s expects %zu argument(s)", nome, minimo);
     } else {
-        sef_erro_definir(erro, 0, 0, "%s espera entre %zu e %zu argumentos", nome, minimo, maximo);
+        sef_erro_definir(erro, 0, 0, "%s expects between %zu and %zu arguments", nome, minimo,
+                         maximo);
     }
     return false;
 }
@@ -45,7 +46,7 @@ static SefValor primitiva_somar(SefRuntime *runtime, SefValor argumentos, SefErr
         double valor;
         bool e_inteiro;
         if (!numero(car(argumentos), &valor, &e_inteiro)) {
-            sef_erro_definir(erro, 0, 0, "+ aceita somente numeros");
+            sef_erro_definir(erro, 0, 0, "+ accepts only numbers");
             return NULL;
         }
         if (todos_inteiros && e_inteiro)
@@ -70,7 +71,7 @@ static SefValor primitiva_multiplicar(SefRuntime *runtime, SefValor argumentos, 
         double valor;
         bool e_inteiro;
         if (!numero(car(argumentos), &valor, &e_inteiro)) {
-            sef_erro_definir(erro, 0, 0, "* aceita somente numeros");
+            sef_erro_definir(erro, 0, 0, "* accepts only numbers");
             return NULL;
         }
         if (todos_inteiros && e_inteiro)
@@ -93,7 +94,7 @@ static SefValor primitiva_subtrair(SefRuntime *runtime, SefValor argumentos, Sef
     double acumulado;
     bool primeiro_inteiro;
     if (!numero(car(argumentos), &acumulado, &primeiro_inteiro)) {
-        sef_erro_definir(erro, 0, 0, "- aceita somente numeros");
+        sef_erro_definir(erro, 0, 0, "- accepts only numbers");
         return NULL;
     }
     bool todos_inteiros = primeiro_inteiro;
@@ -104,7 +105,7 @@ static SefValor primitiva_subtrair(SefRuntime *runtime, SefValor argumentos, Sef
         double valor;
         bool e_inteiro;
         if (!numero(car(argumentos), &valor, &e_inteiro)) {
-            sef_erro_definir(erro, 0, 0, "- aceita somente numeros");
+            sef_erro_definir(erro, 0, 0, "- accepts only numbers");
             return NULL;
         }
         acumulado -= valor;
@@ -121,7 +122,7 @@ static SefValor primitiva_dividir(SefRuntime *runtime, SefValor argumentos, SefE
     double acumulado;
     bool ignorado;
     if (!numero(car(argumentos), &acumulado, &ignorado)) {
-        sef_erro_definir(erro, 0, 0, "/ aceita somente numeros");
+        sef_erro_definir(erro, 0, 0, "/ accepts only numbers");
         return NULL;
     }
     argumentos = cdr(argumentos);
@@ -133,7 +134,7 @@ static SefValor primitiva_dividir(SefRuntime *runtime, SefValor argumentos, SefE
     while (argumentos != runtime->nulo) {
         double divisor;
         if (!numero(car(argumentos), &divisor, &ignorado)) {
-            sef_erro_definir(erro, 0, 0, "/ aceita somente numeros");
+            sef_erro_definir(erro, 0, 0, "/ accepts only numbers");
             return NULL;
         }
         if (divisor == 0.0)
@@ -144,7 +145,7 @@ static SefValor primitiva_dividir(SefRuntime *runtime, SefValor argumentos, SefE
     return sef_real_novo(runtime, acumulado, erro);
 
 divisao_zero:
-    sef_erro_definir(erro, 0, 0, "divisao por zero");
+    sef_erro_definir(erro, 0, 0, "division by zero");
     return NULL;
 }
 
@@ -176,7 +177,7 @@ static SefValor comparar(SefRuntime *runtime, SefValor argumentos, Comparador co
     return runtime->verdadeiro;
 
 tipo_invalido:
-    sef_erro_definir(erro, 0, 0, "%s aceita somente numeros", nome);
+    sef_erro_definir(erro, 0, 0, "%s accepts only numbers", nome);
     return NULL;
 }
 
@@ -204,13 +205,13 @@ static SefValor primitiva_numeros_diferentes(SefRuntime *runtime, SefValor argum
         double a;
         bool ignorado;
         if (!numero(car(cursor), &a, &ignorado)) {
-            sef_erro_definir(erro, 0, 0, "/= aceita somente numeros");
+            sef_erro_definir(erro, 0, 0, "/= accepts only numbers");
             return NULL;
         }
         for (SefValor restante = cdr(cursor); restante != runtime->nulo; restante = cdr(restante)) {
             double b;
             if (!numero(car(restante), &b, &ignorado)) {
-                sef_erro_definir(erro, 0, 0, "/= aceita somente numeros");
+                sef_erro_definir(erro, 0, 0, "/= accepts only numbers");
                 return NULL;
             }
             if (a == b)
@@ -233,7 +234,7 @@ static SefValor primitiva_car(SefRuntime *runtime, SefValor argumentos, SefErro 
     if (valor == runtime->nulo)
         return runtime->nulo;
     if (valor->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "CAR exige uma lista");
+        sef_erro_definir(erro, 0, 0, "CAR requires a list");
         return NULL;
     }
     return car(valor);
@@ -246,7 +247,7 @@ static SefValor primitiva_cdr(SefRuntime *runtime, SefValor argumentos, SefErro 
     if (valor == runtime->nulo)
         return runtime->nulo;
     if (valor->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "CDR exige uma lista");
+        sef_erro_definir(erro, 0, 0, "CDR requires a list");
         return NULL;
     }
     return cdr(valor);
@@ -262,7 +263,7 @@ static SefValor primitiva_vector(SefRuntime *runtime, SefValor argumentos, SefEr
     bool propria = false;
     size_t tamanho = sef_lista_tamanho(runtime, argumentos, &propria);
     if (!propria) {
-        sef_erro_definir(erro, 0, 0, "VECTOR recebeu argumentos improprios");
+        sef_erro_definir(erro, 0, 0, "VECTOR received improper arguments");
         return NULL;
     }
     SefValor vetor = sef_vetor_novo(runtime, tamanho, runtime->nulo, erro);
@@ -281,7 +282,7 @@ static SefValor primitiva_make_array(SefRuntime *runtime, SefValor argumentos, S
     SefValor dimensao = car(argumentos);
     if (dimensao->tipo != SEF_TIPO_INTEIRO || dimensao->como.inteiro < 0 ||
         (uint64_t)dimensao->como.inteiro > SIZE_MAX) {
-        sef_erro_definir(erro, 0, 0, "MAKE-ARRAY exige uma dimensao inteira nao negativa");
+        sef_erro_definir(erro, 0, 0, "MAKE-ARRAY requires a non-negative integer dimension");
         return NULL;
     }
     SefValor inicial = runtime->nulo;
@@ -290,11 +291,11 @@ static SefValor primitiva_make_array(SefRuntime *runtime, SefValor argumentos, S
         SefValor chave = car(argumentos);
         argumentos = cdr(argumentos);
         if (argumentos == runtime->nulo) {
-            sef_erro_definir(erro, 0, 0, "MAKE-ARRAY recebeu uma opcao sem valor");
+            sef_erro_definir(erro, 0, 0, "MAKE-ARRAY received an option without a value");
             return NULL;
         }
         if (!sef_simbolo_tem_nome(chave, "INITIAL-ELEMENT")) {
-            sef_erro_definir(erro, 0, 0, "opcao desconhecida para MAKE-ARRAY");
+            sef_erro_definir(erro, 0, 0, "unknown MAKE-ARRAY option");
             return NULL;
         }
         inicial = car(argumentos);
@@ -310,12 +311,12 @@ static SefValor acessar_vetor(SefRuntime *runtime, SefValor argumentos, const ch
     SefValor vetor = car(argumentos);
     SefValor indice = car(cdr(argumentos));
     if (vetor->tipo != SEF_TIPO_VETOR) {
-        sef_erro_definir(erro, 0, 0, "%s exige um vetor", nome);
+        sef_erro_definir(erro, 0, 0, "%s requires a vector", nome);
         return NULL;
     }
     if (indice->tipo != SEF_TIPO_INTEIRO || indice->como.inteiro < 0 ||
         (uint64_t)indice->como.inteiro >= vetor->como.vetor.tamanho) {
-        sef_erro_definir(erro, 0, 0, "indice fora dos limites em %s", nome);
+        sef_erro_definir(erro, 0, 0, "index out of bounds in %s", nome);
         return NULL;
     }
     return vetor->como.vetor.itens[(size_t)indice->como.inteiro];
@@ -344,7 +345,7 @@ static SefValor primitiva_arrayp(SefRuntime *runtime, SefValor argumentos, SefEr
 static bool obter_indice(SefValor valor, const char *nome, size_t *indice, SefErro *erro) {
     if (valor->tipo != SEF_TIPO_INTEIRO || valor->como.inteiro < 0 ||
         (uint64_t)valor->como.inteiro > SIZE_MAX) {
-        sef_erro_definir(erro, 0, 0, "%s exige um indice inteiro nao negativo", nome);
+        sef_erro_definir(erro, 0, 0, "%s requires a non-negative integer index", nome);
         return false;
     }
     *indice = (size_t)valor->como.inteiro;
@@ -358,7 +359,7 @@ static SefValor acessar_texto(SefRuntime *runtime, SefValor argumentos, const ch
     SefValor texto = car(argumentos);
     size_t indice;
     if (texto->tipo != SEF_TIPO_TEXTO) {
-        sef_erro_definir(erro, 0, 0, "%s exige uma string", nome);
+        sef_erro_definir(erro, 0, 0, "%s requires a string", nome);
         return NULL;
     }
     if (!obter_indice(car(cdr(argumentos)), nome, &indice, erro))
@@ -385,7 +386,7 @@ static SefValor primitiva_elt(SefRuntime *runtime, SefValor argumentos, SefErro 
         return sef_texto_caractere_obter(runtime, sequencia, indice, erro);
     if (sequencia->tipo == SEF_TIPO_VETOR) {
         if (indice >= sequencia->como.vetor.tamanho) {
-            sef_erro_definir(erro, 0, 0, "indice fora dos limites em ELT");
+            sef_erro_definir(erro, 0, 0, "index out of bounds in ELT");
             return NULL;
         }
         return sequencia->como.vetor.itens[indice];
@@ -393,13 +394,13 @@ static SefValor primitiva_elt(SefRuntime *runtime, SefValor argumentos, SefErro 
     SefValor cursor = sequencia;
     for (size_t i = 0; i < indice; i++) {
         if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
-            sef_erro_definir(erro, 0, 0, "indice fora dos limites ou lista impropria em ELT");
+            sef_erro_definir(erro, 0, 0, "index out of bounds or improper list in ELT");
             return NULL;
         }
         cursor = cdr(cursor);
     }
     if (cursor == runtime->nulo || cursor->tipo != SEF_TIPO_PAR) {
-        sef_erro_definir(erro, 0, 0, "ELT exige uma sequencia e indice valido");
+        sef_erro_definir(erro, 0, 0, "ELT requires a sequence and valid index");
         return NULL;
     }
     return car(cursor);
@@ -422,7 +423,7 @@ static SefValor primitiva_char_code(SefRuntime *runtime, SefValor argumentos, Se
         return NULL;
     SefValor caractere = car(argumentos);
     if (caractere->tipo != SEF_TIPO_CARACTERE) {
-        sef_erro_definir(erro, 0, 0, "CHAR-CODE exige um caractere");
+        sef_erro_definir(erro, 0, 0, "CHAR-CODE requires a character");
         return NULL;
     }
     return sef_inteiro_novo(runtime, (int64_t)caractere->como.caractere, erro);
@@ -435,7 +436,7 @@ static SefValor primitiva_code_char(SefRuntime *runtime, SefValor argumentos, Se
     if (codigo->tipo != SEF_TIPO_INTEIRO || codigo->como.inteiro < 0 ||
         codigo->como.inteiro > 0x10ffffll ||
         (codigo->como.inteiro >= 0xd800ll && codigo->como.inteiro <= 0xdfffll)) {
-        sef_erro_definir(erro, 0, 0, "CODE-CHAR exige um valor escalar Unicode");
+        sef_erro_definir(erro, 0, 0, "CODE-CHAR requires a Unicode scalar value");
         return NULL;
     }
     return sef_caractere_novo(runtime, (uint32_t)codigo->como.inteiro, erro);
@@ -457,14 +458,14 @@ static SefValor comparar_caracteres(SefRuntime *runtime, SefValor argumentos,
     for (SefValor cursor = argumentos; cursor != runtime->nulo; cursor = cdr(cursor)) {
         SefValor atual = car(cursor);
         if (atual->tipo != SEF_TIPO_CARACTERE) {
-            sef_erro_definir(erro, 0, 0, "%s aceita somente caracteres", nome);
+            sef_erro_definir(erro, 0, 0, "%s accepts only characters", nome);
             return NULL;
         }
         SefValor proximos = cdr(cursor);
         if (!todos_pares && proximos != runtime->nulo) {
             SefValor proximo = car(proximos);
             if (proximo->tipo != SEF_TIPO_CARACTERE) {
-                sef_erro_definir(erro, 0, 0, "%s aceita somente caracteres", nome);
+                sef_erro_definir(erro, 0, 0, "%s accepts only characters", nome);
                 return NULL;
             }
             if (!comparador(atual->como.caractere, proximo->como.caractere))
@@ -473,7 +474,7 @@ static SefValor comparar_caracteres(SefRuntime *runtime, SefValor argumentos,
             for (; proximos != runtime->nulo; proximos = cdr(proximos)) {
                 SefValor proximo = car(proximos);
                 if (proximo->tipo != SEF_TIPO_CARACTERE) {
-                    sef_erro_definir(erro, 0, 0, "%s aceita somente caracteres", nome);
+                    sef_erro_definir(erro, 0, 0, "%s accepts only characters", nome);
                     return NULL;
                 }
                 if (!comparador(atual->como.caractere, proximo->como.caractere))
@@ -556,7 +557,7 @@ static SefValor primitiva_length(SefRuntime *runtime, SefValor argumentos, SefEr
         size_t tamanho =
             sef_utf8_quantidade(valor->como.texto.dados, valor->como.texto.tamanho, &valido);
         if (!valido) {
-            sef_erro_definir(erro, 0, 0, "LENGTH recebeu string com UTF-8 invalido");
+            sef_erro_definir(erro, 0, 0, "LENGTH received a string with invalid UTF-8");
             return NULL;
         }
         return sef_inteiro_novo(runtime, (int64_t)tamanho, erro);
@@ -566,7 +567,7 @@ static SefValor primitiva_length(SefRuntime *runtime, SefValor argumentos, SefEr
     bool propria = false;
     size_t tamanho = sef_lista_tamanho(runtime, valor, &propria);
     if (!propria) {
-        sef_erro_definir(erro, 0, 0, "LENGTH exige texto, vetor ou lista propria");
+        sef_erro_definir(erro, 0, 0, "LENGTH requires a string, vector, or proper list");
         return NULL;
     }
     return sef_inteiro_novo(runtime, (int64_t)tamanho, erro);
@@ -574,11 +575,11 @@ static SefValor primitiva_length(SefRuntime *runtime, SefValor argumentos, SefEr
 
 static SefValor exigir_stream_aberto(SefValor valor, const char *operacao, SefErro *erro) {
     if (valor->tipo != SEF_TIPO_STREAM) {
-        sef_erro_definir(erro, 0, 0, "%s exige um stream", operacao);
+        sef_erro_definir(erro, 0, 0, "%s requires a stream", operacao);
         return NULL;
     }
     if (valor->como.stream.fechado || valor->como.stream.arquivo == NULL) {
-        sef_erro_definir(erro, 0, 0, "%s recebeu um stream fechado", operacao);
+        sef_erro_definir(erro, 0, 0, "%s received a closed stream", operacao);
         return NULL;
     }
     return valor;
@@ -587,7 +588,7 @@ static SefValor exigir_stream_aberto(SefValor valor, const char *operacao, SefEr
 static bool escrever_stream(SefValor stream, const char *dados, size_t tamanho,
                             const char *operacao, SefErro *erro) {
     if (tamanho > 0 && fwrite(dados, 1, tamanho, stream->como.stream.arquivo) != tamanho) {
-        sef_erro_definir(erro, 0, 0, "%s falhou: %s", operacao, strerror(errno));
+        sef_erro_definir(erro, 0, 0, "%s failed: %s", operacao, strerror(errno));
         return false;
     }
     return true;
@@ -623,7 +624,7 @@ static SefValor primitiva_open_shared_library(SefRuntime *runtime, SefValor argu
     SefValor caminho = car(argumentos);
     if (caminho->tipo != SEF_TIPO_TEXTO || caminho->como.texto.tamanho == 0 ||
         memchr(caminho->como.texto.dados, '\0', caminho->como.texto.tamanho) != NULL) {
-        sef_erro_definir(erro, 0, 0, "OPEN-SHARED-LIBRARY exige um caminho como string");
+        sef_erro_definir(erro, 0, 0, "OPEN-SHARED-LIBRARY requires a path string");
         return NULL;
     }
     return sef_biblioteca_nova(runtime, caminho->como.texto.dados, erro);
@@ -658,7 +659,7 @@ static SefValor primitiva_open(SefRuntime *runtime, SefValor argumentos, SefErro
         return NULL;
     SefValor caminho = car(argumentos);
     if (caminho->tipo != SEF_TIPO_TEXTO) {
-        sef_erro_definir(erro, 0, 0, "OPEN exige um caminho textual");
+        sef_erro_definir(erro, 0, 0, "OPEN requires a path string");
         return NULL;
     }
 
@@ -669,7 +670,7 @@ static SefValor primitiva_open(SefRuntime *runtime, SefValor argumentos, SefErro
         SefValor chave = car(argumentos);
         argumentos = cdr(argumentos);
         if (argumentos == runtime->nulo) {
-            sef_erro_definir(erro, 0, 0, "OPEN recebeu uma opcao sem valor");
+            sef_erro_definir(erro, 0, 0, "OPEN received an option without a value");
             return NULL;
         }
         SefValor valor = car(argumentos);
@@ -682,7 +683,7 @@ static SefValor primitiva_open(SefRuntime *runtime, SefValor argumentos, SefErro
             else if (sef_simbolo_tem_nome(valor, "IO"))
                 direcao = "IO";
             else {
-                sef_erro_definir(erro, 0, 0, ":DIRECTION deve ser :INPUT, :OUTPUT ou :IO");
+                sef_erro_definir(erro, 0, 0, ":DIRECTION must be :INPUT, :OUTPUT, or :IO");
                 return NULL;
             }
         } else if (sef_simbolo_tem_nome(chave, "IF-EXISTS")) {
@@ -693,11 +694,11 @@ static SefValor primitiva_open(SefRuntime *runtime, SefValor argumentos, SefErro
             else if (sef_simbolo_tem_nome(valor, "ERROR"))
                 se_existe = "ERROR";
             else {
-                sef_erro_definir(erro, 0, 0, ":IF-EXISTS deve ser :SUPERSEDE, :APPEND ou :ERROR");
+                sef_erro_definir(erro, 0, 0, ":IF-EXISTS must be :SUPERSEDE, :APPEND, or :ERROR");
                 return NULL;
             }
         } else {
-            sef_erro_definir(erro, 0, 0, "opcao desconhecida para OPEN");
+            sef_erro_definir(erro, 0, 0, "unknown OPEN option");
             return NULL;
         }
     }
@@ -714,14 +715,14 @@ static SefValor primitiva_open(SefRuntime *runtime, SefValor argumentos, SefErro
         FILE *existente = fopen(caminho->como.texto.dados, "rb");
         if (existente != NULL) {
             fclose(existente);
-            sef_erro_definir(erro, 0, 0, "OPEN nao substituiu o arquivo existente '%s'",
+            sef_erro_definir(erro, 0, 0, "OPEN did not replace the existing file '%s'",
                              caminho->como.texto.dados);
             return NULL;
         }
     }
     FILE *arquivo = fopen(caminho->como.texto.dados, modo);
     if (arquivo == NULL) {
-        sef_erro_definir(erro, 0, 0, "nao foi possivel abrir '%s': %s", caminho->como.texto.dados,
+        sef_erro_definir(erro, 0, 0, "could not open '%s': %s", caminho->como.texto.dados,
                          strerror(errno));
         return NULL;
     }
@@ -736,7 +737,7 @@ static SefValor primitiva_close(SefRuntime *runtime, SefValor argumentos, SefErr
         return NULL;
     SefValor stream = car(argumentos);
     if (stream->tipo != SEF_TIPO_STREAM) {
-        sef_erro_definir(erro, 0, 0, "CLOSE exige um stream");
+        sef_erro_definir(erro, 0, 0, "CLOSE requires a stream");
         return NULL;
     }
     if (stream->como.stream.fechado)
@@ -747,7 +748,7 @@ static SefValor primitiva_close(SefRuntime *runtime, SefValor argumentos, SefErr
     stream->como.stream.arquivo = NULL;
     stream->como.stream.fechado = true;
     if (resultado != 0) {
-        sef_erro_definir(erro, 0, 0, "CLOSE falhou: %s", strerror(errno));
+        sef_erro_definir(erro, 0, 0, "CLOSE failed: %s", strerror(errno));
         return NULL;
     }
     return runtime->verdadeiro;
@@ -758,7 +759,7 @@ static SefValor primitiva_write_string(SefRuntime *runtime, SefValor argumentos,
         return NULL;
     SefValor texto = car(argumentos);
     if (texto->tipo != SEF_TIPO_TEXTO) {
-        sef_erro_definir(erro, 0, 0, "WRITE-STRING exige um texto");
+        sef_erro_definir(erro, 0, 0, "WRITE-STRING requires a string");
         return NULL;
     }
     SefValor stream =
@@ -788,7 +789,7 @@ static SefValor primitiva_read_line(SefRuntime *runtime, SefValor argumentos, Se
     size_t tamanho = 0, capacidade = 128;
     char *linha = malloc(capacidade);
     if (linha == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para READ-LINE");
+        sef_erro_definir(erro, 0, 0, "not enough memory for READ-LINE");
         return NULL;
     }
     int caractere;
@@ -798,7 +799,7 @@ static SefValor primitiva_read_line(SefRuntime *runtime, SefValor argumentos, Se
             char *nova_linha = realloc(linha, nova_capacidade);
             if (nova_linha == NULL) {
                 free(linha);
-                sef_erro_definir(erro, 0, 0, "memoria insuficiente para READ-LINE");
+                sef_erro_definir(erro, 0, 0, "not enough memory for READ-LINE");
                 return NULL;
             }
             linha = nova_linha;
@@ -808,13 +809,13 @@ static SefValor primitiva_read_line(SefRuntime *runtime, SefValor argumentos, Se
     }
     if (caractere == EOF && ferror(stream->como.stream.arquivo)) {
         free(linha);
-        sef_erro_definir(erro, 0, 0, "READ-LINE falhou: %s", strerror(errno));
+        sef_erro_definir(erro, 0, 0, "READ-LINE failed: %s", strerror(errno));
         return NULL;
     }
     if (caractere == EOF && tamanho == 0) {
         free(linha);
         if (erro_no_fim) {
-            sef_erro_definir(erro, 0, 0, "fim de arquivo em READ-LINE");
+            sef_erro_definir(erro, 0, 0, "end of file in READ-LINE");
             return NULL;
         }
         SefValor valores[2] = {valor_no_fim, runtime->verdadeiro};
@@ -847,7 +848,7 @@ static SefValor primitiva_finish_output(SefRuntime *runtime, SefValor argumentos
     if (exigir_stream_aberto(stream, "FINISH-OUTPUT", erro) == NULL)
         return NULL;
     if (fflush(stream->como.stream.arquivo) != 0) {
-        sef_erro_definir(erro, 0, 0, "FINISH-OUTPUT falhou: %s", strerror(errno));
+        sef_erro_definir(erro, 0, 0, "FINISH-OUTPUT failed: %s", strerror(errno));
         return NULL;
     }
     return runtime->nulo;
@@ -865,7 +866,7 @@ static SefValor primitiva_type_of(SefRuntime *runtime, SefValor argumentos, SefE
 
 static SefValor primitiva_funcall(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (argumentos == runtime->nulo) {
-        sef_erro_definir(erro, 0, 0, "FUNCALL exige uma funcao");
+        sef_erro_definir(erro, 0, 0, "FUNCALL requires a function");
         return NULL;
     }
     return sef_aplicar(runtime, car(argumentos), cdr(argumentos), erro);
@@ -876,7 +877,7 @@ static SefValor primitiva_apply(SefRuntime *runtime, SefValor argumentos, SefErr
         return NULL;
     SefValor lista = car(cdr(argumentos));
     if (!sef_e_lista_propria(runtime, lista)) {
-        sef_erro_definir(erro, 0, 0, "ultimo argumento de APPLY deve ser lista");
+        sef_erro_definir(erro, 0, 0, "final APPLY argument must be a list");
         return NULL;
     }
     return sef_aplicar(runtime, car(argumentos), lista, erro);
@@ -895,7 +896,7 @@ static SefValor primitiva_boundp(SefRuntime *runtime, SefValor argumentos, SefEr
     SefValor simbolo = car(argumentos);
     SefValor ignorado;
     if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
-        sef_erro_definir(erro, 0, 0, "BOUNDP exige um simbolo");
+        sef_erro_definir(erro, 0, 0, "BOUNDP requires a symbol");
         return NULL;
     }
     if (sef_simbolo_e_constante(runtime, simbolo))
@@ -910,7 +911,7 @@ static SefValor primitiva_fboundp(SefRuntime *runtime, SefValor argumentos, SefE
     SefValor simbolo = car(argumentos);
     SefValor ignorado;
     if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
-        sef_erro_definir(erro, 0, 0, "FBOUNDP exige um simbolo");
+        sef_erro_definir(erro, 0, 0, "FBOUNDP requires a symbol");
         return NULL;
     }
     return sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &ignorado)
@@ -924,13 +925,13 @@ static SefValor primitiva_symbol_value(SefRuntime *runtime, SefValor argumentos,
     SefValor simbolo = car(argumentos);
     SefValor valor;
     if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
-        sef_erro_definir(erro, 0, 0, "SYMBOL-VALUE exige um simbolo");
+        sef_erro_definir(erro, 0, 0, "SYMBOL-VALUE requires a symbol");
         return NULL;
     }
     if (sef_simbolo_e_constante(runtime, simbolo))
         return simbolo;
     if (!sef_ambiente_obter(runtime->ambiente_global, simbolo, &valor)) {
-        sef_erro_definir(erro, 0, 0, "simbolo nao possui valor global");
+        sef_erro_definir(erro, 0, 0, "symbol has no global value");
         return NULL;
     }
     return valor;
@@ -942,11 +943,11 @@ static SefValor primitiva_symbol_function(SefRuntime *runtime, SefValor argument
     SefValor simbolo = car(argumentos);
     SefValor valor;
     if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
-        sef_erro_definir(erro, 0, 0, "SYMBOL-FUNCTION exige um simbolo");
+        sef_erro_definir(erro, 0, 0, "SYMBOL-FUNCTION requires a symbol");
         return NULL;
     }
     if (!sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &valor)) {
-        sef_erro_definir(erro, 0, 0, "simbolo nao possui funcao global");
+        sef_erro_definir(erro, 0, 0, "symbol has no global function");
         return NULL;
     }
     return valor;
@@ -958,11 +959,11 @@ static SefValor primitiva_set(SefRuntime *runtime, SefValor argumentos, SefErro 
     SefValor simbolo = car(argumentos);
     SefValor valor = car(cdr(argumentos));
     if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
-        sef_erro_definir(erro, 0, 0, "SET exige um simbolo");
+        sef_erro_definir(erro, 0, 0, "SET requires a symbol");
         return NULL;
     }
     if (sef_simbolo_e_constante(runtime, simbolo)) {
-        sef_erro_definir(erro, 0, 0, "SET nao pode alterar um simbolo constante");
+        sef_erro_definir(erro, 0, 0, "SET cannot modify a constant symbol");
         return NULL;
     }
     return sef_ambiente_definir(runtime, runtime->ambiente_global, simbolo, valor, erro) ? valor
@@ -996,7 +997,7 @@ static SefValor primitiva_constantp(SefRuntime *runtime, SefValor argumentos, Se
     if (!quantidade(runtime, argumentos, 1, 2, "CONSTANTP", erro))
         return NULL;
     if (cdr(argumentos) != runtime->nulo && car(cdr(argumentos)) != runtime->nulo) {
-        sef_erro_definir(erro, 0, 0, "CONSTANTP ainda aceita somente o ambiente NIL");
+        sef_erro_definir(erro, 0, 0, "CONSTANTP currently accepts only the NIL environment");
         return NULL;
     }
     SefValor forma = car(argumentos);
@@ -1035,8 +1036,7 @@ static SefValor primitiva_compile_external_i64(SefRuntime *runtime, SefValor arg
                    : NULL;
     if (biblioteca->tipo != SEF_TIPO_TEXTO || biblioteca->como.texto.tamanho == 0 ||
         memchr(biblioteca->como.texto.dados, '\0', biblioteca->como.texto.tamanho) != NULL) {
-        sef_erro_definir(erro, 0, 0,
-                         "COMPILE-EXTERNAL-I64 exige caminho ou biblioteca compartilhada");
+        sef_erro_definir(erro, 0, 0, "COMPILE-EXTERNAL-I64 requires a path or shared library");
         return NULL;
     }
     return sef_funcao_compilada_instalar_biblioteca_i64(runtime, simbolo,
@@ -1077,7 +1077,7 @@ static SefValor pacote_designador(SefRuntime *runtime, SefValor valor, SefErro *
     const char *nome = nome_designador(runtime, valor, &tamanho);
     SefValor pacote = nome == NULL ? NULL : sef_pacote_encontrar(runtime, nome, tamanho);
     if (pacote == NULL)
-        sef_erro_definir(erro, 0, 0, "designador nao nomeia um pacote existente");
+        sef_erro_definir(erro, 0, 0, "designator does not name an existing package");
     return pacote;
 }
 
@@ -1087,12 +1087,12 @@ static SefValor primitiva_make_package(SefRuntime *runtime, SefValor argumentos,
     size_t tamanho = 0;
     const char *nome = nome_designador(runtime, car(argumentos), &tamanho);
     if (nome == NULL || tamanho == 0) {
-        sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE exige nome textual");
+        sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE requires a string name");
         return NULL;
     }
     char *copia = malloc(tamanho + 1);
     if (copia == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para nome de pacote");
+        sef_erro_definir(erro, 0, 0, "not enough memory for package name");
         return NULL;
     }
     memcpy(copia, nome, tamanho);
@@ -1154,7 +1154,7 @@ static SefValor primitiva_export(SefRuntime *runtime, SefValor argumentos, SefEr
     if (simbolos->tipo == SEF_TIPO_SIMBOLO)
         return sef_pacote_exportar(runtime, pacote, simbolos, erro) ? runtime->verdadeiro : NULL;
     if (!sef_e_lista_propria(runtime, simbolos)) {
-        sef_erro_definir(erro, 0, 0, "EXPORT exige simbolo ou lista de simbolos");
+        sef_erro_definir(erro, 0, 0, "EXPORT requires a symbol or list of symbols");
         return NULL;
     }
     while (simbolos != runtime->nulo) {
@@ -1184,7 +1184,7 @@ static SefValor primitiva_intern(SefRuntime *runtime, SefValor argumentos, SefEr
                           : pacote_designador(runtime, car(cdr(argumentos)), erro);
     if (nome == NULL || pacote == NULL) {
         if (!erro->ocorreu)
-            sef_erro_definir(erro, 0, 0, "INTERN exige nome textual");
+            sef_erro_definir(erro, 0, 0, "INTERN requires a string name");
         return NULL;
     }
     SefEstadoSimboloPacote estado = SEF_SIMBOLO_AUSENTE;
@@ -1229,7 +1229,7 @@ static SefValor primitiva_symbol_name(SefRuntime *runtime, SefValor argumentos, 
     const char *nome = NULL;
     size_t tamanho = 0;
     if (!sef_simbolo_nome_logico(runtime, simbolo, &nome, &tamanho)) {
-        sef_erro_definir(erro, 0, 0, "SYMBOL-NAME exige simbolo");
+        sef_erro_definir(erro, 0, 0, "SYMBOL-NAME requires a symbol");
         return NULL;
     }
     return sef_texto_novo(runtime, nome, tamanho, erro);
@@ -1240,7 +1240,7 @@ static SefValor primitiva_symbol_package(SefRuntime *runtime, SefValor argumento
         return NULL;
     SefValor simbolo = car(argumentos);
     if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
-        sef_erro_definir(erro, 0, 0, "SYMBOL-PACKAGE exige simbolo");
+        sef_erro_definir(erro, 0, 0, "SYMBOL-PACKAGE requires a symbol");
         return NULL;
     }
     if (simbolo == runtime->nulo)
@@ -1304,7 +1304,7 @@ static SefValor primitiva_hash_table_count(SefRuntime *runtime, SefValor argumen
         return NULL;
     SefValor t = car(argumentos);
     if (t->tipo != SEF_TIPO_TABELA_HASH) {
-        sef_erro_definir(erro, 0, 0, "HASH-TABLE-COUNT exige tabela hash");
+        sef_erro_definir(erro, 0, 0, "HASH-TABLE-COUNT requires a hash table");
         return NULL;
     }
     return sef_inteiro_novo(runtime, (int64_t)t->como.tabela_hash.quantidade, erro);
@@ -1322,7 +1322,7 @@ static SefValor primitiva_clrhash(SefRuntime *runtime, SefValor argumentos, SefE
         return NULL;
     SefValor t = car(argumentos);
     if (t->tipo != SEF_TIPO_TABELA_HASH) {
-        sef_erro_definir(erro, 0, 0, "CLRHASH exige tabela hash");
+        sef_erro_definir(erro, 0, 0, "CLRHASH requires a hash table");
         return NULL;
     }
     sef_tabela_hash_limpar(t);
@@ -1340,7 +1340,7 @@ static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErr
                        ? NULL
                        : sef_condicao_nova(runtime, classe, designador->como.texto.dados, erro);
     } else if (designador->tipo != SEF_TIPO_CONDICAO) {
-        sef_erro_definir(erro, 0, 0, "ERROR exige texto ou condicao");
+        sef_erro_definir(erro, 0, 0, "ERROR requires a string or condition");
         return NULL;
     }
     if (condicao == NULL || !sef_condicao_sinalizar(runtime, condicao, erro))
@@ -1361,7 +1361,7 @@ static SefValor primitiva_signal(SefRuntime *runtime, SefValor argumentos, SefEr
                        ? NULL
                        : sef_condicao_nova(runtime, classe, designador->como.texto.dados, erro);
     } else if (designador->tipo != SEF_TIPO_CONDICAO) {
-        sef_erro_definir(erro, 0, 0, "SIGNAL exige texto ou condicao");
+        sef_erro_definir(erro, 0, 0, "SIGNAL requires a string or condition");
         return NULL;
     }
     if (condicao == NULL || !sef_condicao_sinalizar(runtime, condicao, erro))
@@ -1375,7 +1375,8 @@ static bool reinicio_condicao_suportada(SefRuntime *runtime, SefValor argumentos
         return true;
     if (car(cdr(argumentos)) == runtime->nulo)
         return true;
-    sef_erro_definir(erro, 0, 0, "%s ainda nao associa reinicios a uma condicao especifica", nome);
+    sef_erro_definir(erro, 0, 0, "%s does not yet associate restarts with a specific condition",
+                     nome);
     return false;
 }
 
@@ -1404,8 +1405,7 @@ static SefValor primitiva_find_restart(SefRuntime *runtime, SefValor argumentos,
     bool nome = designador != runtime->nulo && designador->tipo == SEF_TIPO_SIMBOLO;
     bool objeto = designador != NULL && designador->tipo == SEF_TIPO_REINICIO;
     if (!nome && !objeto) {
-        sef_erro_definir(erro, 0, 0,
-                         "FIND-RESTART exige simbolo nao-NIL ou objeto RESTART");
+        sef_erro_definir(erro, 0, 0, "FIND-RESTART requires a non-NIL symbol or RESTART object");
         return NULL;
     }
     SefReinicioDinamico *reinicio = reinicio_encontrar(runtime, designador);
@@ -1417,7 +1417,8 @@ static SefValor primitiva_compute_restarts(SefRuntime *runtime, SefValor argumen
     if (!quantidade(runtime, argumentos, 0, 1, "COMPUTE-RESTARTS", erro))
         return NULL;
     if (argumentos != runtime->nulo && car(argumentos) != runtime->nulo) {
-        sef_erro_definir(erro, 0, 0, "COMPUTE-RESTARTS ainda nao filtra por condicao especifica");
+        sef_erro_definir(erro, 0, 0,
+                         "COMPUTE-RESTARTS does not yet filter by a specific condition");
         return NULL;
     }
     SefValor invertida = runtime->nulo;
@@ -1435,7 +1436,7 @@ static SefValor primitiva_restart_name(SefRuntime *runtime, SefValor argumentos,
         return NULL;
     SefValor reinicio = car(argumentos);
     if (reinicio == NULL || reinicio->tipo != SEF_TIPO_REINICIO) {
-        sef_erro_definir(erro, 0, 0, "RESTART-NAME exige um objeto RESTART");
+        sef_erro_definir(erro, 0, 0, "RESTART-NAME requires a RESTART object");
         return NULL;
     }
     return reinicio->como.reinicio.nome;
@@ -1445,7 +1446,7 @@ static SefValor reinicio_padrao_invocar(SefRuntime *runtime, const char *nome,
                                         SefValor argumentos_reinicio, SefValor condicao,
                                         SefErro *erro) {
     if (condicao != runtime->nulo) {
-        sef_erro_definir(erro, 0, 0, "%s ainda nao seleciona reinicio por condicao especifica",
+        sef_erro_definir(erro, 0, 0, "%s does not yet select a restart by specific condition",
                          nome);
         return NULL;
     }
@@ -1505,7 +1506,7 @@ static bool instalar(SefRuntime *runtime, const char *nome, SefFuncaoNativa func
         exportar = false;
     }
     if (pacote == NULL || nome_simbolo[0] == '\0') {
-        sef_erro_definir(erro, 0, 0, "pacote de primitiva interna nao existe");
+        sef_erro_definir(erro, 0, 0, "internal primitive package does not exist");
         return false;
     }
     SefValor simbolo =

@@ -7,7 +7,7 @@ static bool reservar_valores(SefRuntime *runtime, size_t quantidade, SefErro *er
     if (quantidade <= runtime->capacidade_valores)
         return true;
     if (quantidade > SIZE_MAX / sizeof(*runtime->valores_multiplos)) {
-        sef_erro_definir(erro, 0, 0, "quantidade de valores multiplos excede o limite");
+        sef_erro_definir(erro, 0, 0, "multiple-value count exceeds the limit");
         return false;
     }
 
@@ -22,7 +22,7 @@ static bool reservar_valores(SefRuntime *runtime, size_t quantidade, SefErro *er
 
     SefValor *novos = realloc(runtime->valores_multiplos, capacidade * sizeof(*novos));
     if (novos == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente para valores multiplos");
+        sef_erro_definir(erro, 0, 0, "not enough memory for multiple values");
         return false;
     }
     runtime->valores_multiplos = novos;
@@ -33,7 +33,7 @@ static bool reservar_valores(SefRuntime *runtime, size_t quantidade, SefErro *er
 bool sef_valores_definir(SefRuntime *runtime, const SefValor *valores, size_t quantidade,
                          SefErro *erro) {
     if (runtime == NULL || (quantidade > 0 && valores == NULL)) {
-        sef_erro_definir(erro, 0, 0, "conjunto de valores multiplos invalido");
+        sef_erro_definir(erro, 0, 0, "invalid multiple-value set");
         return false;
     }
     if (!reservar_valores(runtime, quantidade, erro))
@@ -49,7 +49,7 @@ bool sef_valores_definir(SefRuntime *runtime, const SefValor *valores, size_t qu
 
 bool sef_valores_definir_um(SefRuntime *runtime, SefValor valor, SefErro *erro) {
     if (valor == NULL) {
-        sef_erro_definir(erro, 0, 0, "valor primario ausente");
+        sef_erro_definir(erro, 0, 0, "missing primary value");
         return false;
     }
     return sef_valores_definir(runtime, &valor, 1, erro);
@@ -59,7 +59,7 @@ bool sef_valores_definir_lista(SefRuntime *runtime, SefValor lista, SefErro *err
     bool propria = false;
     size_t quantidade = sef_lista_tamanho(runtime, lista, &propria);
     if (!propria) {
-        sef_erro_definir(erro, 0, 0, "VALUES-LIST exige uma lista propria");
+        sef_erro_definir(erro, 0, 0, "VALUES-LIST requires a proper list");
         return false;
     }
     if (!reservar_valores(runtime, quantidade, erro))
@@ -87,7 +87,7 @@ bool sef_valores_salvar(const SefRuntime *runtime, SefValoresSalvos *salvos, Sef
         return true;
     salvos->itens = malloc(salvos->quantidade * sizeof(*salvos->itens));
     if (salvos->itens == NULL) {
-        sef_erro_definir(erro, 0, 0, "memoria insuficiente ao preservar valores multiplos");
+        sef_erro_definir(erro, 0, 0, "not enough memory to preserve multiple values");
         return false;
     }
     memcpy(salvos->itens, runtime->valores_multiplos, salvos->quantidade * sizeof(*salvos->itens));

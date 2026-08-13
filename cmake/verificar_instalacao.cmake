@@ -1,5 +1,5 @@
 if(NOT DEFINED SEFIRAH_PREFIXO)
-    message(FATAL_ERROR "SEFIRAH_PREFIXO nao foi informado")
+    message(FATAL_ERROR "SEFIRAH_PREFIXO was not provided")
 endif()
 
 if(WIN32)
@@ -21,12 +21,12 @@ set(SEFIRAH_ARQUIVOS_PUBLICOS
 
 foreach(SEFIRAH_ARQUIVO IN LISTS SEFIRAH_ARQUIVOS_PUBLICOS)
     if(NOT EXISTS "${SEFIRAH_PREFIXO}/${SEFIRAH_ARQUIVO}")
-        message(FATAL_ERROR "artefato instalado ausente: ${SEFIRAH_ARQUIVO}")
+        message(FATAL_ERROR "missing installed artifact: ${SEFIRAH_ARQUIVO}")
     endif()
 endforeach()
 
 if(EXISTS "${SEFIRAH_PREFIXO}/include/sefirah/interno.h")
-    message(FATAL_ERROR "header privado interno.h vazou para o SDK instalado")
+    message(FATAL_ERROR "private interno.h header leaked into the installed SDK")
 endif()
 
-message(STATUS "instalacao publica do Sefirah verificada em ${SEFIRAH_PREFIXO}")
+message(STATUS "Sefirah public installation verified at ${SEFIRAH_PREFIXO}")

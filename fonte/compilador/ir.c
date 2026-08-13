@@ -53,11 +53,11 @@ static bool adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
                                   SefFuncaoExternaI64 endereco, uint32_t *indice, SefErro *erro) {
     erro_limpar(erro);
     if (funcao == NULL || nome == NULL || nome[0] == '\0' || indice == NULL) {
-        erro_definir(erro, "funcao IR, nome externo ou indice ausente");
+        erro_definir(erro, "missing IR function, external name, or index");
         return false;
     }
     if (funcao->quantidade_externas >= UINT32_MAX) {
-        erro_definir(erro, "funcao IR excedeu o limite de simbolos externos");
+        erro_definir(erro, "IR function exceeded the external-symbol limit");
         return false;
     }
     if (funcao->quantidade_externas == funcao->capacidade_externas) {
@@ -65,7 +65,7 @@ static bool adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
             funcao->capacidade_externas == 0 ? 4u : funcao->capacidade_externas * 2u;
         SefSimboloExternoIr *externas = realloc(funcao->externas, capacidade * sizeof(*externas));
         if (externas == NULL) {
-            erro_definir(erro, "memoria insuficiente para simbolo externo IR");
+            erro_definir(erro, "not enough memory for an external IR symbol");
             return false;
         }
         funcao->externas = externas;
@@ -74,7 +74,7 @@ static bool adicionar_externa_i64(SefFuncaoIr *funcao, const char *nome,
     size_t tamanho = strlen(nome) + 1u;
     char *copia = malloc(tamanho);
     if (copia == NULL) {
-        erro_definir(erro, "memoria insuficiente para nome externo IR");
+        erro_definir(erro, "not enough memory for an external IR name");
         return false;
     }
     memcpy(copia, nome, tamanho);
@@ -94,7 +94,7 @@ bool sef_funcao_ir_adicionar_externa_i64_binaria(SefFuncaoIr *funcao, const char
                                                  uint32_t *indice, SefErro *erro) {
     SefFuncaoExternaI64 endereco_armazenado = NULL;
     _Static_assert(sizeof(endereco) == sizeof(endereco_armazenado),
-                   "ponteiros de funcoes i64 devem ter o mesmo tamanho");
+                   "i64 function pointers must have the same size");
     memcpy(&endereco_armazenado, &endereco, sizeof(endereco_armazenado));
     return adicionar_externa_i64(funcao, nome, endereco_armazenado, indice, erro);
 }
@@ -102,18 +102,18 @@ bool sef_funcao_ir_adicionar_externa_i64_binaria(SefFuncaoIr *funcao, const char
 bool sef_funcao_ir_adicionar_bloco(SefFuncaoIr *funcao, uint32_t *indice, SefErro *erro) {
     erro_limpar(erro);
     if (funcao == NULL || indice == NULL) {
-        erro_definir(erro, "funcao IR ou indice ausente");
+        erro_definir(erro, "missing IR function or index");
         return false;
     }
     if (funcao->quantidade_blocos >= UINT32_MAX) {
-        erro_definir(erro, "funcao IR excedeu o limite de blocos");
+        erro_definir(erro, "IR function exceeded the block limit");
         return false;
     }
     if (funcao->quantidade_blocos == funcao->capacidade_blocos) {
         size_t capacidade = funcao->capacidade_blocos == 0 ? 4 : funcao->capacidade_blocos * 2;
         SefBlocoIr *blocos = realloc(funcao->blocos, capacidade * sizeof(*blocos));
         if (blocos == NULL) {
-            erro_definir(erro, "memoria insuficiente para bloco IR");
+            erro_definir(erro, "not enough memory for an IR block");
             return false;
         }
         memset(blocos + funcao->capacidade_blocos, 0,
@@ -130,7 +130,7 @@ bool sef_bloco_ir_emitir(SefFuncaoIr *funcao, uint32_t bloco, SefInstrucaoIr ins
                          SefErro *erro) {
     erro_limpar(erro);
     if (funcao == NULL || bloco >= funcao->quantidade_blocos) {
-        erro_definir(erro, "bloco IR inexistente");
+        erro_definir(erro, "IR block does not exist");
         return false;
     }
     SefBlocoIr *destino = &funcao->blocos[bloco];
@@ -138,7 +138,7 @@ bool sef_bloco_ir_emitir(SefFuncaoIr *funcao, uint32_t bloco, SefInstrucaoIr ins
         size_t capacidade = destino->capacidade == 0 ? 8 : destino->capacidade * 2;
         SefInstrucaoIr *instrucoes = realloc(destino->instrucoes, capacidade * sizeof(*instrucoes));
         if (instrucoes == NULL) {
-            erro_definir(erro, "memoria insuficiente para instrucao IR");
+            erro_definir(erro, "not enough memory for an IR instruction");
             return false;
         }
         destino->instrucoes = instrucoes;
@@ -156,7 +156,7 @@ static bool e_terminador(SefOperacaoIr operacao) {
 static bool verificar_registrador(uint32_t registrador, uint32_t quantidade, SefErro *erro) {
     if (registrador < quantidade)
         return true;
-    erro_definir(erro, "instrucao referencia registrador inexistente");
+    erro_definir(erro, "instruction references a nonexistent register");
     return false;
 }
 
@@ -173,7 +173,7 @@ static bool verificar_fluxo_ssa(const SefFuncaoIr *funcao, const uint32_t *bloco
                                 const size_t *posicoes_definicao, SefErro *erro) {
     size_t n = funcao->quantidade_blocos;
     if (n > SIZE_MAX / n) {
-        erro_definir(erro, "funcao IR possui blocos demais");
+        erro_definir(erro, "IR function has too many blocks");
         return false;
     }
     bool *arestas = calloc(n * n, sizeof(*arestas));
@@ -183,7 +183,7 @@ static bool verificar_fluxo_ssa(const SefFuncaoIr *funcao, const uint32_t *bloco
         free(arestas);
         free(alcancaveis);
         free(dominadores);
-        erro_definir(erro, "memoria insuficiente para analisar fluxo SSA");
+        erro_definir(erro, "not enough memory to analyze SSA flow");
         return false;
     }
     for (size_t b = 0; b < n; b++) {
@@ -212,7 +212,7 @@ static bool verificar_fluxo_ssa(const SefFuncaoIr *funcao, const uint32_t *bloco
     }
     for (size_t b = 0; b < n; b++) {
         if (!alcancaveis[b]) {
-            erro_definir(erro, "funcao IR possui bloco inalcançavel");
+            erro_definir(erro, "IR function contains an unreachable block");
             free(arestas);
             free(alcancaveis);
             free(dominadores);
@@ -258,7 +258,8 @@ static bool verificar_fluxo_ssa(const SefFuncaoIr *funcao, const uint32_t *bloco
                     !definicao_domina_uso(ins.operando_b, ins.bloco_b,
                                           funcao->blocos[ins.bloco_b].quantidade, blocos_definicao,
                                           posicoes_definicao, dominadores, n)) {
-                    erro_definir(erro, "PHI possui predecessor ou definicao nao dominante");
+                    erro_definir(erro,
+                                 "PHI has a predecessor or definition that does not dominate");
                     valido = false;
                 }
                 continue;
@@ -281,7 +282,7 @@ static bool verificar_fluxo_ssa(const SefFuncaoIr *funcao, const uint32_t *bloco
             for (size_t u = 0; u < quantidade_usos; u++) {
                 if (!definicao_domina_uso(usos[u], (uint32_t)b, i, blocos_definicao,
                                           posicoes_definicao, dominadores, n)) {
-                    erro_definir(erro, "uso SSA nao e dominado por sua definicao");
+                    erro_definir(erro, "SSA use is not dominated by its definition");
                     valido = false;
                     break;
                 }
@@ -297,12 +298,12 @@ static bool verificar_fluxo_ssa(const SefFuncaoIr *funcao, const uint32_t *bloco
 bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
     erro_limpar(erro);
     if (funcao == NULL || funcao->quantidade_blocos == 0 || funcao->quantidade_registradores == 0) {
-        erro_definir(erro, "funcao IR vazia ou incompleta");
+        erro_definir(erro, "IR function is empty or incomplete");
         return false;
     }
 #if SIZE_MAX < UINT32_MAX
     if ((size_t)funcao->quantidade_registradores > SIZE_MAX / sizeof(size_t)) {
-        erro_definir(erro, "funcao IR possui registradores demais");
+        erro_definir(erro, "IR function has too many registers");
         return false;
     }
 #endif
@@ -315,7 +316,7 @@ bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
         free(definidos);
         free(blocos_definicao);
         free(posicoes_definicao);
-        erro_definir(erro, "memoria insuficiente para verificar IR");
+        erro_definir(erro, "not enough memory to verify IR");
         return false;
     }
     for (uint32_t i = 0; i < funcao->quantidade_registradores; i++)
@@ -325,19 +326,19 @@ bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
         const SefBlocoIr *bloco = &funcao->blocos[b];
         if (bloco->quantidade == 0 ||
             !e_terminador(bloco->instrucoes[bloco->quantidade - 1].operacao)) {
-            erro_definir(erro, "bloco IR nao termina com salto, ramificacao ou retorno");
+            erro_definir(erro, "IR block does not end with a jump, branch, or return");
             valido = false;
             break;
         }
         for (size_t i = 0; valido && i < bloco->quantidade; i++) {
             const SefInstrucaoIr *ins = &bloco->instrucoes[i];
             if (ins->operacao < SEF_IR_CONSTANTE_I64 || ins->operacao > SEF_IR_RETORNAR_I64) {
-                erro_definir(erro, "operacao IR desconhecida");
+                erro_definir(erro, "unknown IR operation");
                 valido = false;
                 break;
             }
             if (e_terminador(ins->operacao) != (i + 1 == bloco->quantidade)) {
-                erro_definir(erro, "terminador IR deve ser a ultima instrucao do bloco");
+                erro_definir(erro, "IR terminator must be the final instruction in its block");
                 valido = false;
                 break;
             }
@@ -346,7 +347,7 @@ bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
                 valido =
                     verificar_registrador(ins->destino, funcao->quantidade_registradores, erro);
                 if (valido && definidos[ins->destino]) {
-                    erro_definir(erro, "registrador SSA possui mais de uma definicao");
+                    erro_definir(erro, "SSA register has more than one definition");
                     valido = false;
                 }
                 if (valido) {
@@ -357,7 +358,7 @@ bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
             }
             if (ins->operacao == SEF_IR_PARAMETRO &&
                 (ins->imediato < 0 || (uint64_t)ins->imediato >= funcao->quantidade_parametros)) {
-                erro_definir(erro, "indice de parametro IR invalido");
+                erro_definir(erro, "invalid IR parameter index");
                 valido = false;
             } else if (ins->operacao == SEF_IR_PHI) {
                 valido = verificar_registrador(ins->operando_a, funcao->quantidade_registradores,
@@ -367,7 +368,7 @@ bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
                          ins->bloco_a < funcao->quantidade_blocos &&
                          ins->bloco_b < funcao->quantidade_blocos;
                 if (!valido && (erro == NULL || !erro->ocorreu))
-                    erro_definir(erro, "entrada de PHI invalida");
+                    erro_definir(erro, "invalid PHI input");
             } else if (ins->operacao >= SEF_IR_SOMAR_I64 &&
                        ins->operacao <= SEF_IR_MENOR_OU_IGUAL_I64) {
                 valido =
@@ -396,12 +397,12 @@ bool sef_funcao_ir_verificar(const SefFuncaoIr *funcao, SefErro *erro) {
                     verificar_registrador(ins->operando_a, funcao->quantidade_registradores, erro);
             }
             if (!valido && (erro == NULL || !erro->ocorreu))
-                erro_definir(erro, "instrucao IR invalida");
+                erro_definir(erro, "invalid IR instruction");
         }
     }
     for (uint32_t i = 0; valido && i < funcao->quantidade_registradores; i++) {
         if (!definidos[i]) {
-            erro_definir(erro, "registrador SSA nao possui definicao");
+            erro_definir(erro, "SSA register has no definition");
             valido = false;
         }
     }
@@ -429,7 +430,7 @@ bool sef_funcao_ir_executar_i64(const SefFuncaoIr *funcao, const int64_t *argume
     if (funcao == NULL || resultado == NULL ||
         quantidade_argumentos != funcao->quantidade_parametros ||
         (quantidade_argumentos > 0 && argumentos == NULL)) {
-        erro_definir(erro, "argumentos invalidos para executar IR");
+        erro_definir(erro, "invalid arguments for IR execution");
         return false;
     }
     if (!sef_funcao_ir_verificar(funcao, erro))
@@ -439,7 +440,7 @@ bool sef_funcao_ir_executar_i64(const SefFuncaoIr *funcao, const int64_t *argume
     if (reg == NULL || valores_phi == NULL) {
         free(reg);
         free(valores_phi);
-        erro_definir(erro, "memoria insuficiente para executar IR");
+        erro_definir(erro, "not enough memory to execute IR");
         return false;
     }
     uint32_t bloco_atual = 0, bloco_anterior = UINT32_MAX;
@@ -447,7 +448,7 @@ bool sef_funcao_ir_executar_i64(const SefFuncaoIr *funcao, const int64_t *argume
     bool terminou = false, sucesso = true;
     while (!terminou && sucesso) {
         if (++passos > SEF_IR_LIMITE_PASSOS) {
-            erro_definir(erro, "limite de passos excedido ao executar IR");
+            erro_definir(erro, "IR execution exceeded the step limit");
             sucesso = false;
             break;
         }
@@ -462,7 +463,7 @@ bool sef_funcao_ir_executar_i64(const SefFuncaoIr *funcao, const int64_t *argume
             else if (bloco_anterior == phi.bloco_b)
                 valores_phi[phi.destino] = reg[phi.operando_b];
             else {
-                erro_definir(erro, "PHI nao possui entrada para o bloco predecessor");
+                erro_definir(erro, "PHI has no input for the predecessor block");
                 sucesso = false;
                 break;
             }
@@ -482,7 +483,7 @@ bool sef_funcao_ir_executar_i64(const SefFuncaoIr *funcao, const int64_t *argume
                 reg[ins.destino] = argumentos[ins.imediato];
                 break;
             case SEF_IR_PHI:
-                erro_definir(erro, "PHI apareceu fora do inicio do bloco");
+                erro_definir(erro, "PHI appears outside the beginning of its block");
                 sucesso = false;
                 break;
             case SEF_IR_SOMAR_I64:
@@ -503,14 +504,14 @@ bool sef_funcao_ir_executar_i64(const SefFuncaoIr *funcao, const int64_t *argume
             case SEF_IR_CHAMAR_EXTERNA_I64: {
                 SefFuncaoExternaI64 externa = funcao->externas[ins.imediato].endereco;
                 if (externa == NULL) {
-                    erro_definir(erro, "simbolo externo IR nao possui endereco no interpretador");
+                    erro_definir(erro, "external IR symbol has no interpreter address");
                     sucesso = false;
                     break;
                 }
                 if (aridade_chamada_externa(ins) == 2) {
                     SefFuncaoExternaI64Binaria binaria = NULL;
                     _Static_assert(sizeof(binaria) == sizeof(externa),
-                                   "ponteiros de funcoes i64 devem ter o mesmo tamanho");
+                                   "i64 function pointers must have the same size");
                     memcpy(&binaria, &externa, sizeof(binaria));
                     reg[ins.destino] = binaria(reg[ins.operando_a], reg[ins.operando_b]);
                 } else {

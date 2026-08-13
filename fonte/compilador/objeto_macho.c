@@ -67,16 +67,16 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
     erro_limpar(erro);
     if (codigo == NULL || codigo->bytes == NULL || codigo->tamanho == 0 || nome_simbolo == NULL ||
         nome_simbolo[0] == '\0' || caminho == NULL || caminho[0] == '\0') {
-        erro_definir(erro, "codigo, simbolo ou caminho ausente para objeto Mach-O");
+        erro_definir(erro, "missing code, symbol, or path for Mach-O object");
         return false;
     }
     if (codigo->arquitetura != SEF_ARQUITETURA_X64 &&
         codigo->arquitetura != SEF_ARQUITETURA_AARCH64) {
-        erro_definir(erro, "arquitetura desconhecida para objeto Mach-O");
+        erro_definir(erro, "unknown architecture for Mach-O object");
         return false;
     }
     if (codigo->arquitetura == SEF_ARQUITETURA_X64 && codigo->abi_x64 != SEF_ABI_X64_SYSV) {
-        erro_definir(erro, "objeto Mach-O x86-64 exige codigo da ABI System V");
+        erro_definir(erro, "x86-64 Mach-O object requires System V ABI code");
         return false;
     }
     for (size_t i = 0; i < codigo->quantidade_relocacoes; i++) {
@@ -87,7 +87,7 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
         if (!tipo_correto || relocacao.simbolo == NULL || relocacao.simbolo[0] == '\0' ||
             relocacao.deslocamento > codigo->tamanho ||
             4u > codigo->tamanho - relocacao.deslocamento) {
-            erro_definir(erro, "relocacao invalida para objeto Mach-O");
+            erro_definir(erro, "invalid relocation for Mach-O object");
             return false;
         }
     }
@@ -102,13 +102,13 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
         quantidade_relocacoes > SIZE_MAX / MACHO_SIMBOLO_64 || codigo->tamanho > UINT32_MAX ||
         tamanho_nome > UINT32_MAX - 3u || tamanho_nome > SIZE_MAX - 256u ||
         codigo->tamanho > SIZE_MAX - tamanho_nome - 256u) {
-        erro_definir(erro, "codigo ou nome grande demais para objeto Mach-O");
+        erro_definir(erro, "code or name is too large for a Mach-O object");
         return false;
     }
     size_t deslocamento_relocacoes = alinhar(deslocamento_codigo + codigo->tamanho, 4u);
     size_t tamanho_relocacoes = quantidade_relocacoes * MACHO_RELOCACAO;
     if (tamanho_relocacoes > SIZE_MAX - deslocamento_relocacoes) {
-        erro_definir(erro, "objeto Mach-O excedeu o espaco de enderecamento");
+        erro_definir(erro, "Mach-O object exceeded the address space");
         return false;
     }
     size_t deslocamento_simbolo = alinhar(deslocamento_relocacoes + tamanho_relocacoes, 8u);
@@ -117,7 +117,7 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
     if (quantidade_relocacoes > 0) {
         nomes_externos = malloc(quantidade_relocacoes * sizeof(*nomes_externos));
         if (nomes_externos == NULL) {
-            erro_definir(erro, "memoria insuficiente para strings externas Mach-O");
+            erro_definir(erro, "not enough memory for external Mach-O strings");
             return false;
         }
     }
@@ -127,7 +127,7 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
         size_t adicional = (externo[0] == '_' ? 0u : 1u) + tamanho_externo + 1u;
         if (tamanho_strings > UINT32_MAX - adicional || tamanho_strings > SIZE_MAX - adicional) {
             free(nomes_externos);
-            erro_definir(erro, "tabela de strings Mach-O grande demais");
+            erro_definir(erro, "Mach-O string table is too large");
             return false;
         }
         nomes_externos[i] = (uint32_t)tamanho_strings;
@@ -136,21 +136,21 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
     size_t tamanho_simbolos = MACHO_SIMBOLO_64 * (1u + quantidade_relocacoes);
     if (tamanho_simbolos > SIZE_MAX - deslocamento_simbolo) {
         free(nomes_externos);
-        erro_definir(erro, "objeto Mach-O excedeu o espaco de enderecamento");
+        erro_definir(erro, "Mach-O object exceeded the address space");
         return false;
     }
     size_t deslocamento_strings = deslocamento_simbolo + tamanho_simbolos;
     if (deslocamento_relocacoes > UINT32_MAX || deslocamento_simbolo > UINT32_MAX ||
         deslocamento_strings > UINT32_MAX || tamanho_strings > SIZE_MAX - deslocamento_strings) {
         free(nomes_externos);
-        erro_definir(erro, "objeto Mach-O excedeu o espaco de enderecamento");
+        erro_definir(erro, "Mach-O object exceeded the address space");
         return false;
     }
     size_t tamanho_total = deslocamento_strings + tamanho_strings;
     unsigned char *objeto = calloc(tamanho_total, 1);
     if (objeto == NULL) {
         free(nomes_externos);
-        erro_definir(erro, "memoria insuficiente para objeto Mach-O");
+        erro_definir(erro, "not enough memory for a Mach-O object");
         return false;
     }
 
@@ -225,7 +225,7 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
     if (temporario == NULL) {
         free(nomes_externos);
         free(objeto);
-        erro_definir(erro, "memoria insuficiente para caminho Mach-O temporario");
+        erro_definir(erro, "not enough memory for a temporary Mach-O path");
         return false;
     }
     snprintf(temporario, tamanho_caminho + 5u, "%s.tmp", caminho);
@@ -238,8 +238,8 @@ bool sef_codigo_nativo_gravar_macho(const SefCodigoNativo *codigo, const char *n
         sucesso = substituir_arquivo(temporario, caminho);
     if (!sucesso) {
         remove(temporario);
-        erro_definir(erro, arquivo == NULL ? "nao foi possivel criar objeto Mach-O"
-                                           : "falha ao gravar ou instalar objeto Mach-O");
+        erro_definir(erro, arquivo == NULL ? "could not create Mach-O object"
+                                           : "failed to write or install Mach-O object");
     }
     free(temporario);
     free(nomes_externos);
