@@ -219,6 +219,11 @@ Símbolos não internados referenciam uma sentinela de package privada da
 implementação, ausente do registro público de packages. Isso mantém válido o
 grafo de referências v10 enquanto `SYMBOL-PACKAGE`, impressão e inspeção
 expõem a semântica não internada exigida.
+As tabelas de símbolos de packages também podem conter identidades importadas
+cujo package de origem é diferente. Tabelas de exportação referenciam os mesmos
+objetos, e uninterning atualiza ambas antes de eventualmente devolver um
+símbolo de origem à sentinela não internada privada. Assim, os vetores comuns
+de packages do v10 preservam importações sem um registro paralelo.
 
 Recursos do processo seguem uma política explícita:
 

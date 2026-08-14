@@ -398,8 +398,10 @@ bool sef_pacote_simbolo_exportado(SefValor pacote, SefValor simbolo) {
 bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro) {
     bool nulo_do_common_lisp =
         runtime != NULL && simbolo == runtime->nulo && pacote == runtime->pacote_common_lisp;
-    bool simbolo_interno = simbolo != NULL && simbolo->tipo == SEF_TIPO_SIMBOLO &&
-                           simbolo->como.simbolo.pacote == pacote;
+    const char *nome_simbolo = NULL;
+    size_t tamanho_simbolo = 0;
+    bool simbolo_interno = nome_de_simbolo_armazenado(simbolo, &nome_simbolo, &tamanho_simbolo) &&
+                           pacote_buscar_simbolo(pacote, nome_simbolo, tamanho_simbolo) == simbolo;
     if (pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
         (!nulo_do_common_lisp && !simbolo_interno)) {
         sef_erro_definir(erro, 0, 0, "EXPORT requires a symbol internal to the package");
@@ -568,6 +570,87 @@ SefValor sef_simbolo_novo_nao_internado(SefRuntime *runtime, const char *nome, s
 bool sef_simbolo_nao_internado(const SefRuntime *runtime, SefValor simbolo) {
     return runtime != NULL && simbolo != NULL && simbolo->tipo == SEF_TIPO_SIMBOLO &&
            pacote_e_sentinela_interno(runtime, simbolo->como.simbolo.pacote);
+}
+
+bool sef_pacote_importar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
+        !sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "IMPORT requires a symbol and package");
+        return false;
+    }
+    const char *nome = NULL;
+    size_t tamanho = 0;
+    if (!sef_simbolo_nome_logico(runtime, simbolo, &nome, &tamanho)) {
+        sef_erro_definir(erro, 0, 0, "IMPORT received an invalid symbol");
+        return false;
+    }
+    SefValor local = pacote_buscar_simbolo(pacote, nome, tamanho);
+    if (local == simbolo)
+        return true;
+    if (local != NULL) {
+        sef_erro_definir(erro, 0, 0, "IMPORT conflicts with a different local symbol named %.*s",
+                         (int)tamanho, nome);
+        return false;
+    }
+    SefValor acessivel = sef_pacote_localizar_simbolo(pacote, nome, tamanho, true);
+    if (acessivel != NULL && acessivel != simbolo) {
+        sef_erro_definir(erro, 0, 0,
+                         "IMPORT conflicts with a different accessible symbol named %.*s",
+                         (int)tamanho, nome);
+        return false;
+    }
+    if (!vetor_valores_crescer(&pacote->como.pacote.simbolos,
+                               &pacote->como.pacote.capacidade_simbolos,
+                               pacote->como.pacote.quantidade_simbolos + 1, erro))
+        return false;
+    pacote->como.pacote.simbolos[pacote->como.pacote.quantidade_simbolos++] = simbolo;
+    if (sef_simbolo_nao_internado(runtime, simbolo))
+        simbolo->como.simbolo.pacote = pacote;
+    return true;
+}
+
+bool sef_pacote_desinternar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, bool *removeu,
+                            SefErro *erro) {
+    if (removeu != NULL)
+        *removeu = false;
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
+        !sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "UNINTERN requires a symbol and package");
+        return false;
+    }
+    if (pacote == runtime->pacote_common_lisp) {
+        sef_erro_definir(erro, 0, 0, "the COMMON-LISP package is locked");
+        return false;
+    }
+    size_t indice = 0;
+    while (indice < pacote->como.pacote.quantidade_simbolos &&
+           pacote->como.pacote.simbolos[indice] != simbolo)
+        indice++;
+    if (indice == pacote->como.pacote.quantidade_simbolos)
+        return true;
+    SefValor sentinela = NULL;
+    if (simbolo != runtime->nulo && simbolo->como.simbolo.pacote == pacote) {
+        sentinela = pacote_nao_internado_obter(runtime, erro);
+        if (sentinela == NULL)
+            return false;
+    }
+    memmove(&pacote->como.pacote.simbolos[indice], &pacote->como.pacote.simbolos[indice + 1],
+            (pacote->como.pacote.quantidade_simbolos - indice - 1) * sizeof(SefValor));
+    pacote->como.pacote.quantidade_simbolos--;
+    for (size_t i = 0; i < pacote->como.pacote.quantidade_exportados;) {
+        if (pacote->como.pacote.exportados[i] != simbolo) {
+            i++;
+            continue;
+        }
+        memmove(&pacote->como.pacote.exportados[i], &pacote->como.pacote.exportados[i + 1],
+                (pacote->como.pacote.quantidade_exportados - i - 1) * sizeof(SefValor));
+        pacote->como.pacote.quantidade_exportados--;
+    }
+    if (sentinela != NULL)
+        simbolo->como.simbolo.pacote = sentinela;
+    if (removeu != NULL)
+        *removeu = true;
+    return true;
 }
 
 static void substituir_simbolo_em_vetor(SefValor *valores, size_t quantidade, SefValor antigo,

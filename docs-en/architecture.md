@@ -207,6 +207,11 @@ Uninterned symbols reference an implementation-private package sentinel that
 is absent from the public package registry. This keeps the v10 reference graph
 valid while `SYMBOL-PACKAGE`, printing, and inspection expose the required
 uninterned semantics.
+Package symbol tables may also contain imported identities whose home package
+is different. Export tables reference those same objects, and uninterning
+updates both tables before optionally returning a home symbol to the private
+uninterned sentinel. The ordinary v10 package arrays therefore preserve import
+relationships without a parallel registry.
 
 Process resources follow an explicit policy:
 

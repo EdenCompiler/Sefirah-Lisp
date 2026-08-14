@@ -66,6 +66,8 @@ não significa que o marco inteiro esteja concluído.
   `REMPROP`, suporte a `NIL` e acesso generalizado por `SETF`.
 - [x] Identidades não internadas por `MAKE-SYMBOL`/`COPY-SYMBOL` e `GENSYM`
   determinístico com `*GENSYM-COUNTER*` persistente.
+- [x] `IMPORT` e `UNINTERN` de packages, incluindo adoção de símbolo não
+  internado, exportação importada, transições de estado e persistência.
 
 ### Compilador
 

@@ -374,7 +374,7 @@ Formas e funções disponíveis:
 - `DEFPACKAGE` com `:USE` e `:EXPORT`;
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME` e `PACKAGEP`;
-- `USE-PACKAGE`, `EXPORT`, `INTERN` e `FIND-SYMBOL`;
+- `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `INTERN` e `FIND-SYMBOL`;
 - `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE` e
   `LIST-ALL-PACKAGES`.
 
@@ -382,6 +382,14 @@ Formas e funções disponíveis:
 ANSI: `:INTERNAL`, `:EXTERNAL`, `:INHERITED` ou `NIL`. Um símbolo recém-criado
 tem estado `NIL`; uma consulta posterior informa seu estado real. Símbolos de
 `KEYWORD` são externos e se autoavaliam.
+
+`IMPORT` torna um símbolo ou lista de símbolos diretamente presente em um
+package sem alterar o package de origem de um símbolo já internado. Importar
+uma identidade nova de `MAKE-SYMBOL` a adota no destino. Símbolos importados
+podem ser exportados, e `UNINTERN` remove sua presença local e estado externo.
+Remover um símbolo de seu package de origem o torna não internado novamente;
+`COMMON-LISP` possui lock da implementação contra `UNINTERN`, evitando que o
+runtime vivo perca seus operadores obrigatórios.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

@@ -1195,7 +1195,7 @@ static SefValor primitiva_export(SefRuntime *runtime, SefValor argumentos, SefEr
     if (pacote == NULL)
         return NULL;
     SefValor simbolos = car(argumentos);
-    if (simbolos->tipo == SEF_TIPO_SIMBOLO)
+    if (sef_valor_e_simbolo_logico(runtime, simbolos))
         return sef_pacote_exportar(runtime, pacote, simbolos, erro) ? runtime->verdadeiro : NULL;
     if (!sef_e_lista_propria(runtime, simbolos)) {
         sef_erro_definir(erro, 0, 0, "EXPORT requires a symbol or list of symbols");
@@ -1207,6 +1207,43 @@ static SefValor primitiva_export(SefRuntime *runtime, SefValor argumentos, SefEr
         simbolos = cdr(simbolos);
     }
     return runtime->verdadeiro;
+}
+
+static SefValor primitiva_import(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "IMPORT", erro))
+        return NULL;
+    SefValor pacote = cdr(argumentos) == runtime->nulo
+                          ? runtime->pacote_atual
+                          : pacote_designador(runtime, car(cdr(argumentos)), erro);
+    if (pacote == NULL)
+        return NULL;
+    SefValor simbolos = car(argumentos);
+    if (sef_valor_e_simbolo_logico(runtime, simbolos))
+        return sef_pacote_importar(runtime, pacote, simbolos, erro) ? runtime->verdadeiro : NULL;
+    if (!sef_e_lista_propria(runtime, simbolos)) {
+        sef_erro_definir(erro, 0, 0, "IMPORT requires a symbol or list of symbols");
+        return NULL;
+    }
+    while (simbolos != runtime->nulo) {
+        if (!sef_pacote_importar(runtime, pacote, car(simbolos), erro))
+            return NULL;
+        simbolos = cdr(simbolos);
+    }
+    return runtime->verdadeiro;
+}
+
+static SefValor primitiva_unintern(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "UNINTERN", erro))
+        return NULL;
+    SefValor pacote = cdr(argumentos) == runtime->nulo
+                          ? runtime->pacote_atual
+                          : pacote_designador(runtime, car(cdr(argumentos)), erro);
+    if (pacote == NULL)
+        return NULL;
+    bool removeu = false;
+    if (!sef_pacote_desinternar(runtime, pacote, car(argumentos), &removeu, erro))
+        return NULL;
+    return removeu ? runtime->verdadeiro : runtime->nulo;
 }
 
 static SefValor estado_simbolo_para_lisp(SefRuntime *runtime, SefEstadoSimboloPacote estado,
@@ -1851,6 +1888,8 @@ static const struct {
                   {"PACKAGEP", primitiva_packagep},
                   {"USE-PACKAGE", primitiva_use_package},
                   {"EXPORT", primitiva_export},
+                  {"IMPORT", primitiva_import},
+                  {"UNINTERN", primitiva_unintern},
                   {"INTERN", primitiva_intern},
                   {"FIND-SYMBOL", primitiva_find_symbol},
                   {"SYMBOL-NAME", primitiva_symbol_name},

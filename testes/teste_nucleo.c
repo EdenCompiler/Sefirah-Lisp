@@ -777,6 +777,39 @@ int main(int argc, char **argv) {
                     "(error (c) :conflito-detectado))",
                     ":CONFLITO-DETECTADO");
     verificar_texto(runtime,
+                    "(make-package :import-source) (make-package :import-target) "
+                    "(make-package :import-consumer) "
+                    "(let ((shared (intern \"SHARED\" \"IMPORT-SOURCE\"))) "
+                    "(export shared \"IMPORT-SOURCE\") "
+                    "(import shared \"IMPORT-TARGET\") "
+                    "(export shared \"IMPORT-TARGET\") "
+                    "(use-package \"IMPORT-TARGET\" \"IMPORT-CONSUMER\") "
+                    "(list (nth-value 1 (find-symbol \"SHARED\" \"IMPORT-TARGET\")) "
+                    "(nth-value 1 (find-symbol \"SHARED\" \"IMPORT-CONSUMER\")) "
+                    "(package-name (symbol-package shared)) "
+                    "(unintern shared \"IMPORT-TARGET\") "
+                    "(nth-value 1 (find-symbol \"SHARED\" \"IMPORT-TARGET\")) "
+                    "(nth-value 1 (find-symbol \"SHARED\" \"IMPORT-CONSUMER\")) "
+                    "(package-name (symbol-package shared))))",
+                    "(:EXTERNAL :INHERITED \"IMPORT-SOURCE\" T NIL NIL \"IMPORT-SOURCE\")");
+    verificar_texto(runtime,
+                    "(let ((adopted (make-symbol \"ADOPTED\"))) "
+                    "(list (import adopted \"IMPORT-TARGET\") "
+                    "(package-name (symbol-package adopted)) "
+                    "(nth-value 1 (find-symbol \"ADOPTED\" \"IMPORT-TARGET\")) "
+                    "(unintern adopted \"IMPORT-TARGET\") (symbol-package adopted) "
+                    "(multiple-value-list "
+                    "(find-symbol \"ADOPTED\" \"IMPORT-TARGET\"))))",
+                    "(T \"IMPORT-TARGET\" :INTERNAL T NIL (NIL NIL))");
+    verificar_texto(runtime,
+                    "(let ((persistent (intern \"PERSISTENT-IMPORT\" \"IMPORT-SOURCE\"))) "
+                    "(import persistent \"IMPORT-TARGET\") "
+                    "(export persistent \"IMPORT-TARGET\") "
+                    "(list (nth-value 1 "
+                    "(find-symbol \"PERSISTENT-IMPORT\" \"IMPORT-TARGET\")) "
+                    "(package-name (symbol-package persistent))))",
+                    "(:EXTERNAL \"IMPORT-SOURCE\")");
+    verificar_texto(runtime,
                     "(defun calcular-compilado (x y) "
                     "(if (< x y) (+ (* x 2) y) (- x y)))",
                     "CALCULAR-COMPILADO");
@@ -1016,6 +1049,14 @@ int main(int argc, char **argv) {
         verificar_texto(runtime, "condicao-salva", "#<ERROR persistente>");
     if (runtime != NULL)
         verificar_texto(runtime, "(alpha:resposta-do-pacote)", "42");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(let ((persistent "
+                        "(find-symbol \"PERSISTENT-IMPORT\" \"IMPORT-TARGET\"))) "
+                        "(list (nth-value 1 "
+                        "(find-symbol \"PERSISTENT-IMPORT\" \"IMPORT-TARGET\")) "
+                        "(package-name (symbol-package persistent))))",
+                        "(:EXTERNAL \"IMPORT-SOURCE\")");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (calcular-compilado 10 22) "

@@ -64,6 +64,8 @@ not mean the entire milestone is complete.
   `NIL` support, and generalized `SETF` access.
 - [x] Uninterned `MAKE-SYMBOL`/`COPY-SYMBOL` identities and deterministic
   `GENSYM` with persistent `*GENSYM-COUNTER*`.
+- [x] Package `IMPORT` and `UNINTERN`, including uninterned-symbol adoption,
+  imported export, status transitions, and image persistence.
 
 ### Compiler
 

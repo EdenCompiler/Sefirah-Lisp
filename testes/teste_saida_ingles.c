@@ -80,6 +80,11 @@ int main(void) {
                       !texto_contem_portugues(erro.mensagem),
                   "uninterned symbol diagnostics are English");
 
+        resultado = sef_runtime_avaliar_texto(runtime, "(unintern 'car \"COMMON-LISP\")", &erro);
+        verificar(resultado == NULL && erro.ocorreu && texto_contem(erro.mensagem, "locked") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "package mutation diagnostics are English");
+
         resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
         char *impresso =
             resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);

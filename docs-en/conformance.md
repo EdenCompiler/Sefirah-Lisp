@@ -23,7 +23,7 @@ implementation.
 | Multiple values | ✅ | The implemented multiple-value forms preserve values across calls, cleanup, and non-local transfer. `GETHASH`, `READ-LINE`, `INTERN`, and `FIND-SYMBOL` expose their tested secondary values. |
 | Lists and sequences | ◐ | Core list operations and an initial sequence protocol cover lists, vectors, and UTF-8 strings; keyword arguments and the complete sequence function family are missing. |
 | Numbers | ◐ | Fixed-width integers and host doubles exist; bignums, ratios, complex numbers, exact overflow behavior, and the full numeric library are missing. |
-| Packages | ◐ | Heap packages, `DEFPACKAGE`, use lists, export, exact symbol-name lookup, lookup status, qualified symbols, and image persistence work; import, shadowing, nicknames, and uninterning are missing. |
+| Packages | ◐ | Heap packages, `DEFPACKAGE`, use lists, export/import/unintern, exact symbol-name lookup, lookup status, qualified symbols, uninterned-symbol adoption, and image persistence work; shadowing, nicknames, package deletion, and the complete conflict protocol remain missing. |
 | Streams | ◐ | Standard/file streams and basic text I/O work. Composite streams, element types, pathname semantics, and the complete stream designator protocol are missing. |
 | Conditions | ◐ | Condition objects, `ERROR`, `SIGNAL`, dynamically scoped `HANDLER-BIND`, `HANDLER-CASE`, `IGNORE-ERRORS`, first-class restart objects, dynamic discovery/invocation, and five standard named-restart helpers work; condition association, standard hierarchy coverage, and suspendable debugger integration are missing. |
 | CLOS and MOP | — | Classes, generic functions, method combination, and the metaobject protocol are not implemented. |
