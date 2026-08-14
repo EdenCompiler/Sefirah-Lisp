@@ -91,6 +91,14 @@ int main(void) {
                       !texto_contem_portugues(erro.mensagem),
                   "package shadowing diagnostics are English");
 
+        resultado = sef_runtime_avaliar_texto(
+            runtime, "(defpackage :broken-definition (:import-from :missing-package \"X\"))",
+            &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "source package does not exist") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "DEFPACKAGE import diagnostics are English");
+
         resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
         char *impresso =
             resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);

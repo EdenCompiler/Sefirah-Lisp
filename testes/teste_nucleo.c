@@ -740,6 +740,27 @@ int main(int argc, char **argv) {
                     "(multiple-value-list (find-symbol \"STATUS-KEY\" \"KEYWORD\")))",
                     "((:STATUS-KEY NIL) (:STATUS-KEY :EXTERNAL) (:STATUS-KEY :EXTERNAL))");
     verificar_texto(runtime,
+                    "(defpackage :definition-source-a (:use) "
+                    "(:intern \"PRIVATE-A\") (:export \"SHARED\" \"A-ONLY\")) "
+                    "(defpackage :definition-source-b (:use) (:export \"SHARED\")) "
+                    "(defpackage :definition-target "
+                    "(:use :definition-source-a :definition-source-b) "
+                    "(:export \"PUBLIC\") (:intern \"INTERNAL-ONLY\") "
+                    "(:import-from :definition-source-a \"PRIVATE-A\") "
+                    "(:shadow \"LOCAL\") "
+                    "(:shadowing-import-from :definition-source-b \"SHARED\")) "
+                    "(let ((shared (find-symbol \"SHARED\" \"DEFINITION-TARGET\"))) "
+                    "(list (eq shared (find-symbol \"SHARED\" \"DEFINITION-SOURCE-B\")) "
+                    "(eq shared (first "
+                    "(package-shadowing-symbols \"DEFINITION-TARGET\"))) "
+                    "(nth-value 1 (find-symbol \"PRIVATE-A\" \"DEFINITION-TARGET\")) "
+                    "(package-name (symbol-package "
+                    "(find-symbol \"PRIVATE-A\" \"DEFINITION-TARGET\"))) "
+                    "(nth-value 1 (find-symbol \"LOCAL\" \"DEFINITION-TARGET\")) "
+                    "(nth-value 1 (find-symbol \"INTERNAL-ONLY\" \"DEFINITION-TARGET\")) "
+                    "(nth-value 1 (find-symbol \"PUBLIC\" \"DEFINITION-TARGET\"))))",
+                    "(T T :INTERNAL \"DEFINITION-SOURCE-A\" :INTERNAL :INTERNAL :EXTERNAL)");
+    verificar_texto(runtime,
                     "(let ((simbolo (intern \"Nome-Misto\" \"ALPHA\"))) "
                     "(list (symbol-name simbolo) "
                     "(multiple-value-list (find-symbol \"Nome-Misto\" \"ALPHA\")) "
@@ -1085,6 +1106,18 @@ int main(int argc, char **argv) {
                         "(nth-value 1 (find-symbol \"CHOQUE\" \"DESTINO\")) "
                         "(eq (first (package-shadowing-symbols \"DESTINO\")) from-b)))",
                         "(T :INTERNAL T)");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(let ((shared (find-symbol \"SHARED\" \"DEFINITION-TARGET\"))) "
+                        "(list (eq shared "
+                        "(find-symbol \"SHARED\" \"DEFINITION-SOURCE-B\")) "
+                        "(eq shared (first "
+                        "(package-shadowing-symbols \"DEFINITION-TARGET\"))) "
+                        "(nth-value 1 "
+                        "(find-symbol \"PRIVATE-A\" \"DEFINITION-TARGET\")) "
+                        "(nth-value 1 "
+                        "(find-symbol \"PUBLIC\" \"DEFINITION-TARGET\"))))",
+                        "(T T :INTERNAL :EXTERNAL)");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (calcular-compilado 10 22) "

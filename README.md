@@ -65,6 +65,8 @@ the roadmap.
   including world-image persistence;
 - package import/unintern operations with preserved symbol identity and status;
 - persistent package shadowing with explicit inherited-conflict resolution;
+- declarative package construction with phased shadow, use, import, intern, and
+  export options;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -394,6 +396,8 @@ nativa permanecem no roteiro.
   incluindo persistência na imagem do mundo;
 - importação/uninterning em packages com identidade e estado preservados;
 - shadowing persistente de packages com resolução explícita de conflitos herdados;
+- construção declarativa de packages com opções em fases para shadow, use,
+  importação, internamento e exportação;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

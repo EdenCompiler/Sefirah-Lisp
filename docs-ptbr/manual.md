@@ -371,7 +371,8 @@ nomes específicos da implementação, como `SEFIRAH::ENVIRONMENT` e
 
 Formas e funções disponíveis:
 
-- `DEFPACKAGE` com `:USE` e `:EXPORT`;
+- `DEFPACKAGE` com `:SHADOW`, `:SHADOWING-IMPORT-FROM`, `:USE`,
+  `:IMPORT-FROM`, `:INTERN` e `:EXPORT`;
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME` e `PACKAGEP`;
 - `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
@@ -398,6 +399,12 @@ intencional, permitindo usar outro package com exportação conflitante.
 `PACKAGE-SHADOWING-SYMBOLS` devolve uma lista nova dessas escolhas. A remoção
 de um símbolo de shadowing é rejeitada quando exporia dois símbolos herdados
 distintos; todas as escolhas persistem na restauração da imagem.
+
+`DEFPACKAGE` valida a declaração completa e aplica opções de símbolo em fases
+semânticas em vez da ordem textual. Escolhas de shadow e shadowing-import são
+instaladas antes das listas de uso; seguem importações comuns e nomes
+internados; exportações ficam por último. As duas opções de importação recebem
+um package de origem seguido pelos nomes de símbolos que serão reutilizados.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

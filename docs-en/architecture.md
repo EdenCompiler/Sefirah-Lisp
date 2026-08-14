@@ -216,6 +216,10 @@ Shadowing choices use another internal heap hash table rooted by the global
 environment. Package-use validation consults it before accepting or rejecting
 an export conflict, and uninterning refuses to expose ambiguous inherited
 identities. The same v10 graph persistence applies to this registry.
+`DEFPACKAGE` validates every option before applying them and then applies declarations
+in deterministic phases: shadow and shadowing import, use lists, ordinary import
+and intern, then export. A conflict therefore has the same result regardless of
+the textual order of its resolving option.
 
 Process resources follow an explicit policy:
 

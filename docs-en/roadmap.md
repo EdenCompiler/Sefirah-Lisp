@@ -68,6 +68,8 @@ not mean the entire milestone is complete.
   imported export, status transitions, and image persistence.
 - [x] Persistent `SHADOW`, `SHADOWING-IMPORT`, shadowing-symbol inquiry, and
   inherited-conflict protection.
+- [x] Phased `DEFPACKAGE` support for `:SHADOW`,
+  `:SHADOWING-IMPORT-FROM`, `:USE`, `:IMPORT-FROM`, `:INTERN`, and `:EXPORT`.
 
 ### Compiler
 

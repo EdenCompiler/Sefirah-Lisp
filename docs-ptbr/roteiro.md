@@ -70,6 +70,8 @@ não significa que o marco inteiro esteja concluído.
   internado, exportação importada, transições de estado e persistência.
 - [x] `SHADOW`, `SHADOWING-IMPORT`, consulta de símbolos de shadowing e
   proteção contra conflitos herdados, todos persistentes.
+- [x] `DEFPACKAGE` em fases com `:SHADOW`, `:SHADOWING-IMPORT-FROM`, `:USE`,
+  `:IMPORT-FROM`, `:INTERN` e `:EXPORT`.
 
 ### Compilador
 

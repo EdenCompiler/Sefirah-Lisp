@@ -1328,6 +1328,117 @@ static const char *nome_pacote_literal(SefValor designador, size_t *tamanho) {
     return NULL;
 }
 
+static bool nome_simbolo_defpackage(SefRuntime *runtime, SefValor designador, const char **nome,
+                                    size_t *tamanho, SefErro *erro) {
+    if (designador != NULL && designador->tipo == SEF_TIPO_TEXTO) {
+        *nome = designador->como.texto.dados;
+        *tamanho = designador->como.texto.tamanho;
+        return true;
+    }
+    if (sef_simbolo_nome_logico(runtime, designador, nome, tamanho))
+        return true;
+    sef_erro_definir(erro, 0, 0, "DEFPACKAGE symbol names must be string designators");
+    return false;
+}
+
+static bool opcao_defpackage_reconhecida(SefValor chave) {
+    return sef_simbolo_tem_nome(chave, "SHADOW") ||
+           sef_simbolo_tem_nome(chave, "SHADOWING-IMPORT-FROM") ||
+           sef_simbolo_tem_nome(chave, "USE") || sef_simbolo_tem_nome(chave, "IMPORT-FROM") ||
+           sef_simbolo_tem_nome(chave, "INTERN") || sef_simbolo_tem_nome(chave, "EXPORT");
+}
+
+static int fase_opcao_defpackage(SefValor chave) {
+    if (sef_simbolo_tem_nome(chave, "SHADOW") ||
+        sef_simbolo_tem_nome(chave, "SHADOWING-IMPORT-FROM"))
+        return 0;
+    if (sef_simbolo_tem_nome(chave, "USE"))
+        return 1;
+    if (sef_simbolo_tem_nome(chave, "IMPORT-FROM") || sef_simbolo_tem_nome(chave, "INTERN"))
+        return 2;
+    return 3;
+}
+
+static bool aplicar_opcao_defpackage(SefRuntime *runtime, SefValor pacote, SefValor opcao,
+                                     SefErro *erro) {
+    SefValor chave = primeiro(opcao);
+    SefValor itens = resto(opcao);
+    if (sef_simbolo_tem_nome(chave, "USE")) {
+        while (itens != runtime->nulo) {
+            size_t tamanho_usado = 0;
+            const char *nome_usado = nome_pacote_literal(primeiro(itens), &tamanho_usado);
+            SefValor usado = nome_usado == NULL
+                                 ? NULL
+                                 : sef_pacote_encontrar(runtime, nome_usado, tamanho_usado);
+            if (usado == NULL || !sef_pacote_usar(runtime, pacote, usado, erro)) {
+                if (!erro->ocorreu)
+                    sef_erro_definir(erro, 0, 0, ":USE package does not exist");
+                return false;
+            }
+            itens = resto(itens);
+        }
+        return true;
+    }
+    if (sef_simbolo_tem_nome(chave, "IMPORT-FROM") ||
+        sef_simbolo_tem_nome(chave, "SHADOWING-IMPORT-FROM")) {
+        bool sombreando = sef_simbolo_tem_nome(chave, "SHADOWING-IMPORT-FROM");
+        const char *rotulo = sombreando ? ":SHADOWING-IMPORT-FROM" : ":IMPORT-FROM";
+        if (itens == runtime->nulo) {
+            sef_erro_definir(erro, 0, 0, "%s requires a source package", rotulo);
+            return false;
+        }
+        size_t tamanho_origem = 0;
+        const char *nome_origem = nome_pacote_literal(primeiro(itens), &tamanho_origem);
+        SefValor origem =
+            nome_origem == NULL ? NULL : sef_pacote_encontrar(runtime, nome_origem, tamanho_origem);
+        if (origem == NULL) {
+            sef_erro_definir(erro, 0, 0, "%s source package does not exist", rotulo);
+            return false;
+        }
+        itens = resto(itens);
+        while (itens != runtime->nulo) {
+            const char *nome_simbolo = NULL;
+            size_t tamanho_simbolo = 0;
+            if (!nome_simbolo_defpackage(runtime, primeiro(itens), &nome_simbolo, &tamanho_simbolo,
+                                         erro))
+                return false;
+            SefValor simbolo =
+                sef_pacote_localizar_simbolo(origem, nome_simbolo, tamanho_simbolo, true);
+            if (simbolo == NULL) {
+                sef_erro_definir(erro, 0, 0, "%s cannot find %.*s in its source package", rotulo,
+                                 (int)tamanho_simbolo, nome_simbolo);
+                return false;
+            }
+            bool importou = sombreando
+                                ? sef_pacote_importar_sombreando(runtime, pacote, simbolo, erro)
+                                : sef_pacote_importar(runtime, pacote, simbolo, erro);
+            if (!importou)
+                return false;
+            itens = resto(itens);
+        }
+        return true;
+    }
+    while (itens != runtime->nulo) {
+        const char *nome_simbolo = NULL;
+        size_t tamanho_simbolo = 0;
+        if (!nome_simbolo_defpackage(runtime, primeiro(itens), &nome_simbolo, &tamanho_simbolo,
+                                     erro))
+            return false;
+        if (sef_simbolo_tem_nome(chave, "SHADOW")) {
+            if (!sef_pacote_sombrear(runtime, pacote, nome_simbolo, tamanho_simbolo, erro))
+                return false;
+        } else {
+            SefValor simbolo =
+                sef_simbolo_internar_em(runtime, pacote, nome_simbolo, tamanho_simbolo, erro);
+            if (simbolo == NULL || (sef_simbolo_tem_nome(chave, "EXPORT") &&
+                                    !sef_pacote_exportar(runtime, pacote, simbolo, erro)))
+                return false;
+        }
+        itens = resto(itens);
+    }
+    return true;
+}
+
 static SefValor especial_in_package(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!contar_exato(runtime, argumentos, 1, "IN-PACKAGE", erro))
         return NULL;
@@ -1374,8 +1485,7 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
         if (pacote == NULL)
             return NULL;
     }
-    SefValor opcoes = resto(argumentos);
-    while (opcoes != runtime->nulo) {
+    for (SefValor opcoes = resto(argumentos); opcoes != runtime->nulo; opcoes = resto(opcoes)) {
         if (opcoes->tipo != SEF_TIPO_PAR) {
             sef_erro_definir(erro, 0, 0, "improper DEFPACKAGE options");
             return NULL;
@@ -1387,39 +1497,20 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
             return NULL;
         }
         SefValor chave = primeiro(opcao);
-        SefValor itens = resto(opcao);
-        if (sef_simbolo_tem_nome(chave, "USE")) {
-            while (itens != runtime->nulo) {
-                size_t tamanho_usado = 0;
-                const char *nome_usado = nome_pacote_literal(primeiro(itens), &tamanho_usado);
-                SefValor usado = nome_usado == NULL
-                                     ? NULL
-                                     : sef_pacote_encontrar(runtime, nome_usado, tamanho_usado);
-                if (usado == NULL || !sef_pacote_usar(runtime, pacote, usado, erro)) {
-                    if (!erro->ocorreu)
-                        sef_erro_definir(erro, 0, 0, ":USE package does not exist");
-                    return NULL;
-                }
-                itens = resto(itens);
-            }
-        } else if (sef_simbolo_tem_nome(chave, "EXPORT")) {
-            while (itens != runtime->nulo) {
-                size_t tamanho_exportado = 0;
-                const char *nome_exportado =
-                    nome_pacote_literal(primeiro(itens), &tamanho_exportado);
-                SefValor simbolo = nome_exportado == NULL
-                                       ? NULL
-                                       : sef_simbolo_internar_em(runtime, pacote, nome_exportado,
-                                                                 tamanho_exportado, erro);
-                if (simbolo == NULL || !sef_pacote_exportar(runtime, pacote, simbolo, erro))
-                    return NULL;
-                itens = resto(itens);
-            }
-        } else {
-            sef_erro_definir(erro, 0, 0, "this version accepts the :USE and :EXPORT options");
+        if (!opcao_defpackage_reconhecida(chave)) {
+            sef_erro_definir(erro, 0, 0,
+                             "unsupported DEFPACKAGE option; expected :SHADOW, "
+                             ":SHADOWING-IMPORT-FROM, :USE, :IMPORT-FROM, :INTERN, or :EXPORT");
             return NULL;
         }
-        opcoes = resto(opcoes);
+    }
+    for (int fase = 0; fase < 4; fase++) {
+        for (SefValor opcoes = resto(argumentos); opcoes != runtime->nulo; opcoes = resto(opcoes)) {
+            SefValor opcao = primeiro(opcoes);
+            if (fase_opcao_defpackage(primeiro(opcao)) == fase &&
+                !aplicar_opcao_defpackage(runtime, pacote, opcao, erro))
+                return NULL;
+        }
     }
     return pacote;
 }
