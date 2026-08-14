@@ -211,7 +211,10 @@ remove conflitos locais legados de `NIL` nos packages que usam `COMMON-LISP` e
 reinstala por nome os membros ausentes do conjunto atual de primitivas junto
 aos símbolos exportados de formas especiais. Definições Lisp de função já
 existentes são preservadas. Assim, um mundo antigo recebe novos built-ins sem
-serializar nem confiar em endereços C obsoletos.
+serializar nem confiar em endereços C obsoletos. As property lists dos símbolos
+vivem em uma tabela hash interna do heap, enraizada pelo ambiente global;
+portanto, a codificação existente do grafo v10 as preserva, enquanto imagens
+antigas começam naturalmente com uma tabela vazia no primeiro uso.
 
 Recursos do processo seguem uma política explícita:
 

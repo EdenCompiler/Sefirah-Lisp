@@ -66,6 +66,21 @@ int main(void) {
                       texto_contem(erro.mensagem, "constant symbol") &&
                       !texto_contem_portugues(erro.mensagem),
                   "symbol binding diagnostics are English");
+
+        resultado =
+            sef_runtime_avaliar_texto(runtime, "(setf (symbol-plist 'item) (list :odd))", &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "indicator/value pairs") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "symbol property diagnostics are English");
+
+        resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
+        char *impresso =
+            resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);
+        verificar(impresso != NULL && texto_contem(impresso, "STANDARD-STREAM") &&
+                      !texto_contem_portugues(impresso),
+                  "runtime object descriptions are English");
+        sef_texto_liberar(impresso);
         sef_runtime_destruir(runtime);
     }
 

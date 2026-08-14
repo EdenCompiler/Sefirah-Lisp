@@ -245,6 +245,15 @@ bool sef_valor_e_simbolo_logico(const SefRuntime *runtime, SefValor valor);
 bool sef_simbolo_e_constante(const SefRuntime *runtime, SefValor simbolo);
 bool sef_simbolo_nome_logico(const SefRuntime *runtime, SefValor simbolo, const char **nome,
                              size_t *tamanho);
+SefValor sef_simbolo_lista_propriedades(SefRuntime *runtime, SefValor simbolo, SefErro *erro);
+bool sef_simbolo_lista_propriedades_definir(SefRuntime *runtime, SefValor simbolo, SefValor lista,
+                                            SefErro *erro);
+SefValor sef_simbolo_propriedade_obter(SefRuntime *runtime, SefValor simbolo, SefValor indicador,
+                                       SefValor padrao, SefErro *erro);
+bool sef_simbolo_propriedade_definir(SefRuntime *runtime, SefValor simbolo, SefValor indicador,
+                                     SefValor valor, SefErro *erro);
+bool sef_simbolo_propriedade_remover(SefRuntime *runtime, SefValor simbolo, SefValor indicador,
+                                     bool *removeu, SefErro *erro);
 SefValor sef_pacote_novo(SefRuntime *runtime, const char *nome, SefErro *erro);
 SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tamanho);
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);

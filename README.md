@@ -59,6 +59,8 @@ the roadmap.
   control with cleanup;
 - live installation, replacement, and removal of global bindings through
   `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND`, and generalized `SETF` places;
+- persistent symbol metadata through `SYMBOL-PLIST`, `GET`, `REMPROP`, and
+  generalized `SETF` places;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -382,6 +384,8 @@ nativa permanecem no roteiro.
   não local com limpeza;
 - instalação, substituição e remoção de bindings globais no mundo vivo por
   `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND` e lugares `SETF`;
+- metadados persistentes de símbolos por `SYMBOL-PLIST`, `GET`, `REMPROP` e
+  lugares generalizados de `SETF`;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

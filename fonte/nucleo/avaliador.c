@@ -371,6 +371,38 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
                    ? valor
                    : NULL;
     }
+    if (sef_simbolo_tem_nome(operador, "SYMBOL-PLIST")) {
+        if (!contar_exato(runtime, argumentos, 1, "SETF SYMBOL-PLIST place", erro))
+            return NULL;
+        SefValor simbolo = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+        SefValor valor = simbolo == NULL ? NULL : sef_avaliar(runtime, forma_valor, ambiente, erro);
+        return valor != NULL &&
+                       sef_simbolo_lista_propriedades_definir(runtime, simbolo, valor, erro)
+                   ? valor
+                   : NULL;
+    }
+    if (sef_simbolo_tem_nome(operador, "GET")) {
+        bool propria = false;
+        size_t total = sef_lista_tamanho(runtime, argumentos, &propria);
+        if (!propria || total < 2 || total > 3) {
+            sef_erro_definir(erro, 0, 0, "SETF GET place requires a symbol and indicator");
+            return NULL;
+        }
+        SefValor simbolo = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+        SefValor indicador =
+            simbolo == NULL ? NULL
+                            : sef_avaliar(runtime, primeiro(resto(argumentos)), ambiente, erro);
+        if (indicador == NULL)
+            return NULL;
+        if (total == 3 &&
+            sef_avaliar(runtime, primeiro(resto(resto(argumentos))), ambiente, erro) == NULL)
+            return NULL;
+        SefValor valor = sef_avaliar(runtime, forma_valor, ambiente, erro);
+        return valor != NULL &&
+                       sef_simbolo_propriedade_definir(runtime, simbolo, indicador, valor, erro)
+                   ? valor
+                   : NULL;
+    }
     if (sef_simbolo_tem_nome(operador, "GETHASH")) {
         if (!contar_exato(runtime, argumentos, 2, "SETF GETHASH place", erro))
             return NULL;

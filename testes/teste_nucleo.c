@@ -478,6 +478,29 @@ int main(int argc, char **argv) {
     }
     remove("teste-sefirah-v9.imagem");
     verificar_texto(runtime,
+                    "(list (symbol-plist 'metadata) "
+                    "(setf (get 'metadata :kind) :function) "
+                    "(get 'metadata :kind) (get 'metadata :missing 42) "
+                    "(symbol-plist 'metadata) (remprop 'metadata :kind) "
+                    "(get 'metadata :kind) (symbol-plist 'metadata))",
+                    "(NIL :FUNCTION :FUNCTION 42 (:KIND :FUNCTION) T NIL NIL)");
+    verificar_texto(runtime,
+                    "(progn (setf (symbol-plist 'metadata) (list :a 1 :b 2)) "
+                    "(setf (get nil :documentation) \"empty-list symbol\") "
+                    "(list (symbol-plist 'metadata) (get 'metadata :b) "
+                    "(get nil :documentation)))",
+                    "((:A 1 :B 2) 2 \"empty-list symbol\")");
+    verificar_texto(runtime,
+                    "(handler-case (setf (symbol-plist 'metadata) (list :odd)) "
+                    "(error (condition) (list :malformed (type-of condition))))",
+                    "(:MALFORMED ERROR)");
+    verificar_texto(runtime,
+                    "(let ((cyclic (list :a 1))) "
+                    "(setf (cdr (cdr cyclic)) cyclic) "
+                    "(handler-case (setf (symbol-plist 'metadata) cyclic) "
+                    "(error (condition) (list :cyclic (type-of condition)))))",
+                    "(:CYCLIC ERROR)");
+    verificar_texto(runtime,
                     "(define celula-separada 41) "
                     "(defun celula-separada () 42) "
                     "(list celula-separada (celula-separada))",
@@ -844,7 +867,7 @@ int main(int argc, char **argv) {
             verificar_texto(runtime, codigo_ffi,
                             "(T T SEFIRAH::SHARED-LIBRARY CHAMAR-EXTERNA COMBINAR-EXTERNA "
                             "T NIL 42 42 "
-                            "#<BIBLIOTECA-COMPARTILHADA FECHADA>)");
+                            "#<CLOSED-SHARED-LIBRARY>)");
         verificar_texto(runtime,
                         "(list (handler-case "
                         "(compile-external-i64 'chamar-externa biblioteca-teste) "
@@ -941,6 +964,9 @@ int main(int argc, char **argv) {
                         "(soma-da-imagem binding-da-imagem 2))",
                         "(T 40 42)");
     if (runtime != NULL)
+        verificar_texto(runtime, "(list (symbol-plist 'metadata) (get nil :documentation))",
+                        "((:A 1 :B 2) \"empty-list symbol\")");
+    if (runtime != NULL)
         verificar_texto(runtime, "(setf (aref vetor-da-imagem 1) 42) vetor-da-imagem",
                         "#(PERSISTENTE 42 42)");
     if (runtime != NULL)
@@ -981,7 +1007,7 @@ int main(int argc, char **argv) {
                         "(shared-library-open-p biblioteca-teste) "
                         "(type-of biblioteca-imagem) biblioteca-imagem)",
                         "(T NIL SEFIRAH::SHARED-LIBRARY "
-                        "#<BIBLIOTECA-COMPARTILHADA FECHADA>)");
+                        "#<CLOSED-SHARED-LIBRARY>)");
     remove("teste-sefirah.imagem");
 
     sef_runtime_destruir(runtime);

@@ -1292,6 +1292,32 @@ static SefValor primitiva_symbol_package(SefRuntime *runtime, SefValor argumento
     return simbolo->como.simbolo.pacote == NULL ? runtime->nulo : simbolo->como.simbolo.pacote;
 }
 
+static SefValor primitiva_symbol_plist(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "SYMBOL-PLIST", erro))
+        return NULL;
+    return sef_simbolo_lista_propriedades(runtime, car(argumentos), erro);
+}
+
+static SefValor primitiva_get(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 3, "GET", erro))
+        return NULL;
+    SefValor simbolo = car(argumentos);
+    SefValor indicador = car(cdr(argumentos));
+    SefValor padrao =
+        cdr(cdr(argumentos)) == runtime->nulo ? runtime->nulo : car(cdr(cdr(argumentos)));
+    return sef_simbolo_propriedade_obter(runtime, simbolo, indicador, padrao, erro);
+}
+
+static SefValor primitiva_remprop(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 2, "REMPROP", erro))
+        return NULL;
+    bool removeu = false;
+    if (!sef_simbolo_propriedade_remover(runtime, car(argumentos), car(cdr(argumentos)), &removeu,
+                                         erro))
+        return NULL;
+    return removeu ? runtime->verdadeiro : runtime->nulo;
+}
+
 static SefValor primitiva_list_all_packages(SefRuntime *runtime, SefValor argumentos,
                                             SefErro *erro) {
     if (!quantidade(runtime, argumentos, 0, 0, "LIST-ALL-PACKAGES", erro))
@@ -1679,6 +1705,9 @@ static const struct {
                   {"FIND-SYMBOL", primitiva_find_symbol},
                   {"SYMBOL-NAME", primitiva_symbol_name},
                   {"SYMBOL-PACKAGE", primitiva_symbol_package},
+                  {"SYMBOL-PLIST", primitiva_symbol_plist},
+                  {"GET", primitiva_get},
+                  {"REMPROP", primitiva_remprop},
                   {"LIST-ALL-PACKAGES", primitiva_list_all_packages},
                   {"VALUES", primitiva_values},
                   {"VALUES-LIST", primitiva_values_list},

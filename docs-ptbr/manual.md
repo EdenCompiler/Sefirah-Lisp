@@ -50,7 +50,7 @@ faz parte do formato público.
 | sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | números | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=` e `/=` |
 | funções | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
-| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
+| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Símbolos possuem células separadas de valor e função. Portanto, uma variável e
 uma função podem compartilhar o mesmo nome:
@@ -77,6 +77,18 @@ no mundo vivo sem reiniciá-lo:
 
 Nomes de função estão limitados a símbolos neste estágio; nomes da forma
 `(SETF nome)` ainda estão pendentes.
+
+Símbolos também possuem listas de propriedades. `GET` consulta um indicador
+com valor padrão opcional, `REMPROP` remove uma entrada e tanto `GET` quanto
+`SYMBOL-PLIST` são lugares graváveis de `SETF`. A lista deve alternar pares de
+indicador/valor. Ela funciona para `NIL` e símbolos comuns e persiste nas
+imagens v10 do mundo:
+
+```lisp
+(setf (get 'resposta :documentation) "A resposta definitiva")
+(get 'resposta :documentation) ; => "A resposta definitiva"
+(remprop 'resposta :documentation) ; => T
+```
 
 ## Listas
 

@@ -200,7 +200,9 @@ local `NIL` conflicts from packages that use `COMMON-LISP`, and reinstalls the
 missing members of the current primitive set by name together with exported
 special-form symbols. Existing Lisp function definitions are preserved. This
 lets an older world acquire new built-ins without serializing or trusting stale
-C addresses.
+C addresses. Symbol property lists live in an internal heap hash table rooted
+by the global environment, so the existing v10 graph encoding persists them;
+older images naturally begin with an empty table on first use.
 
 Process resources follow an explicit policy:
 

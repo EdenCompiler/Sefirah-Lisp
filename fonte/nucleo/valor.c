@@ -702,6 +702,149 @@ bool sef_simbolo_tem_nome(SefValor valor, const char *nome) {
            strcmp(valor->como.simbolo.nome, nome) == 0;
 }
 
+static SefValor tabela_propriedades_simbolos(SefRuntime *runtime, bool criar, SefErro *erro) {
+    SefValor pacote = sef_pacote_encontrar(runtime, "SEFIRAH", 7);
+    if (pacote == NULL) {
+        sef_erro_definir(erro, 0, 0, "internal SEFIRAH package is missing");
+        return NULL;
+    }
+    static const char nome[] = "*SYMBOL-PROPERTY-LISTS*";
+    SefValor simbolo = pacote_buscar_simbolo(pacote, nome, sizeof(nome) - 1);
+    if (simbolo == NULL && !criar)
+        return NULL;
+    if (simbolo == NULL)
+        simbolo = sef_simbolo_internar_em(runtime, pacote, nome, sizeof(nome) - 1, erro);
+    if (simbolo == NULL)
+        return NULL;
+    SefValor tabela = NULL;
+    if (sef_ambiente_obter(runtime->ambiente_global, simbolo, &tabela)) {
+        if (tabela->tipo != SEF_TIPO_TABELA_HASH) {
+            sef_erro_definir(erro, 0, 0, "internal symbol property table has an invalid value");
+            return NULL;
+        }
+        return tabela;
+    }
+    if (!criar)
+        return NULL;
+    tabela = sef_tabela_hash_nova(runtime, erro);
+    return tabela != NULL &&
+                   sef_ambiente_definir(runtime, runtime->ambiente_global, simbolo, tabela, erro)
+               ? tabela
+               : NULL;
+}
+
+static bool lista_propriedades_valida(SefRuntime *runtime, SefValor lista) {
+    size_t pares_visitados = 0;
+    while (lista != runtime->nulo) {
+        if (pares_visitados++ > runtime->quantidade_objetos / 2u)
+            return false;
+        if (lista == NULL || lista->tipo != SEF_TIPO_PAR)
+            return false;
+        lista = lista->como.par.resto;
+        if (lista == runtime->nulo || lista == NULL || lista->tipo != SEF_TIPO_PAR)
+            return false;
+        lista = lista->como.par.resto;
+    }
+    return true;
+}
+
+SefValor sef_simbolo_lista_propriedades(SefRuntime *runtime, SefValor simbolo, SefErro *erro) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "SYMBOL-PLIST requires a symbol");
+        return NULL;
+    }
+    SefValor tabela = tabela_propriedades_simbolos(runtime, false, erro);
+    if (tabela == NULL)
+        return erro->ocorreu ? NULL : runtime->nulo;
+    bool encontrou = false;
+    SefValor lista =
+        sef_tabela_hash_obter(runtime, tabela, simbolo, runtime->nulo, &encontrou, erro);
+    if (lista == NULL || !lista_propriedades_valida(runtime, lista)) {
+        if (!erro->ocorreu)
+            sef_erro_definir(erro, 0, 0, "symbol property list is malformed");
+        return NULL;
+    }
+    return lista;
+}
+
+bool sef_simbolo_lista_propriedades_definir(SefRuntime *runtime, SefValor simbolo, SefValor lista,
+                                            SefErro *erro) {
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "SETF of SYMBOL-PLIST requires a symbol");
+        return false;
+    }
+    if (!lista_propriedades_valida(runtime, lista)) {
+        sef_erro_definir(erro, 0, 0, "symbol property list must contain indicator/value pairs");
+        return false;
+    }
+    SefValor tabela = tabela_propriedades_simbolos(runtime, lista != runtime->nulo, erro);
+    if (tabela == NULL)
+        return !erro->ocorreu;
+    if (lista != runtime->nulo)
+        return sef_tabela_hash_definir(runtime, tabela, simbolo, lista, erro);
+    bool removeu = false;
+    return sef_tabela_hash_remover(runtime, tabela, simbolo, &removeu, erro);
+}
+
+SefValor sef_simbolo_propriedade_obter(SefRuntime *runtime, SefValor simbolo, SefValor indicador,
+                                       SefValor padrao, SefErro *erro) {
+    SefValor lista = sef_simbolo_lista_propriedades(runtime, simbolo, erro);
+    if (lista == NULL)
+        return NULL;
+    while (lista != runtime->nulo) {
+        if (sef_valores_eql(lista->como.par.primeiro, indicador))
+            return lista->como.par.resto->como.par.primeiro;
+        lista = lista->como.par.resto->como.par.resto;
+    }
+    return padrao;
+}
+
+bool sef_simbolo_propriedade_definir(SefRuntime *runtime, SefValor simbolo, SefValor indicador,
+                                     SefValor valor, SefErro *erro) {
+    SefValor lista = sef_simbolo_lista_propriedades(runtime, simbolo, erro);
+    if (lista == NULL)
+        return false;
+    for (SefValor atual = lista; atual != runtime->nulo;
+         atual = atual->como.par.resto->como.par.resto) {
+        if (sef_valores_eql(atual->como.par.primeiro, indicador)) {
+            atual->como.par.resto->como.par.primeiro = valor;
+            return true;
+        }
+    }
+    SefValor celula_valor = sef_par_novo(runtime, valor, lista, erro);
+    SefValor nova_lista =
+        celula_valor == NULL ? NULL : sef_par_novo(runtime, indicador, celula_valor, erro);
+    return nova_lista != NULL &&
+           sef_simbolo_lista_propriedades_definir(runtime, simbolo, nova_lista, erro);
+}
+
+bool sef_simbolo_propriedade_remover(SefRuntime *runtime, SefValor simbolo, SefValor indicador,
+                                     bool *removeu, SefErro *erro) {
+    if (removeu != NULL)
+        *removeu = false;
+    SefValor lista = sef_simbolo_lista_propriedades(runtime, simbolo, erro);
+    if (lista == NULL)
+        return false;
+    SefValor anterior_valor = NULL;
+    for (SefValor atual = lista; atual != runtime->nulo;
+         atual = atual->como.par.resto->como.par.resto) {
+        SefValor proximo = atual->como.par.resto->como.par.resto;
+        if (sef_valores_eql(atual->como.par.primeiro, indicador)) {
+            if (anterior_valor == NULL) {
+                if (!sef_simbolo_lista_propriedades_definir(runtime, simbolo, proximo, erro))
+                    return false;
+            } else {
+                anterior_valor->como.par.resto = proximo;
+            }
+            if (removeu != NULL)
+                *removeu = true;
+            return true;
+        }
+        anterior_valor = atual->como.par.resto;
+    }
+    return true;
+}
+
 bool sef_valores_eql(SefValor a, SefValor b) {
     if (a == b)
         return true;

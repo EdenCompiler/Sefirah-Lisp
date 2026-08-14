@@ -244,11 +244,11 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
         if (valor->como.stream.caminho != NULL)
             return anexar(texto, "#<FILE-STREAM ", erro) &&
                    anexar(texto, valor->como.stream.caminho, erro) && anexar(texto, ">", erro);
-        return anexar(texto, "#<STREAM PADRAO>", erro);
+        return anexar(texto, "#<STANDARD-STREAM>", erro);
     case SEF_TIPO_BIBLIOTECA:
         if (valor->como.biblioteca.fechada)
-            return anexar(texto, "#<BIBLIOTECA-COMPARTILHADA FECHADA>", erro);
-        return anexar(texto, "#<BIBLIOTECA-COMPARTILHADA ", erro) &&
+            return anexar(texto, "#<CLOSED-SHARED-LIBRARY>", erro);
+        return anexar(texto, "#<SHARED-LIBRARY ", erro) &&
                anexar(texto, sef_biblioteca_recurso_caminho(valor->como.biblioteca.recurso),
                       erro) &&
                anexar(texto, ">", erro);
@@ -261,7 +261,7 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
         return anexar(texto, numero, erro);
     case SEF_TIPO_REINICIO:
         if (valor->como.reinicio.nome == runtime->nulo)
-            return anexar(texto, "#<RESTART ANONIMO>", erro);
+            return anexar(texto, "#<RESTART ANONYMOUS>", erro);
         return anexar(texto, "#<RESTART ", erro) &&
                imprimir_valor(texto, runtime, valor->como.reinicio.nome, false, profundidade + 1,
                               erro) &&

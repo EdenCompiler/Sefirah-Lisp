@@ -49,7 +49,7 @@ not part of the public format.
 | sequences | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | numbers | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=`, and `/=` |
 | functions | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
-| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
+| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Symbols have separate value and function cells, so a variable and a function
 can share a name:
@@ -76,6 +76,18 @@ without restarting:
 
 Function names are currently limited to symbols; `(SETF name)` function names
 remain pending.
+
+Symbols also carry property lists. `GET` reads an indicator with an optional
+default, `REMPROP` removes one entry, and both `GET` and `SYMBOL-PLIST` are
+writable `SETF` places. Property lists must contain alternating indicator/value
+pairs. They work for `NIL` as well as ordinary symbols and persist in v10 world
+images:
+
+```lisp
+(setf (get 'answer :documentation) "The ultimate answer")
+(get 'answer :documentation) ; => "The ultimate answer"
+(remprop 'answer :documentation) ; => T
+```
 
 ## Lists
 

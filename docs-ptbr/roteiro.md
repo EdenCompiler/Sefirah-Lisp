@@ -62,6 +62,8 @@ não significa que o marco inteiro esteja concluído.
   e `USE-VALUE`.
 - [x] Células globais mutáveis de valor/função com `FDEFINITION`, `MAKUNBOUND`,
   `FMAKUNBOUND` e acesso generalizado por `SETF`.
+- [x] Property lists persistentes de símbolos com `SYMBOL-PLIST`, `GET`,
+  `REMPROP`, suporte a `NIL` e acesso generalizado por `SETF`.
 
 ### Compilador
 

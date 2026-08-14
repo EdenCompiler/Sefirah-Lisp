@@ -60,6 +60,8 @@ not mean the entire milestone is complete.
   `USE-VALUE`.
 - [x] Mutable global value/function cells with `FDEFINITION`, `MAKUNBOUND`,
   `FMAKUNBOUND`, and generalized `SETF` access.
+- [x] Persistent symbol property lists with `SYMBOL-PLIST`, `GET`, `REMPROP`,
+  `NIL` support, and generalized `SETF` access.
 
 ### Compiler
 
