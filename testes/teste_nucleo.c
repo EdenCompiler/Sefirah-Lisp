@@ -777,6 +777,26 @@ int main(int argc, char **argv) {
                     "(error (c) :conflito-detectado))",
                     ":CONFLITO-DETECTADO");
     verificar_texto(runtime,
+                    "(list (shadow \"CHOQUE\" \"DESTINO\") "
+                    "(use-package \"ORIGEM-B\" \"DESTINO\") "
+                    "(nth-value 1 (find-symbol \"CHOQUE\" \"DESTINO\")) "
+                    "(eq (find-symbol \"CHOQUE\" \"DESTINO\") "
+                    "(first (package-shadowing-symbols \"DESTINO\"))) "
+                    "(length (package-shadowing-symbols \"DESTINO\")))",
+                    "(T T :INTERNAL T 1)");
+    verificar_texto(runtime,
+                    "(handler-case "
+                    "(unintern (find-symbol \"CHOQUE\" \"DESTINO\") \"DESTINO\") "
+                    "(error (condition) (list :inherited-conflict (type-of condition))))",
+                    "(:INHERITED-CONFLICT ERROR)");
+    verificar_texto(runtime,
+                    "(let ((from-b (find-symbol \"CHOQUE\" \"ORIGEM-B\"))) "
+                    "(list (shadowing-import from-b \"DESTINO\") "
+                    "(eq (find-symbol \"CHOQUE\" \"DESTINO\") from-b) "
+                    "(nth-value 1 (find-symbol \"CHOQUE\" \"DESTINO\")) "
+                    "(eq (first (package-shadowing-symbols \"DESTINO\")) from-b)))",
+                    "(T T :INTERNAL T)");
+    verificar_texto(runtime,
                     "(make-package :import-source) (make-package :import-target) "
                     "(make-package :import-consumer) "
                     "(let ((shared (intern \"SHARED\" \"IMPORT-SOURCE\"))) "
@@ -1057,6 +1077,14 @@ int main(int argc, char **argv) {
                         "(find-symbol \"PERSISTENT-IMPORT\" \"IMPORT-TARGET\")) "
                         "(package-name (symbol-package persistent))))",
                         "(:EXTERNAL \"IMPORT-SOURCE\")");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(let ((shadowed (find-symbol \"CHOQUE\" \"DESTINO\")) "
+                        "(from-b (find-symbol \"CHOQUE\" \"ORIGEM-B\"))) "
+                        "(list (eq shadowed from-b) "
+                        "(nth-value 1 (find-symbol \"CHOQUE\" \"DESTINO\")) "
+                        "(eq (first (package-shadowing-symbols \"DESTINO\")) from-b)))",
+                        "(T :INTERNAL T)");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (calcular-compilado 10 22) "

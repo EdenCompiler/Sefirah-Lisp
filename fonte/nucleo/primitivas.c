@@ -1246,6 +1246,76 @@ static SefValor primitiva_unintern(SefRuntime *runtime, SefValor argumentos, Sef
     return removeu ? runtime->verdadeiro : runtime->nulo;
 }
 
+static bool sombrear_designador(SefRuntime *runtime, SefValor pacote, SefValor designador,
+                                SefErro *erro) {
+    size_t tamanho = 0;
+    const char *nome = NULL;
+    if (designador->tipo == SEF_TIPO_TEXTO) {
+        nome = designador->como.texto.dados;
+        tamanho = designador->como.texto.tamanho;
+    } else if (!sef_simbolo_nome_logico(runtime, designador, &nome, &tamanho)) {
+        sef_erro_definir(erro, 0, 0, "SHADOW names must be string designators");
+        return false;
+    }
+    return sef_pacote_sombrear(runtime, pacote, nome, tamanho, erro);
+}
+
+static SefValor primitiva_shadow(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "SHADOW", erro))
+        return NULL;
+    SefValor pacote = cdr(argumentos) == runtime->nulo
+                          ? runtime->pacote_atual
+                          : pacote_designador(runtime, car(cdr(argumentos)), erro);
+    if (pacote == NULL)
+        return NULL;
+    SefValor nomes = car(argumentos);
+    if (nomes->tipo == SEF_TIPO_TEXTO || sef_valor_e_simbolo_logico(runtime, nomes))
+        return sombrear_designador(runtime, pacote, nomes, erro) ? runtime->verdadeiro : NULL;
+    if (!sef_e_lista_propria(runtime, nomes)) {
+        sef_erro_definir(erro, 0, 0, "SHADOW requires a string designator or list");
+        return NULL;
+    }
+    while (nomes != runtime->nulo) {
+        if (!sombrear_designador(runtime, pacote, car(nomes), erro))
+            return NULL;
+        nomes = cdr(nomes);
+    }
+    return runtime->verdadeiro;
+}
+
+static SefValor primitiva_shadowing_import(SefRuntime *runtime, SefValor argumentos,
+                                           SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "SHADOWING-IMPORT", erro))
+        return NULL;
+    SefValor pacote = cdr(argumentos) == runtime->nulo
+                          ? runtime->pacote_atual
+                          : pacote_designador(runtime, car(cdr(argumentos)), erro);
+    if (pacote == NULL)
+        return NULL;
+    SefValor simbolos = car(argumentos);
+    if (sef_valor_e_simbolo_logico(runtime, simbolos))
+        return sef_pacote_importar_sombreando(runtime, pacote, simbolos, erro) ? runtime->verdadeiro
+                                                                               : NULL;
+    if (!sef_e_lista_propria(runtime, simbolos)) {
+        sef_erro_definir(erro, 0, 0, "SHADOWING-IMPORT requires a symbol or list of symbols");
+        return NULL;
+    }
+    while (simbolos != runtime->nulo) {
+        if (!sef_pacote_importar_sombreando(runtime, pacote, car(simbolos), erro))
+            return NULL;
+        simbolos = cdr(simbolos);
+    }
+    return runtime->verdadeiro;
+}
+
+static SefValor primitiva_package_shadowing_symbols(SefRuntime *runtime, SefValor argumentos,
+                                                    SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "PACKAGE-SHADOWING-SYMBOLS", erro))
+        return NULL;
+    SefValor pacote = pacote_designador(runtime, car(argumentos), erro);
+    return pacote == NULL ? NULL : sef_pacote_simbolos_sombreados(runtime, pacote, erro);
+}
+
 static SefValor estado_simbolo_para_lisp(SefRuntime *runtime, SefEstadoSimboloPacote estado,
                                          SefErro *erro) {
     if (estado == SEF_SIMBOLO_AUSENTE)
@@ -1890,6 +1960,9 @@ static const struct {
                   {"EXPORT", primitiva_export},
                   {"IMPORT", primitiva_import},
                   {"UNINTERN", primitiva_unintern},
+                  {"SHADOW", primitiva_shadow},
+                  {"SHADOWING-IMPORT", primitiva_shadowing_import},
+                  {"PACKAGE-SHADOWING-SYMBOLS", primitiva_package_shadowing_symbols},
                   {"INTERN", primitiva_intern},
                   {"FIND-SYMBOL", primitiva_find_symbol},
                   {"SYMBOL-NAME", primitiva_symbol_name},

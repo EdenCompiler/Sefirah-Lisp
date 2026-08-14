@@ -66,6 +66,8 @@ not mean the entire milestone is complete.
   `GENSYM` with persistent `*GENSYM-COUNTER*`.
 - [x] Package `IMPORT` and `UNINTERN`, including uninterned-symbol adoption,
   imported export, status transitions, and image persistence.
+- [x] Persistent `SHADOW`, `SHADOWING-IMPORT`, shadowing-symbol inquiry, and
+  inherited-conflict protection.
 
 ### Compiler
 

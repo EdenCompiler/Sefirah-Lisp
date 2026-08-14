@@ -374,7 +374,8 @@ Formas e funções disponíveis:
 - `DEFPACKAGE` com `:USE` e `:EXPORT`;
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME` e `PACKAGEP`;
-- `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `INTERN` e `FIND-SYMBOL`;
+- `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
+  `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN` e `FIND-SYMBOL`;
 - `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE` e
   `LIST-ALL-PACKAGES`.
 
@@ -390,6 +391,13 @@ podem ser exportados, e `UNINTERN` remove sua presença local e estado externo.
 Remover um símbolo de seu package de origem o torna não internado novamente;
 `COMMON-LISP` possui lock da implementação contra `UNINTERN`, evitando que o
 runtime vivo perca seus operadores obrigatórios.
+
+`SHADOW` cria ou designa um símbolo local que oculta nomes herdados de modo
+intencional, permitindo usar outro package com exportação conflitante.
+`SHADOWING-IMPORT` escolhe uma identidade existente como vencedora local.
+`PACKAGE-SHADOWING-SYMBOLS` devolve uma lista nova dessas escolhas. A remoção
+de um símbolo de shadowing é rejeitada quando exporia dois símbolos herdados
+distintos; todas as escolhas persistem na restauração da imagem.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

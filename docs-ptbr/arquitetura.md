@@ -224,6 +224,10 @@ cujo package de origem é diferente. Tabelas de exportação referenciam os mesm
 objetos, e uninterning atualiza ambas antes de eventualmente devolver um
 símbolo de origem à sentinela não internada privada. Assim, os vetores comuns
 de packages do v10 preservam importações sem um registro paralelo.
+Escolhas de shadowing usam outra tabela hash interna do heap, enraizada pelo
+ambiente global. A validação de uso de package a consulta antes de aceitar ou
+rejeitar um conflito de exportação, e uninterning se recusa a expor identidades
+herdadas ambíguas. A mesma persistência do grafo v10 vale para esse registro.
 
 Recursos do processo seguem uma política explícita:
 

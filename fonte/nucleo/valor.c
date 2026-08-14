@@ -333,9 +333,12 @@ static bool nome_de_simbolo_armazenado(SefValor simbolo, const char **nome, size
 }
 
 static SefValor pacote_buscar_simbolo(SefValor pacote, const char *nome, size_t tamanho);
+static bool pacote_simbolo_sombreia(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                    SefErro *erro);
+static bool pacote_sombra_remover(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                  SefErro *erro);
 
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro) {
-    (void)runtime;
     if (pacote == NULL || usado == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
         usado->tipo != SEF_TIPO_PACOTE) {
         sef_erro_definir(erro, 0, 0, "USE-PACKAGE received an object that is not a package");
@@ -354,6 +357,11 @@ bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefEr
             return false;
         }
         SefValor existente = pacote_buscar_simbolo(pacote, nome_candidato, tamanho_candidato);
+        if (existente != NULL && existente != candidato &&
+            pacote_simbolo_sombreia(runtime, pacote, existente, erro))
+            continue;
+        if (erro->ocorreu)
+            return false;
         for (size_t j = 0; existente == NULL && j < pacote->como.pacote.quantidade_usados; j++) {
             SefValor origem = pacote->como.pacote.usados[j];
             SefValor herdado = pacote_buscar_simbolo(origem, nome_candidato, tamanho_candidato);
@@ -628,6 +636,30 @@ bool sef_pacote_desinternar(SefRuntime *runtime, SefValor pacote, SefValor simbo
         indice++;
     if (indice == pacote->como.pacote.quantidade_simbolos)
         return true;
+    bool sombreia = pacote_simbolo_sombreia(runtime, pacote, simbolo, erro);
+    if (erro->ocorreu)
+        return false;
+    if (sombreia) {
+        const char *nome = NULL;
+        size_t tamanho = 0;
+        sef_simbolo_nome_logico(runtime, simbolo, &nome, &tamanho);
+        SefValor herdado = NULL;
+        for (size_t i = 0; i < pacote->como.pacote.quantidade_usados; i++) {
+            SefValor origem = pacote->como.pacote.usados[i];
+            SefValor candidato = pacote_buscar_simbolo(origem, nome, tamanho);
+            if (candidato == NULL || !sef_pacote_simbolo_exportado(origem, candidato))
+                continue;
+            if (herdado != NULL && herdado != candidato) {
+                sef_erro_definir(erro, 0, 0,
+                                 "UNINTERN would expose conflicting inherited symbol %.*s",
+                                 (int)tamanho, nome);
+                return false;
+            }
+            herdado = candidato;
+        }
+    }
+    if (!pacote_sombra_remover(runtime, pacote, simbolo, erro))
+        return false;
     SefValor sentinela = NULL;
     if (simbolo != runtime->nulo && simbolo->como.simbolo.pacote == pacote) {
         sentinela = pacote_nao_internado_obter(runtime, erro);
@@ -854,24 +886,25 @@ bool sef_simbolo_tem_nome(SefValor valor, const char *nome) {
            strcmp(valor->como.simbolo.nome, nome) == 0;
 }
 
-static SefValor tabela_propriedades_simbolos(SefRuntime *runtime, bool criar, SefErro *erro) {
+static SefValor tabela_interna(SefRuntime *runtime, const char *nome, size_t tamanho, bool criar,
+                               SefErro *erro) {
     SefValor pacote = sef_pacote_encontrar(runtime, "SEFIRAH", 7);
     if (pacote == NULL) {
         sef_erro_definir(erro, 0, 0, "internal SEFIRAH package is missing");
         return NULL;
     }
-    static const char nome[] = "*SYMBOL-PROPERTY-LISTS*";
-    SefValor simbolo = pacote_buscar_simbolo(pacote, nome, sizeof(nome) - 1);
+    SefValor simbolo = pacote_buscar_simbolo(pacote, nome, tamanho);
     if (simbolo == NULL && !criar)
         return NULL;
     if (simbolo == NULL)
-        simbolo = sef_simbolo_internar_em(runtime, pacote, nome, sizeof(nome) - 1, erro);
+        simbolo = sef_simbolo_internar_em(runtime, pacote, nome, tamanho, erro);
     if (simbolo == NULL)
         return NULL;
     SefValor tabela = NULL;
     if (sef_ambiente_obter(runtime->ambiente_global, simbolo, &tabela)) {
         if (tabela->tipo != SEF_TIPO_TABELA_HASH) {
-            sef_erro_definir(erro, 0, 0, "internal symbol property table has an invalid value");
+            sef_erro_definir(erro, 0, 0, "internal runtime table %.*s has an invalid value",
+                             (int)tamanho, nome);
             return NULL;
         }
         return tabela;
@@ -883,6 +916,164 @@ static SefValor tabela_propriedades_simbolos(SefRuntime *runtime, bool criar, Se
                    sef_ambiente_definir(runtime, runtime->ambiente_global, simbolo, tabela, erro)
                ? tabela
                : NULL;
+}
+
+static SefValor tabela_propriedades_simbolos(SefRuntime *runtime, bool criar, SefErro *erro) {
+    static const char nome[] = "*SYMBOL-PROPERTY-LISTS*";
+    return tabela_interna(runtime, nome, sizeof(nome) - 1, criar, erro);
+}
+
+static SefValor tabela_simbolos_sombreados(SefRuntime *runtime, bool criar, SefErro *erro) {
+    static const char nome[] = "*PACKAGE-SHADOWING-SYMBOLS*";
+    return tabela_interna(runtime, nome, sizeof(nome) - 1, criar, erro);
+}
+
+static bool lista_propria_limitada(SefRuntime *runtime, SefValor lista) {
+    size_t visitados = 0;
+    while (lista != runtime->nulo) {
+        if (lista == NULL || lista->tipo != SEF_TIPO_PAR ||
+            visitados++ > runtime->quantidade_objetos)
+            return false;
+        lista = lista->como.par.resto;
+    }
+    return true;
+}
+
+static SefValor pacote_lista_sombras(SefRuntime *runtime, SefValor pacote, SefErro *erro) {
+    SefValor tabela = tabela_simbolos_sombreados(runtime, false, erro);
+    if (tabela == NULL)
+        return erro->ocorreu ? NULL : runtime->nulo;
+    bool encontrou = false;
+    SefValor lista =
+        sef_tabela_hash_obter(runtime, tabela, pacote, runtime->nulo, &encontrou, erro);
+    if (lista == NULL || !lista_propria_limitada(runtime, lista)) {
+        if (!erro->ocorreu)
+            sef_erro_definir(erro, 0, 0, "package shadowing-symbol list is malformed");
+        return NULL;
+    }
+    return lista;
+}
+
+static bool pacote_lista_sombras_definir(SefRuntime *runtime, SefValor pacote, SefValor lista,
+                                         SefErro *erro) {
+    SefValor tabela = tabela_simbolos_sombreados(runtime, lista != runtime->nulo, erro);
+    if (tabela == NULL)
+        return !erro->ocorreu;
+    if (lista != runtime->nulo)
+        return sef_tabela_hash_definir(runtime, tabela, pacote, lista, erro);
+    bool removeu = false;
+    return sef_tabela_hash_remover(runtime, tabela, pacote, &removeu, erro);
+}
+
+static bool pacote_simbolo_sombreia(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                    SefErro *erro) {
+    SefValor lista = pacote_lista_sombras(runtime, pacote, erro);
+    while (lista != NULL && lista != runtime->nulo) {
+        if (lista->como.par.primeiro == simbolo)
+            return true;
+        lista = lista->como.par.resto;
+    }
+    return false;
+}
+
+static bool pacote_sombra_registrar(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                    SefErro *erro) {
+    if (pacote_simbolo_sombreia(runtime, pacote, simbolo, erro))
+        return true;
+    if (erro->ocorreu)
+        return false;
+    SefValor lista = pacote_lista_sombras(runtime, pacote, erro);
+    if (lista == NULL)
+        return false;
+    SefValor nova = sef_par_novo(runtime, simbolo, lista, erro);
+    return nova != NULL && pacote_lista_sombras_definir(runtime, pacote, nova, erro);
+}
+
+static bool pacote_sombra_remover(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                  SefErro *erro) {
+    SefValor lista = pacote_lista_sombras(runtime, pacote, erro);
+    if (lista == NULL)
+        return false;
+    SefValor anterior = NULL;
+    for (SefValor atual = lista; atual != runtime->nulo; atual = atual->como.par.resto) {
+        if (atual->como.par.primeiro != simbolo) {
+            anterior = atual;
+            continue;
+        }
+        if (anterior != NULL)
+            anterior->como.par.resto = atual->como.par.resto;
+        else if (!pacote_lista_sombras_definir(runtime, pacote, atual->como.par.resto, erro))
+            return false;
+        return true;
+    }
+    return true;
+}
+
+bool sef_pacote_sombrear(SefRuntime *runtime, SefValor pacote, const char *nome, size_t tamanho,
+                         SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE || nome == NULL) {
+        sef_erro_definir(erro, 0, 0, "SHADOW requires a symbol name and package");
+        return false;
+    }
+    if (pacote == runtime->pacote_common_lisp) {
+        sef_erro_definir(erro, 0, 0, "the COMMON-LISP package is locked");
+        return false;
+    }
+    SefValor simbolo = pacote_buscar_simbolo(pacote, nome, tamanho);
+    if (simbolo == NULL)
+        simbolo = sef_simbolo_internar_em(runtime, pacote, nome, tamanho, erro);
+    return simbolo != NULL && pacote_sombra_registrar(runtime, pacote, simbolo, erro);
+}
+
+bool sef_pacote_importar_sombreando(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                    SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
+        !sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "SHADOWING-IMPORT requires a symbol and package");
+        return false;
+    }
+    if (pacote == runtime->pacote_common_lisp) {
+        sef_erro_definir(erro, 0, 0, "the COMMON-LISP package is locked");
+        return false;
+    }
+    const char *nome = NULL;
+    size_t tamanho = 0;
+    if (!sef_simbolo_nome_logico(runtime, simbolo, &nome, &tamanho))
+        return false;
+    SefValor local = pacote_buscar_simbolo(pacote, nome, tamanho);
+    if (local != NULL && local != simbolo) {
+        bool removeu = false;
+        if (!pacote_sombra_remover(runtime, pacote, local, erro) ||
+            !sef_pacote_desinternar(runtime, pacote, local, &removeu, erro))
+            return false;
+    }
+    if (local != simbolo) {
+        if (!vetor_valores_crescer(&pacote->como.pacote.simbolos,
+                                   &pacote->como.pacote.capacidade_simbolos,
+                                   pacote->como.pacote.quantidade_simbolos + 1, erro))
+            return false;
+        pacote->como.pacote.simbolos[pacote->como.pacote.quantidade_simbolos++] = simbolo;
+        if (sef_simbolo_nao_internado(runtime, simbolo))
+            simbolo->como.simbolo.pacote = pacote;
+    }
+    return pacote_sombra_registrar(runtime, pacote, simbolo, erro);
+}
+
+SefValor sef_pacote_simbolos_sombreados(SefRuntime *runtime, SefValor pacote, SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE) {
+        sef_erro_definir(erro, 0, 0, "PACKAGE-SHADOWING-SYMBOLS requires a package");
+        return NULL;
+    }
+    SefValor lista = pacote_lista_sombras(runtime, pacote, erro);
+    if (lista == NULL)
+        return NULL;
+    SefValor copia_invertida = runtime->nulo;
+    for (SefValor atual = lista; atual != runtime->nulo; atual = atual->como.par.resto) {
+        copia_invertida = sef_par_novo(runtime, atual->como.par.primeiro, copia_invertida, erro);
+        if (copia_invertida == NULL)
+            return NULL;
+    }
+    return sef_lista_inverter(runtime, copia_invertida, erro);
 }
 
 static bool lista_propriedades_valida(SefRuntime *runtime, SefValor lista) {

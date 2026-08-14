@@ -212,6 +212,10 @@ is different. Export tables reference those same objects, and uninterning
 updates both tables before optionally returning a home symbol to the private
 uninterned sentinel. The ordinary v10 package arrays therefore preserve import
 relationships without a parallel registry.
+Shadowing choices use another internal heap hash table rooted by the global
+environment. Package-use validation consults it before accepting or rejecting
+an export conflict, and uninterning refuses to expose ambiguous inherited
+identities. The same v10 graph persistence applies to this registry.
 
 Process resources follow an explicit policy:
 

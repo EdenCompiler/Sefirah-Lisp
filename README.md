@@ -64,6 +64,7 @@ the roadmap.
 - fresh uninterned symbols through `MAKE-SYMBOL`, `COPY-SYMBOL`, and `GENSYM`,
   including world-image persistence;
 - package import/unintern operations with preserved symbol identity and status;
+- persistent package shadowing with explicit inherited-conflict resolution;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -392,6 +393,7 @@ nativa permanecem no roteiro.
 - símbolos novos e não internados por `MAKE-SYMBOL`, `COPY-SYMBOL` e `GENSYM`,
   incluindo persistência na imagem do mundo;
 - importação/uninterning em packages com identidade e estado preservados;
+- shadowing persistente de packages com resolução explícita de conflitos herdados;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

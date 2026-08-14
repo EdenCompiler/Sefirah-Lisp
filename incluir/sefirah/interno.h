@@ -262,6 +262,11 @@ SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tama
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
 bool sef_pacote_usa(SefValor pacote, SefValor usado);
 bool sef_pacote_importar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro);
+bool sef_pacote_sombrear(SefRuntime *runtime, SefValor pacote, const char *nome, size_t tamanho,
+                         SefErro *erro);
+bool sef_pacote_importar_sombreando(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                    SefErro *erro);
+SefValor sef_pacote_simbolos_sombreados(SefRuntime *runtime, SefValor pacote, SefErro *erro);
 bool sef_pacote_desinternar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, bool *removeu,
                             SefErro *erro);
 bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro);

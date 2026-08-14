@@ -367,7 +367,8 @@ Available forms and functions:
 - `DEFPACKAGE` with `:USE` and `:EXPORT`;
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME`, and `PACKAGEP`;
-- `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `INTERN`, and `FIND-SYMBOL`;
+- `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
+  `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN`, and `FIND-SYMBOL`;
 - `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, and
   `LIST-ALL-PACKAGES`.
 
@@ -383,6 +384,13 @@ can be exported, and `UNINTERN` removes both their local presence and export
 status. Removing a symbol from its home package makes it uninterned again;
 `COMMON-LISP` is implementation-locked against `UNINTERN` so the live runtime
 cannot lose its required operators.
+
+`SHADOW` creates or designates a local symbol that intentionally hides
+inherited names, allowing another package with a conflicting export to be
+used. `SHADOWING-IMPORT` selects an existing identity as that local winner.
+`PACKAGE-SHADOWING-SYMBOLS` returns a fresh list of the choices. Removing a
+shadowing symbol is rejected when it would expose two different inherited
+symbols; all shadowing choices survive image restoration.
 
 `NIL` is simultaneously the empty list, false, and the external symbol named
 `"NIL"` in `COMMON-LISP`. It is inherited by `COMMON-LISP-USER`; `SYMBOLP`,

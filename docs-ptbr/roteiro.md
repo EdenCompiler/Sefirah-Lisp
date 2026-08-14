@@ -68,6 +68,8 @@ não significa que o marco inteiro esteja concluído.
   determinístico com `*GENSYM-COUNTER*` persistente.
 - [x] `IMPORT` e `UNINTERN` de packages, incluindo adoção de símbolo não
   internado, exportação importada, transições de estado e persistência.
+- [x] `SHADOW`, `SHADOWING-IMPORT`, consulta de símbolos de shadowing e
+  proteção contra conflitos herdados, todos persistentes.
 
 ### Compilador
 
