@@ -88,10 +88,13 @@ bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro);
 
 bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
+bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_mover(SefSessaoIde *sessao, SefMovimentoArquivoIde movimento,
                                           SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_selecionar(SefSessaoIde *sessao, size_t indice, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_abrir_selecionado(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_arquivo_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
+bool sef_sessao_ide_diretorio_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 
 bool sef_sessao_ide_ouvinte_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro);
 void sef_sessao_ide_ouvinte_apagar(SefSessaoIde *sessao);

@@ -159,6 +159,10 @@ not mean the entire milestone is complete.
   tabs, independent undo history, cursor/selection state, and unsaved indicators.
 - [x] Recursive workspace Explorer with deterministic Lisp-source indexing and
   direct keyboard/pointer opening into editor tabs.
+- [x] Quick Open, searchable command palette, and working file/folder toolbar
+  actions with refresh and in-workbench error feedback.
+- [x] Case-preserving path prompts with visually distinct uppercase and
+  lowercase bitmap glyphs.
 - [ ] Multi-file and runtime-aware code browser.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.

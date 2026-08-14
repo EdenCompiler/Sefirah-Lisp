@@ -18,5 +18,7 @@ const char *sef_espaco_trabalho_ide_arquivo_relativo(const SefEspacoTrabalhoIde 
                                                      size_t indice);
 const char *sef_espaco_trabalho_ide_arquivo_absoluto(const SefEspacoTrabalhoIde *espaco,
                                                      size_t indice);
+bool sef_ide_arquivo_criar(const char *caminho, SefErro *erro);
+bool sef_ide_diretorio_criar(const char *caminho, SefErro *erro);
 
 #endif

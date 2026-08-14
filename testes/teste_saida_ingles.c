@@ -75,6 +75,10 @@ int main(void) {
                       texto_contem(erro.mensagem, "complete Lisp form") &&
                       !texto_contem_portugues(erro.mensagem),
                   "IDE diagnostics are English");
+        verificar(!sef_sessao_ide_diretorio_criar(sessao, "", &erro) && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "missing path") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "IDE file and folder diagnostics are English");
         sef_sessao_ide_destruir(sessao);
     }
 

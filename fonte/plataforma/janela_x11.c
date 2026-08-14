@@ -53,14 +53,20 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                 KeySym tecla = NoSymbol;
                 int tamanho =
                     XLookupString(&evento.xkey, texto, (int)sizeof(texto) - 1, &tecla, NULL);
-                if (tecla == XK_Escape)
+                if (tecla == XK_Escape && ao_evento == NULL)
                     executando = false;
                 else if (ao_evento != NULL) {
                     SefEventoJanela evento_sefirah = {0};
                     bool controle = (evento.xkey.state & ControlMask) != 0;
                     evento_sefirah.modificador_shift = (evento.xkey.state & ShiftMask) != 0;
-                    if (tecla == XK_F5 ||
-                        (controle && (tecla == XK_Return || tecla == XK_KP_Enter))) {
+                    if (tecla == XK_Escape) {
+                        evento_sefirah.tipo = SEF_EVENTO_CANCELAR;
+                    } else if (controle && (tecla == XK_p || tecla == XK_P)) {
+                        evento_sefirah.tipo = evento_sefirah.modificador_shift
+                                                  ? SEF_EVENTO_PALETA_COMANDOS
+                                                  : SEF_EVENTO_ABRIR_RAPIDO;
+                    } else if (tecla == XK_F5 ||
+                               (controle && (tecla == XK_Return || tecla == XK_KP_Enter))) {
                         evento_sefirah.tipo = SEF_EVENTO_EXECUTAR;
                     } else if (tecla == XK_F6) {
                         evento_sefirah.tipo = SEF_EVENTO_EXECUTAR_FORMA;

@@ -913,6 +913,43 @@ bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *cami
                           sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho));
 }
 
+bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho)[0] == '\0') {
+        sef_erro_definir(erro, 0, 0, "no workspace is open to refresh");
+        return false;
+    }
+    TextoIde raiz = {0};
+    TextoIde selecionado = {0};
+    const char *arquivo_atual = sef_espaco_trabalho_ide_arquivo_relativo(
+        sessao->espaco_trabalho, sessao->arquivo_espaco_trabalho_selecionado);
+    bool preparou =
+        texto_definir(&raiz, sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho), erro) &&
+        texto_definir(&selecionado, arquivo_atual == NULL ? "" : arquivo_atual, erro);
+    if (!preparou) {
+        texto_liberar(&raiz);
+        texto_liberar(&selecionado);
+        return false;
+    }
+    bool atualizou = sef_espaco_trabalho_ide_abrir(sessao->espaco_trabalho, raiz.dados, erro);
+    if (atualizou) {
+        sessao->arquivo_espaco_trabalho_selecionado = 0;
+        for (size_t i = 0; i < sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho); i++) {
+            if (strcmp(sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, i),
+                       selecionado.dados) == 0) {
+                sessao->arquivo_espaco_trabalho_selecionado = i;
+                break;
+            }
+        }
+        atualizou = atualizar_explorador(sessao, erro) &&
+                    texto_formatar(&sessao->estado, erro, "Explorer refreshed: %zu Lisp file(s)",
+                                   sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho));
+    }
+    texto_liberar(&raiz);
+    texto_liberar(&selecionado);
+    return atualizou;
+}
+
 bool sef_sessao_ide_espaco_trabalho_mover(SefSessaoIde *sessao, SefMovimentoArquivoIde movimento,
                                           SefErro *erro) {
     sef_erro_limpar(erro);
@@ -964,6 +1001,34 @@ bool sef_sessao_ide_espaco_trabalho_abrir_selecionado(SefSessaoIde *sessao, SefE
         return false;
     }
     return sef_sessao_ide_abrir(sessao, caminho, erro);
+}
+
+bool sef_sessao_ide_arquivo_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while creating file");
+        return false;
+    }
+    if (!sef_ide_arquivo_criar(caminho, erro))
+        return false;
+    SefErro descarte;
+    sef_erro_limpar(&descarte);
+    sef_sessao_ide_espaco_trabalho_atualizar(sessao, &descarte);
+    return sef_sessao_ide_abrir(sessao, caminho, erro);
+}
+
+bool sef_sessao_ide_diretorio_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while creating folder");
+        return false;
+    }
+    if (!sef_ide_diretorio_criar(caminho, erro))
+        return false;
+    SefErro descarte;
+    sef_erro_limpar(&descarte);
+    sef_sessao_ide_espaco_trabalho_atualizar(sessao, &descarte);
+    return texto_formatar(&sessao->estado, erro, "Folder created: %s", caminho);
 }
 
 static void selecao_editor_limpar(SefSessaoIde *sessao) {

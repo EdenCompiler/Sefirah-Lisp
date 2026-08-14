@@ -110,7 +110,11 @@ desses valores entre o slot do documento e o editor ativo torna a troca de abas
 sem perda e sem duplicação de buffers.
 `espaco_trabalho.c` constrói o índice limitado e ordenado do projeto por enumeração
 nativa de diretórios, evita recursão por links simbólicos/reparse points e
-separa caminhos absolutos daqueles relativos exibidos pelo Explorer. A sessão
+separa caminhos absolutos daqueles relativos exibidos pelo Explorer.
+Os adaptadores de janela convertem Ctrl+P, Ctrl+Shift+P e Escape em eventos
+portáveis. A apresentação mantém a sobreposição filtrada de Quick Open/paleta
+de comandos; descoberta, criação exclusiva de arquivo/pasta, atualização e
+abertura permanecem na camada de sessão testável. A sessão
 executa, abre, grava, captura e restaura sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
 painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.
@@ -240,9 +244,10 @@ SefComponente
 SefSuperficie → rasterizador CPU → janela nativa
 ```
 
-Esse desenho permite que aplicações comuns usem a mesma GUI da IDE. Fontes
-vetoriais, clipping geral, HiDPI, IME e acessibilidade ainda pertencem aos
-próximos marcos.
+Esse desenho permite que aplicações comuns usem a mesma GUI da IDE. A fonte
+bitmap 5x7 possui glifos ASCII separados para maiúsculas e minúsculas, portanto
+caminhos e código preservam visualmente sua caixa. Fontes vetoriais, clipping
+geral, HiDPI, IME e acessibilidade ainda pertencem aos próximos marcos.
 
 ## Estratégia de evolução
 

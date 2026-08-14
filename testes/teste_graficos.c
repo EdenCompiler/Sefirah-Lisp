@@ -1,6 +1,7 @@
 #include "sefirah/graficos.h"
 #include "sefirah/gui.h"
 
+#include <stdint.h>
 #include <stdio.h>
 
 static int acionamentos = 0;
@@ -8,6 +9,20 @@ static int acionamentos = 0;
 static void contar_acionamento(void *dados) {
     int *contador = dados;
     (*contador)++;
+}
+
+static uint64_t capturar_glifo(SefSuperficie *superficie, const char *texto, SefCor fundo,
+                               SefCor tinta) {
+    uint64_t mascara = 0;
+    sef_superficie_limpar(superficie, fundo);
+    sef_superficie_texto(superficie, 0, 0, texto, 1, tinta);
+    for (int y = 0; y < 7; y++) {
+        for (int x = 0; x < 5; x++) {
+            if (superficie->pixels[y * superficie->passo + x] == tinta)
+                mascara |= UINT64_C(1) << (y * 5 + x);
+        }
+    }
+    return mascara;
 }
 
 static bool testar_componentes(SefSuperficie *superficie) {
@@ -57,24 +72,24 @@ int main(void) {
     sef_superficie_limpar(&superficie, fundo);
     sef_superficie_retangulo(&superficie, 3, 4, 5, 6, tinta);
     if (superficie.pixels[4 * superficie.passo + 3] != tinta || superficie.pixels[0] != fundo) {
-        fprintf(stderr, "retangulo nao respeitou limites\n");
+        fprintf(stderr, "rectangle did not respect its bounds\n");
         return 1;
     }
-    sef_superficie_texto(&superficie, 0, 0, "S", 1, tinta);
-    bool encontrou = false;
-    for (int y = 0; y < 7; y++) {
-        for (int x = 0; x < 5; x++) {
-            if (superficie.pixels[y * superficie.passo + x] == tinta)
-                encontrou = true;
-        }
-    }
-    if (!encontrou)
+    uint64_t maiuscula = capturar_glifo(&superficie, "A", fundo, tinta);
+    uint64_t minuscula = capturar_glifo(&superficie, "a", fundo, tinta);
+    if (maiuscula == 0 || minuscula == 0) {
+        fprintf(stderr, "bitmap text did not render\n");
         return 1;
+    }
+    if (maiuscula == minuscula) {
+        fprintf(stderr, "uppercase and lowercase glyphs are not visually distinct\n");
+        return 1;
+    }
     if (!testar_componentes(&superficie)) {
-        fprintf(stderr, "componentes GUI falharam\n");
+        fprintf(stderr, "GUI components failed\n");
         return 1;
     }
     sef_superficie_destruir(&superficie);
-    puts("graficos: todos os testes passaram");
+    puts("graphics: all tests passed");
     return 0;
 }

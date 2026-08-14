@@ -142,10 +142,8 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
     bool reconhecido = true;
 
     if (codigo == 53) {
-        ENVIAR1(void, estado->janela, "performClose:", id, NULL);
-        return;
-    }
-    if (codigo == 96 || (comando && (codigo == 36 || codigo == 76))) {
+        evento.tipo = SEF_EVENTO_CANCELAR;
+    } else if (codigo == 96 || (comando && (codigo == 36 || codigo == 76))) {
         evento.tipo = SEF_EVENTO_EXECUTAR;
     } else if (codigo == 97) {
         evento.tipo = SEF_EVENTO_EXECUTAR_FORMA;
@@ -192,6 +190,10 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
         reconhecido = true;
     } else if (comando && texto_igual_ascii(atalho, 'o')) {
         evento.tipo = SEF_EVENTO_ABRIR;
+        reconhecido = true;
+    } else if (comando && texto_igual_ascii(atalho, 'p')) {
+        evento.tipo =
+            evento.modificador_shift ? SEF_EVENTO_PALETA_COMANDOS : SEF_EVENTO_ABRIR_RAPIDO;
         reconhecido = true;
     } else if (comando && texto_igual_ascii(atalho, 'z')) {
         evento.tipo = SEF_EVENTO_DESFAZER;

@@ -41,6 +41,13 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
                       estado->superficie.pixels, &informacao, DIB_RGB_COLORS, SRCCOPY);
         EndPaint(janela, &pintura);
         return 0;
+    } else if (mensagem == WM_KEYDOWN && wparam == VK_ESCAPE && estado != NULL &&
+               estado->ao_evento != NULL) {
+        SefEventoJanela evento = {0};
+        evento.tipo = SEF_EVENTO_CANCELAR;
+        if (estado->ao_evento(&evento, estado->dados))
+            InvalidateRect(janela, NULL, FALSE);
+        return 0;
     } else if (mensagem == WM_KEYDOWN && wparam == VK_ESCAPE) {
         DestroyWindow(janela);
         return 0;
@@ -48,14 +55,17 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
                (wparam == VK_F5 || wparam == VK_F6 || wparam == VK_F7 || wparam == VK_F8 ||
                 wparam == VK_F9 || wparam == VK_F10 || wparam == VK_F11 || wparam == VK_F12 ||
                 ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
-                 (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'Z' ||
-                  wparam == 'Y')))) {
+                 (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'P' ||
+                  wparam == 'Z' || wparam == 'Y')))) {
         SefEventoJanela evento = {0};
         evento.modificador_shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         if (wparam == 'S')
             evento.tipo = SEF_EVENTO_SALVAR;
         else if (wparam == 'O')
             evento.tipo = SEF_EVENTO_ABRIR;
+        else if (wparam == 'P')
+            evento.tipo =
+                evento.modificador_shift ? SEF_EVENTO_PALETA_COMANDOS : SEF_EVENTO_ABRIR_RAPIDO;
         else if (wparam == 'Z')
             evento.tipo = SEF_EVENTO_DESFAZER;
         else if (wparam == 'Y')

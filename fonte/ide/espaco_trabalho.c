@@ -15,7 +15,9 @@
 #include <windows.h>
 #else
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 enum { SEF_LIMITE_ARQUIVOS_ESPACO_TRABALHO = 10000, SEF_LIMITE_PROFUNDIDADE_ESPACO_TRABALHO = 32 };
@@ -319,4 +321,55 @@ const char *sef_espaco_trabalho_ide_arquivo_absoluto(const SefEspacoTrabalhoIde 
                                                      size_t indice) {
     return espaco == NULL || indice >= espaco->quantidade ? NULL
                                                           : espaco->arquivos[indice].absoluto;
+}
+
+bool sef_ide_arquivo_criar(const char *caminho, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (caminho == NULL || caminho[0] == '\0') {
+        sef_erro_definir(erro, 0, 0, "missing path for new file");
+        return false;
+    }
+#ifdef _WIN32
+    HANDLE arquivo =
+        CreateFileA(caminho, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (arquivo == INVALID_HANDLE_VALUE) {
+        sef_erro_definir(erro, 0, 0, "could not create file '%s' (Windows error %lu)", caminho,
+                         (unsigned long)GetLastError());
+        return false;
+    }
+    CloseHandle(arquivo);
+#else
+    int arquivo = open(caminho, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    if (arquivo < 0) {
+        sef_erro_definir(erro, 0, 0, "could not create file '%s': %s", caminho, strerror(errno));
+        return false;
+    }
+    if (close(arquivo) != 0) {
+        sef_erro_definir(erro, 0, 0, "could not finish creating file '%s': %s", caminho,
+                         strerror(errno));
+        return false;
+    }
+#endif
+    return true;
+}
+
+bool sef_ide_diretorio_criar(const char *caminho, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (caminho == NULL || caminho[0] == '\0') {
+        sef_erro_definir(erro, 0, 0, "missing path for new folder");
+        return false;
+    }
+#ifdef _WIN32
+    if (!CreateDirectoryA(caminho, NULL)) {
+        sef_erro_definir(erro, 0, 0, "could not create folder '%s' (Windows error %lu)", caminho,
+                         (unsigned long)GetLastError());
+        return false;
+    }
+#else
+    if (mkdir(caminho, 0777) != 0) {
+        sef_erro_definir(erro, 0, 0, "could not create folder '%s': %s", caminho, strerror(errno));
+        return false;
+    }
+#endif
+    return true;
 }

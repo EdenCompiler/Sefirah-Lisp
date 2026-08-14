@@ -102,9 +102,13 @@ history, active path, and runtime. Each background document retains its text,
 path, image path, cursor, selection, modified flag, editor history, and
 incremental fingerprints. Moving those owned values between a document slot
 and the active editor makes tab switching lossless without duplicating buffers.
-`espaco_trabalho.c` builds the bounded, sorted project index through native directory
-enumeration, skips symlink/reparse-point recursion, and keeps absolute paths
-separate from the relative paths shown by the Explorer.
+`espaco_trabalho.c` builds the bounded, sorted project index through native
+directory enumeration, skips symlink/reparse-point recursion, and keeps
+absolute paths separate from the relative paths shown by the Explorer.
+The window adapters translate Ctrl+P, Ctrl+Shift+P, and Escape into portable
+events. Presentation code owns the filtered Quick Open/command-palette overlay;
+file discovery, exclusive file/folder creation, refresh, and opening remain in
+the testable session layer.
 The session can execute, load, save, snapshot, and restore without a window,
 which makes behavior testable on CI. `sefirah_ide`
 only lays out the panels,
@@ -229,9 +233,10 @@ SefComponente
 SefSuperficie → CPU rasterizer → native window
 ```
 
-This design lets ordinary applications use the same GUI as the IDE. Vector
-fonts, general clipping, HiDPI, IME, and accessibility belong to later
-milestones.
+This design lets ordinary applications use the same GUI as the IDE. Its 5x7
+bitmap font has separate uppercase and lowercase ASCII glyphs, so path and
+source text preserve their visible case. Vector fonts, general clipping,
+HiDPI, IME, and accessibility belong to later milestones.
 
 ## Evolution strategy
 

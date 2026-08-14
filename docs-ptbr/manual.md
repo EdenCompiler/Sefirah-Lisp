@@ -484,8 +484,23 @@ selecionado em uma aba; um clique seleciona e abre uma entrada visível. O
 primeiro fonte reutiliza uma aba vazia ainda intocada.
 
 A barra de comandos fornece botões para Run, Run Form, Run Changes, Save,
-Snapshot e Restore. Eles acionam as mesmas operações sobre o mundo vivo que
-F5/F6/F7, Ctrl+S e F9/F10; a barra não cria um fluxo batch separado.
+Snapshot, Restore, Commands, Open File, Open Folder, New File, New Folder e
+Refresh. Os controles de arquivos e pastas usam um prompt de caminho interno à
+IDE e exibem falhas em inglês nesse prompt. A criação é exclusiva — não
+sobrescreve um caminho existente — e Refresh preserva o fonte selecionado
+quando ele ainda existe. Os botões de avaliação e snapshot acionam as mesmas
+operações sobre o mundo vivo que F5/F6/F7, Ctrl+S e F9/F10; a barra não cria um
+fluxo batch separado. A entrada de caminho preserva exatamente as letras
+maiúsculas e minúsculas digitadas, e a fonte bitmap desenha as duas caixas de
+modo distinto, mantendo caminhos válidos em sistemas de arquivos sensíveis a
+caixa.
+
+Ctrl+P abre Quick Open e filtra o índice do workspace sem diferenciar caixa.
+Ctrl+Shift+P ou o botão Commands abre uma paleta pesquisável com operações de
+arquivo/pasta, avaliação, snapshots, navegação estrutural, foco e desfazer/refazer.
+Cima/Baixo percorrem resultados circularmente, Enter aciona o item selecionado,
+Escape fecha a sobreposição e resultados visíveis aceitam clique. Ctrl+O abre o
+prompt de caminho de arquivo.
 
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
@@ -493,7 +508,7 @@ envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
 F6 encontra e executa somente a forma completa de nível superior no cursor,
 enquanto Shift+F6 seleciona essa forma para substituição ou remoção estrutural.
 Ctrl+Z e Ctrl+Y percorrem a linha do tempo linear e limitada do editor. Ctrl+S
-salva e Ctrl+O recarrega o caminho atual. F7 avalia somente as formas de topo
+salva e Ctrl+O abre o prompt de caminho. F7 avalia somente as formas de topo
 cujo conteúdo mudou desde a última avaliação bem-sucedida. F8 visita a próxima
 definição nomeada e Shift+F8 visita a anterior; o navegador reconhece funções,
 macros, variáveis, parâmetros, constantes, packages e formas `DEFINE`, ignorando

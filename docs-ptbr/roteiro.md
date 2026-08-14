@@ -161,6 +161,10 @@ não significa que o marco inteiro esteja concluído.
   histórico de undo independente, cursor/seleção e indicadores de alterações.
 - [x] Explorer recursivo do workspace com índice determinístico de fontes Lisp e
   abertura direta por teclado/ponteiro nas abas do editor.
+- [x] Quick Open, paleta pesquisável e ações funcionais de arquivo/pasta na barra,
+  com atualização e feedback de erros dentro do workbench.
+- [x] Prompts de caminho que preservam caixa, com glifos bitmap visualmente
+  distintos para letras maiúsculas e minúsculas.
 - [ ] Navegador de código multifonte e consciente do runtime.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.

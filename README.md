@@ -219,7 +219,10 @@ cursor, selection, undo/redo timeline, incremental state, and unsaved marker.
 Opening a project directory enables the recursive Explorer sidebar, which
 indexes `.lisp` sources in deterministic order. Up/Down selects a source and
 Enter or a pointer click opens it. A command toolbar exposes Run, Run Form, Run
-Changes, Save, Snapshot, and Restore as pointer-accessible buttons. Clicking a
+Changes, Save, Snapshot, Restore, file/folder creation and opening, Explorer
+refresh, and Commands as pointer-accessible buttons. Ctrl+P opens a filtered
+workspace file picker; Ctrl+Shift+P opens a searchable command palette whose
+actions operate on the live Lisp world. Clicking a
 tab activates it. Tab or a pointer
 click elsewhere changes focus among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
@@ -229,7 +232,7 @@ Shift+F8 navigate named definitions; F9/F10 save and restore the live Lisp
 world beside the current source as `.imagem`; Shift+F9/Shift+F10 navigate the
 bounded history of unhandled conditions; F11 jumps to the definition of
 the symbol at the cursor; and F12/Shift+F12 cycle its references. Ctrl+Z/Ctrl+Y
-undo and redo; Ctrl+S saves; and Ctrl+O reloads the current path. Arrow, Home,
+undo and redo; Ctrl+S saves; and Ctrl+O opens the path prompt. Arrow, Home,
 and End move the editor cursor; holding Shift extends a UTF-8-safe selection,
 and typing or Backspace replaces or removes it as one undoable edit. In the
 listener, Up and Down browse submitted events. In the inspector, Up/Down select an object component, Enter opens it,
@@ -537,7 +540,13 @@ desfazer/refazer, estado incremental e indicador de alterações não gravadas.
 Abrir um diretório de projeto ativa a barra lateral Explorer recursiva, que
 indexa fontes `.lisp` em ordem determinística. Cima/Baixo selecionam um fonte e
 Enter ou clique o abre. Uma barra de comandos expõe Run, Run Form, Run Changes,
-Save, Snapshot e Restore como botões acessíveis pelo ponteiro. Clicar em uma
+Save, Snapshot, Restore, criação/abertura de arquivos e pastas, atualização do
+Explorer e Commands como botões acessíveis pelo ponteiro. Ctrl+P abre o seletor
+filtrado de fontes do workspace; Ctrl+Shift+P abre uma paleta pesquisável cujas
+ações operam sobre o mundo Lisp vivo. Os prompts preservam exatamente as letras
+maiúsculas e minúsculas digitadas em caminhos, e a fonte bitmap desenha as duas
+caixas de modo distinto, inclusive em sistemas de arquivos sensíveis a caixa.
+Clicar em uma
 aba a ativa. Tab ou clique nas demais
 áreas alterna o foco entre editor, inspetor, depurador e ouvinte; F5 ou Ctrl+Enter
 executa o buffer; F6 executa a forma completa no cursor; Shift+F6 seleciona a
@@ -547,7 +556,7 @@ pelas definições nomeadas; F9/F10 salvam e restauram o mundo Lisp ao lado do
 fonte como `.imagem`; Shift+F9/Shift+F10 navegam pelo histórico limitado de
 condições não tratadas; F11 vai à definição do símbolo no cursor; e
 F12/Shift+F12 percorrem suas referências. Ctrl+Z/Ctrl+Y desfazem e refazem;
-Ctrl+S salva; e Ctrl+O recarrega o caminho atual. Setas, Home e End movem o
+Ctrl+S salva; e Ctrl+O abre o prompt de caminho. Setas, Home e End movem o
 cursor do editor; com Shift, estendem uma seleção segura para UTF-8, e digitar
 ou usar Backspace a substitui ou remove como uma única edição reversível. No
 ouvinte, Cima e Baixo percorrem os eventos enviados. No

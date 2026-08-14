@@ -237,11 +237,27 @@ int main(void) {
     verificar(sef_sessao_ide_espaco_trabalho_mover(sessao, SEF_ARQUIVO_PROXIMO, &erro) &&
                   sef_sessao_ide_espaco_trabalho_selecionado(sessao) == 1 &&
                   sef_sessao_ide_espaco_trabalho_abrir_selecionado(sessao, &erro) &&
-                  strstr(sef_sessao_ide_editor(sessao), "define helper") != NULL,
+                  strstr(sef_sessao_ide_editor(sessao), "define helper") != NULL &&
+                  strstr(sef_sessao_ide_explorador(sessao), "helper.lisp") != NULL,
               "workspace explorer opened the selected file in an editor tab");
+    verificar(
+        sef_sessao_ide_diretorio_criar(sessao, "teste-espaco/Mixed-Folder", &erro) &&
+            sef_sessao_ide_arquivo_criar(sessao, "teste-espaco/Mixed-Folder/NewFile.lisp", &erro) &&
+            sef_sessao_ide_espaco_trabalho_quantidade(sessao) == 3 &&
+            strcmp(sef_sessao_ide_caminho(sessao), "teste-espaco/Mixed-Folder/NewFile.lisp") == 0 &&
+            strstr(sef_sessao_ide_explorador(sessao), "Mixed-Folder/NewFile.lisp") != NULL,
+        "file and folder actions preserved mixed-case paths inside the workspace");
+    verificar(gravar_arquivo("teste-espaco/refreshed.lisp", "(define refreshed 3)\n") &&
+                  sef_sessao_ide_espaco_trabalho_atualizar(sessao, &erro) &&
+                  sef_sessao_ide_espaco_trabalho_quantidade(sessao) == 4 &&
+                  strstr(sef_sessao_ide_estado(sessao), "Explorer refreshed") != NULL,
+              "refresh action detected a source created outside the IDE");
     remove("teste-espaco/main.lisp");
     remove("teste-espaco/sub/helper.lisp");
     remove("teste-espaco/ignored.txt");
+    remove("teste-espaco/Mixed-Folder/NewFile.lisp");
+    remove("teste-espaco/refreshed.lisp");
+    remover_diretorio("teste-espaco/Mixed-Folder");
     remover_diretorio("teste-espaco/sub");
     remover_diretorio("teste-espaco");
 

@@ -3,6 +3,7 @@
 #include "sefirah/gui.h"
 #include "sefirah/janela.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,8 +22,50 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_EXECUTAR_ALTERACOES,
     ACAO_BOTAO_SALVAR,
     ACAO_BOTAO_SNAPSHOT,
-    ACAO_BOTAO_RESTAURAR
+    ACAO_BOTAO_RESTAURAR,
+    ACAO_BOTAO_COMANDOS,
+    ACAO_BOTAO_ABRIR_ARQUIVO,
+    ACAO_BOTAO_ABRIR_PASTA,
+    ACAO_BOTAO_CRIAR_ARQUIVO,
+    ACAO_BOTAO_CRIAR_PASTA,
+    ACAO_BOTAO_ATUALIZAR_EXPLORADOR
 } AcaoBotaoIde;
+
+typedef enum ModoSobreposicaoIde {
+    SOBREPOSICAO_NENHUMA,
+    SOBREPOSICAO_ABRIR_RAPIDO,
+    SOBREPOSICAO_COMANDOS,
+    SOBREPOSICAO_ABRIR_ARQUIVO,
+    SOBREPOSICAO_ABRIR_PASTA,
+    SOBREPOSICAO_CRIAR_ARQUIVO,
+    SOBREPOSICAO_CRIAR_PASTA
+} ModoSobreposicaoIde;
+
+typedef enum AcaoComandoIde {
+    COMANDO_ABRIR_RAPIDO,
+    COMANDO_ABRIR_ARQUIVO,
+    COMANDO_ABRIR_PASTA,
+    COMANDO_CRIAR_ARQUIVO,
+    COMANDO_CRIAR_PASTA,
+    COMANDO_ATUALIZAR_EXPLORADOR,
+    COMANDO_EXECUTAR,
+    COMANDO_EXECUTAR_FORMA,
+    COMANDO_EXECUTAR_ALTERACOES,
+    COMANDO_SALVAR,
+    COMANDO_SNAPSHOT,
+    COMANDO_RESTAURAR,
+    COMANDO_IR_DEFINICAO,
+    COMANDO_NAVEGAR_REFERENCIA,
+    COMANDO_FOCAR_EXPLORADOR,
+    COMANDO_FOCAR_OUVINTE,
+    COMANDO_DESFAZER,
+    COMANDO_REFAZER
+} AcaoComandoIde;
+
+typedef struct ComandoIde {
+    const char *rotulo;
+    AcaoComandoIde acao;
+} ComandoIde;
 
 typedef struct BotaoIde {
     const char *rotulo;
@@ -43,8 +86,37 @@ typedef struct EstadoIde {
     SefComponente navegador;
     SefComponente depurador;
     SefComponente ouvinte;
-    BotaoIde botoes[6];
+    BotaoIde botoes[12];
+    ModoSobreposicaoIde sobreposicao;
+    char consulta[1024];
+    char mensagem_sobreposicao[256];
+    size_t tamanho_consulta;
+    size_t item_sobreposicao;
+    SefRetangulo limites_sobreposicao;
+    size_t primeiro_item_sobreposicao;
+    size_t quantidade_itens_visiveis;
 } EstadoIde;
+
+static const ComandoIde comandos[] = {
+    {"Quick Open File", COMANDO_ABRIR_RAPIDO},
+    {"Open File by Path", COMANDO_ABRIR_ARQUIVO},
+    {"Open Folder", COMANDO_ABRIR_PASTA},
+    {"Create New File", COMANDO_CRIAR_ARQUIVO},
+    {"Create New Folder", COMANDO_CRIAR_PASTA},
+    {"Refresh Workspace Explorer", COMANDO_ATUALIZAR_EXPLORADOR},
+    {"Run Buffer in Live World", COMANDO_EXECUTAR},
+    {"Run Form at Cursor", COMANDO_EXECUTAR_FORMA},
+    {"Run Changed Top-Level Forms", COMANDO_EXECUTAR_ALTERACOES},
+    {"Save Current File", COMANDO_SALVAR},
+    {"Save Live World Snapshot", COMANDO_SNAPSHOT},
+    {"Restore Live World Snapshot", COMANDO_RESTAURAR},
+    {"Go to Definition at Cursor", COMANDO_IR_DEFINICAO},
+    {"Find Next Reference at Cursor", COMANDO_NAVEGAR_REFERENCIA},
+    {"Focus Workspace Explorer", COMANDO_FOCAR_EXPLORADOR},
+    {"Focus Listener / REPL", COMANDO_FOCAR_OUVINTE},
+    {"Undo Editor Change", COMANDO_DESFAZER},
+    {"Redo Editor Change", COMANDO_REFAZER},
+};
 
 static bool iniciar_componentes(EstadoIde *estado) {
     estado->tema = (SefTemaGui){SEF_COR(207, 198, 164),
@@ -70,6 +142,12 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[3] = (BotaoIde){"SAVE", ACAO_BOTAO_SALVAR, {0}};
     estado->botoes[4] = (BotaoIde){"SNAPSHOT", ACAO_BOTAO_SNAPSHOT, {0}};
     estado->botoes[5] = (BotaoIde){"RESTORE", ACAO_BOTAO_RESTAURAR, {0}};
+    estado->botoes[6] = (BotaoIde){"COMMANDS", ACAO_BOTAO_COMANDOS, {0}};
+    estado->botoes[7] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[8] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[9] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[10] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[11] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -129,15 +207,48 @@ static void desenhar_barra_comandos(SefSuperficie *superficie, EstadoIde *estado
     sef_superficie_retangulo(superficie, 0, 30, superficie->largura, 36, SEF_COR(218, 211, 182));
     sef_superficie_retangulo(superficie, 0, 65, superficie->largura, 1, SEF_COR(101, 112, 86));
     int x = 10;
+    for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++)
+        estado->botoes[i].limites = (SefRetangulo){0};
     for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++) {
         BotaoIde *botao = &estado->botoes[i];
         int largura = (int)strlen(botao->rotulo) * 6 + 20;
+        if (x + largura > superficie->largura - 10)
+            break;
         botao->limites = (SefRetangulo){x, 36, largura, 24};
         sef_superficie_retangulo(superficie, x, 36, largura, 24, SEF_COR(244, 238, 211));
         sef_superficie_contorno(superficie, x, 36, largura, 24, 1, SEF_COR(101, 112, 86));
         sef_superficie_retangulo(superficie, x + 1, 58, largura - 2, 1, SEF_COR(181, 112, 52));
         sef_superficie_texto(superficie, x + 10, 44, botao->rotulo, 1, SEF_COR(43, 54, 45));
         x += largura + 8;
+    }
+}
+
+static void abrir_sobreposicao(EstadoIde *estado, ModoSobreposicaoIde modo) {
+    estado->sobreposicao = modo;
+    estado->consulta[0] = '\0';
+    estado->mensagem_sobreposicao[0] = '\0';
+    estado->tamanho_consulta = 0;
+    estado->item_sobreposicao = 0;
+}
+
+static bool sobreposicao_e_caminho(ModoSobreposicaoIde modo) {
+    return modo == SOBREPOSICAO_ABRIR_ARQUIVO || modo == SOBREPOSICAO_ABRIR_PASTA ||
+           modo == SOBREPOSICAO_CRIAR_ARQUIVO || modo == SOBREPOSICAO_CRIAR_PASTA;
+}
+
+static void abrir_sobreposicao_caminho(EstadoIde *estado, ModoSobreposicaoIde modo) {
+    abrir_sobreposicao(estado, modo);
+    const char *raiz = sef_sessao_ide_espaco_trabalho_raiz(estado->sessao);
+    if (raiz[0] == '\0')
+        return;
+    snprintf(estado->consulta, sizeof(estado->consulta), "%s", raiz);
+    estado->tamanho_consulta = strlen(estado->consulta);
+    if (modo != SOBREPOSICAO_ABRIR_PASTA &&
+        estado->tamanho_consulta + 1 < sizeof(estado->consulta) &&
+        estado->consulta[estado->tamanho_consulta - 1] != '/' &&
+        estado->consulta[estado->tamanho_consulta - 1] != '\\') {
+        estado->consulta[estado->tamanho_consulta++] = '/';
+        estado->consulta[estado->tamanho_consulta] = '\0';
     }
 }
 
@@ -163,6 +274,24 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         break;
     case ACAO_BOTAO_RESTAURAR:
         sef_sessao_ide_imagem_restaurar(estado->sessao, erro);
+        break;
+    case ACAO_BOTAO_COMANDOS:
+        abrir_sobreposicao(estado, SOBREPOSICAO_COMANDOS);
+        break;
+    case ACAO_BOTAO_ABRIR_ARQUIVO:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
+        break;
+    case ACAO_BOTAO_ABRIR_PASTA:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_PASTA);
+        break;
+    case ACAO_BOTAO_CRIAR_ARQUIVO:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_CRIAR_ARQUIVO);
+        break;
+    case ACAO_BOTAO_CRIAR_PASTA:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_CRIAR_PASTA);
+        break;
+    case ACAO_BOTAO_ATUALIZAR_EXPLORADOR:
+        sef_sessao_ide_espaco_trabalho_atualizar(estado->sessao, erro);
         break;
     }
 }
@@ -268,6 +397,158 @@ static void desenhar_texto_limitado(SefSuperficie *superficie, SefRetangulo limi
     desenhar_texto_limitado_escala(superficie, limites, texto, mostrar_final, 2);
 }
 
+static bool contem_sem_diferenciar_caixa(const char *texto, const char *consulta) {
+    if (consulta[0] == '\0')
+        return true;
+    size_t tamanho_consulta = strlen(consulta);
+    for (const char *inicio = texto; *inicio != '\0'; inicio++) {
+        size_t i = 0;
+        while (i < tamanho_consulta && inicio[i] != '\0' &&
+               tolower((unsigned char)inicio[i]) == tolower((unsigned char)consulta[i]))
+            i++;
+        if (i == tamanho_consulta)
+            return true;
+    }
+    return false;
+}
+
+static const char *item_sobreposicao(const EstadoIde *estado, size_t indice_filtrado,
+                                     size_t *indice_real) {
+    size_t encontrado = 0;
+    if (estado->sobreposicao == SOBREPOSICAO_ABRIR_RAPIDO) {
+        size_t quantidade = sef_sessao_ide_espaco_trabalho_quantidade(estado->sessao);
+        for (size_t i = 0; i < quantidade; i++) {
+            const char *arquivo = sef_sessao_ide_espaco_trabalho_arquivo(estado->sessao, i);
+            if (!contem_sem_diferenciar_caixa(arquivo, estado->consulta))
+                continue;
+            if (encontrado++ == indice_filtrado) {
+                if (indice_real != NULL)
+                    *indice_real = i;
+                return arquivo;
+            }
+        }
+    } else if (estado->sobreposicao == SOBREPOSICAO_COMANDOS) {
+        for (size_t i = 0; i < sizeof(comandos) / sizeof(comandos[0]); i++) {
+            if (!contem_sem_diferenciar_caixa(comandos[i].rotulo, estado->consulta))
+                continue;
+            if (encontrado++ == indice_filtrado) {
+                if (indice_real != NULL)
+                    *indice_real = i;
+                return comandos[i].rotulo;
+            }
+        }
+    }
+    return NULL;
+}
+
+static size_t quantidade_itens_sobreposicao(const EstadoIde *estado) {
+    size_t quantidade = 0;
+    if (estado->sobreposicao == SOBREPOSICAO_ABRIR_RAPIDO) {
+        size_t total = sef_sessao_ide_espaco_trabalho_quantidade(estado->sessao);
+        for (size_t i = 0; i < total; i++)
+            if (contem_sem_diferenciar_caixa(
+                    sef_sessao_ide_espaco_trabalho_arquivo(estado->sessao, i), estado->consulta))
+                quantidade++;
+    } else if (estado->sobreposicao == SOBREPOSICAO_COMANDOS) {
+        for (size_t i = 0; i < sizeof(comandos) / sizeof(comandos[0]); i++)
+            if (contem_sem_diferenciar_caixa(comandos[i].rotulo, estado->consulta))
+                quantidade++;
+    }
+    return quantidade;
+}
+
+static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) {
+    if (estado->sobreposicao == SOBREPOSICAO_NENHUMA)
+        return;
+    int largura = superficie->largura - 100;
+    if (largura > 700)
+        largura = 700;
+    if (largura < 320)
+        largura = 320;
+    int altura = superficie->altura - 180;
+    if (altura > 390)
+        altura = 390;
+    if (altura < 220)
+        altura = 220;
+    int x = (superficie->largura - largura) / 2;
+    int y = 82;
+    estado->limites_sobreposicao = (SefRetangulo){x, y, largura, altura};
+
+    sef_superficie_retangulo(superficie, x + 6, y + 6, largura, altura, SEF_COR(101, 112, 86));
+    sef_superficie_retangulo(superficie, x, y, largura, altura, SEF_COR(244, 238, 211));
+    sef_superficie_contorno(superficie, x, y, largura, altura, 2, SEF_COR(181, 112, 52));
+    sef_superficie_retangulo(superficie, x + 2, y + 2, largura - 4, 30, SEF_COR(67, 88, 70));
+    const char *titulo = "COMMAND PALETTE  CTRL+SHIFT+P";
+    if (estado->sobreposicao == SOBREPOSICAO_ABRIR_RAPIDO)
+        titulo = "QUICK OPEN  CTRL+P";
+    else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_ARQUIVO)
+        titulo = "OPEN FILE";
+    else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_PASTA)
+        titulo = "OPEN FOLDER";
+    else if (estado->sobreposicao == SOBREPOSICAO_CRIAR_ARQUIVO)
+        titulo = "NEW FILE";
+    else if (estado->sobreposicao == SOBREPOSICAO_CRIAR_PASTA)
+        titulo = "NEW FOLDER";
+    sef_superficie_texto(superficie, x + 12, y + 10, titulo, 2, SEF_COR(244, 238, 211));
+    sef_superficie_retangulo(superficie, x + 12, y + 42, largura - 24, 32, SEF_COR(231, 224, 194));
+    sef_superficie_contorno(superficie, x + 12, y + 42, largura - 24, 32, 1, SEF_COR(101, 112, 86));
+    char entrada[160];
+    const char *consulta_visivel = estado->consulta;
+    if (estado->tamanho_consulta > 150)
+        consulta_visivel = estado->consulta + estado->tamanho_consulta - 150;
+    snprintf(entrada, sizeof(entrada), "> %.150s|", consulta_visivel);
+    limitar_linha(entrada, largura > 48 ? (size_t)(largura - 48) / 12u : 0);
+    sef_superficie_texto(superficie, x + 22, y + 50, entrada, 2, SEF_COR(43, 54, 45));
+
+    size_t quantidade = quantidade_itens_sobreposicao(estado);
+    if (sobreposicao_e_caminho(estado->sobreposicao)) {
+        const char *mensagem = estado->mensagem_sobreposicao[0] == '\0'
+                                   ? "TYPE A PATH AND PRESS ENTER"
+                                   : estado->mensagem_sobreposicao;
+        char linha_mensagem[128];
+        snprintf(linha_mensagem, sizeof(linha_mensagem), "%.127s", mensagem);
+        limitar_linha(linha_mensagem, largura > 48 ? (size_t)(largura - 48) / 12u : 0);
+        sef_superficie_texto(superficie, x + 22, y + 92, linha_mensagem, 2,
+                             estado->mensagem_sobreposicao[0] == '\0' ? SEF_COR(75, 84, 67)
+                                                                      : SEF_COR(143, 65, 45));
+        estado->primeiro_item_sobreposicao = 0;
+        estado->quantidade_itens_visiveis = 0;
+    } else if (quantidade == 0) {
+        sef_superficie_texto(superficie, x + 22, y + 92, "NO MATCHING ITEMS", 2,
+                             SEF_COR(75, 84, 67));
+        estado->primeiro_item_sobreposicao = 0;
+        estado->quantidade_itens_visiveis = 0;
+    } else {
+        size_t capacidade = altura > 126 ? (size_t)(altura - 126) / 22u : 1;
+        if (capacidade == 0)
+            capacidade = 1;
+        size_t primeiro = estado->item_sobreposicao >= capacidade
+                              ? estado->item_sobreposicao - capacidade + 1
+                              : 0;
+        estado->primeiro_item_sobreposicao = primeiro;
+        estado->quantidade_itens_visiveis =
+            quantidade - primeiro < capacidade ? quantidade - primeiro : capacidade;
+        for (size_t linha = 0; linha < estado->quantidade_itens_visiveis; linha++) {
+            size_t indice = primeiro + linha;
+            int item_y = y + 84 + (int)linha * 22;
+            bool selecionado = indice == estado->item_sobreposicao;
+            if (selecionado)
+                sef_superficie_retangulo(superficie, x + 12, item_y - 3, largura - 24, 20,
+                                         SEF_COR(177, 196, 154));
+            const char *item = item_sobreposicao(estado, indice, NULL);
+            char linha_texto[128];
+            snprintf(linha_texto, sizeof(linha_texto), "%c %s", selecionado ? '>' : ' ', item);
+            limitar_linha(linha_texto, largura > 48 ? (size_t)(largura - 48) / 12u : 0);
+            sef_superficie_texto(superficie, x + 22, item_y, linha_texto, 2, SEF_COR(43, 54, 45));
+        }
+    }
+    sef_superficie_texto(superficie, x + 12, y + altura - 18,
+                         sobreposicao_e_caminho(estado->sobreposicao)
+                             ? "ENTER CONFIRM   ESC CLOSE"
+                             : "ENTER SELECT   ESC CLOSE   UP/DOWN NAVIGATE",
+                         1, SEF_COR(75, 84, 67));
+}
+
 static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
                             const SefSessaoIde *sessao) {
     const char *codigo = sef_sessao_ide_editor(sessao);
@@ -368,12 +649,199 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     size_t colunas_estado = superficie->largura > 20 ? (size_t)(superficie->largura - 20) / 12u : 0;
     limitar_linha(estado_barra, colunas_estado);
     sef_superficie_texto(superficie, 10, superficie->altura - 25, estado_barra, 2, tinta);
+    desenhar_sobreposicao(superficie, estado);
+}
+
+static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *erro) {
+    switch (acao) {
+    case COMANDO_ABRIR_RAPIDO:
+        abrir_sobreposicao(estado, SOBREPOSICAO_ABRIR_RAPIDO);
+        break;
+    case COMANDO_ABRIR_ARQUIVO:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
+        break;
+    case COMANDO_ABRIR_PASTA:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_PASTA);
+        break;
+    case COMANDO_CRIAR_ARQUIVO:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_CRIAR_ARQUIVO);
+        break;
+    case COMANDO_CRIAR_PASTA:
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_CRIAR_PASTA);
+        break;
+    case COMANDO_ATUALIZAR_EXPLORADOR:
+        sef_sessao_ide_espaco_trabalho_atualizar(estado->sessao, erro);
+        break;
+    case COMANDO_EXECUTAR:
+        acionar_botao(estado, ACAO_BOTAO_EXECUTAR, erro);
+        break;
+    case COMANDO_EXECUTAR_FORMA:
+        acionar_botao(estado, ACAO_BOTAO_EXECUTAR_FORMA, erro);
+        break;
+    case COMANDO_EXECUTAR_ALTERACOES:
+        acionar_botao(estado, ACAO_BOTAO_EXECUTAR_ALTERACOES, erro);
+        break;
+    case COMANDO_SALVAR:
+        acionar_botao(estado, ACAO_BOTAO_SALVAR, erro);
+        break;
+    case COMANDO_SNAPSHOT:
+        acionar_botao(estado, ACAO_BOTAO_SNAPSHOT, erro);
+        break;
+    case COMANDO_RESTAURAR:
+        acionar_botao(estado, ACAO_BOTAO_RESTAURAR, erro);
+        break;
+    case COMANDO_IR_DEFINICAO:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_ir_para_definicao(estado->sessao, erro);
+        break;
+    case COMANDO_NAVEGAR_REFERENCIA:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_navegar_referencia(estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
+        break;
+    case COMANDO_FOCAR_EXPLORADOR:
+        estado->foco = FOCO_EXPLORADOR;
+        break;
+    case COMANDO_FOCAR_OUVINTE:
+        estado->foco = FOCO_OUVINTE;
+        break;
+    case COMANDO_DESFAZER:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_editor_desfazer(estado->sessao, erro);
+        break;
+    case COMANDO_REFAZER:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_editor_refazer(estado->sessao, erro);
+        break;
+    }
+}
+
+static void executar_item_sobreposicao(EstadoIde *estado, SefErro *erro) {
+    size_t indice_real = 0;
+    if (item_sobreposicao(estado, estado->item_sobreposicao, &indice_real) == NULL)
+        return;
+    ModoSobreposicaoIde modo = estado->sobreposicao;
+    estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+    if (modo == SOBREPOSICAO_ABRIR_RAPIDO) {
+        if (sef_sessao_ide_espaco_trabalho_selecionar(estado->sessao, indice_real, erro) &&
+            sef_sessao_ide_espaco_trabalho_abrir_selecionado(estado->sessao, erro))
+            estado->foco = FOCO_EDITOR;
+    } else {
+        executar_comando(estado, comandos[indice_real].acao, erro);
+    }
+}
+
+static void executar_caminho_sobreposicao(EstadoIde *estado, SefErro *erro) {
+    bool executou = false;
+    FocoIde foco = estado->foco;
+    switch (estado->sobreposicao) {
+    case SOBREPOSICAO_ABRIR_ARQUIVO:
+        executou = sef_sessao_ide_abrir(estado->sessao, estado->consulta, erro);
+        foco = FOCO_EDITOR;
+        break;
+    case SOBREPOSICAO_ABRIR_PASTA:
+        executou = sef_sessao_ide_espaco_trabalho_abrir(estado->sessao, estado->consulta, erro);
+        foco = FOCO_EXPLORADOR;
+        break;
+    case SOBREPOSICAO_CRIAR_ARQUIVO:
+        executou = sef_sessao_ide_arquivo_criar(estado->sessao, estado->consulta, erro);
+        foco = FOCO_EDITOR;
+        break;
+    case SOBREPOSICAO_CRIAR_PASTA:
+        executou = sef_sessao_ide_diretorio_criar(estado->sessao, estado->consulta, erro);
+        foco = FOCO_EXPLORADOR;
+        break;
+    default:
+        return;
+    }
+    if (executou) {
+        estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+        estado->foco = foco;
+    } else {
+        snprintf(estado->mensagem_sobreposicao, sizeof(estado->mensagem_sobreposicao), "%.255s",
+                 erro->mensagem);
+    }
+}
+
+static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela *evento,
+                                       SefErro *erro) {
+    if (evento->tipo == SEF_EVENTO_CANCELAR) {
+        estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_TEXTO) {
+        size_t tamanho = strlen(evento->texto_utf8);
+        if (tamanho > 0 && estado->tamanho_consulta + tamanho < sizeof(estado->consulta)) {
+            memcpy(estado->consulta + estado->tamanho_consulta, evento->texto_utf8, tamanho + 1);
+            estado->tamanho_consulta += tamanho;
+            estado->item_sobreposicao = 0;
+            estado->mensagem_sobreposicao[0] = '\0';
+        }
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_APAGAR) {
+        if (estado->tamanho_consulta > 0) {
+            estado->tamanho_consulta--;
+            while (estado->tamanho_consulta > 0 &&
+                   ((unsigned char)estado->consulta[estado->tamanho_consulta] & 0xc0u) == 0x80u)
+                estado->tamanho_consulta--;
+            estado->consulta[estado->tamanho_consulta] = '\0';
+            estado->item_sobreposicao = 0;
+            estado->mensagem_sobreposicao[0] = '\0';
+        }
+        return true;
+    }
+    size_t quantidade = quantidade_itens_sobreposicao(estado);
+    if (evento->tipo == SEF_EVENTO_CURSOR_CIMA && quantidade > 0) {
+        estado->item_sobreposicao =
+            estado->item_sobreposicao == 0 ? quantidade - 1 : estado->item_sobreposicao - 1;
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_CURSOR_BAIXO && quantidade > 0) {
+        estado->item_sobreposicao = (estado->item_sobreposicao + 1) % quantidade;
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_ENTER) {
+        if (sobreposicao_e_caminho(estado->sobreposicao))
+            executar_caminho_sobreposicao(estado, erro);
+        else
+            executar_item_sobreposicao(estado, erro);
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_PONTEIRO_PRESSIONAR) {
+        if (!ponto_dentro(estado->limites_sobreposicao, evento->x, evento->y)) {
+            estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+            return true;
+        }
+        int inicio_y = estado->limites_sobreposicao.y + 81;
+        if (evento->y >= inicio_y) {
+            size_t linha = (size_t)(evento->y - inicio_y) / 22u;
+            if (linha < estado->quantidade_itens_visiveis) {
+                estado->item_sobreposicao = estado->primeiro_item_sobreposicao + linha;
+                executar_item_sobreposicao(estado, erro);
+            }
+        }
+        return true;
+    }
+    return true;
 }
 
 static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     EstadoIde *estado = dados;
     SefErro erro;
     sef_erro_limpar(&erro);
+
+    if (evento->tipo == SEF_EVENTO_ABRIR_RAPIDO) {
+        abrir_sobreposicao(estado, SOBREPOSICAO_ABRIR_RAPIDO);
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_PALETA_COMANDOS) {
+        abrir_sobreposicao(estado, SOBREPOSICAO_COMANDOS);
+        return true;
+    }
+    if (estado->sobreposicao != SOBREPOSICAO_NENHUMA)
+        return tratar_evento_sobreposicao(estado, evento, &erro);
+    if (evento->tipo == SEF_EVENTO_CANCELAR)
+        return true;
 
     switch (evento->tipo) {
     case SEF_EVENTO_TEXTO:
@@ -463,7 +931,7 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         sef_sessao_ide_salvar(estado->sessao, sef_sessao_ide_caminho(estado->sessao), &erro);
         break;
     case SEF_EVENTO_ABRIR:
-        sef_sessao_ide_abrir(estado->sessao, sef_sessao_ide_caminho(estado->sessao), &erro);
+        abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
         break;
     case SEF_EVENTO_CURSOR_ESQUERDA:
         if (estado->foco == FOCO_EDITOR)
