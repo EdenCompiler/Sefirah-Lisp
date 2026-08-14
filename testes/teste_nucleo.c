@@ -761,6 +761,22 @@ int main(int argc, char **argv) {
                     "(nth-value 1 (find-symbol \"PUBLIC\" \"DEFINITION-TARGET\"))))",
                     "(T T :INTERNAL \"DEFINITION-SOURCE-A\" :INTERNAL :INTERNAL :EXTERNAL)");
     verificar_texto(runtime,
+                    "(let ((target (find-package \"DEFINITION-TARGET\")) "
+                    "(source-a (find-package \"DEFINITION-SOURCE-A\")) "
+                    "(source-b (find-package \"DEFINITION-SOURCE-B\")) "
+                    "(public (find-symbol \"PUBLIC\" \"DEFINITION-TARGET\"))) "
+                    "(list (= (length (package-use-list target)) 2) "
+                    "(not (null (member target (package-used-by-list source-a)))) "
+                    "(unexport public target) "
+                    "(nth-value 1 (find-symbol \"PUBLIC\" target)) "
+                    "(export public target) "
+                    "(unuse-package (list source-a source-b) target) "
+                    "(length (package-use-list target)) "
+                    "(null (member target (package-used-by-list source-b))) "
+                    "(use-package (list source-a source-b) target) "
+                    "(length (package-use-list target))))",
+                    "(T T T :INTERNAL T T 0 T T 2)");
+    verificar_texto(runtime,
                     "(let ((simbolo (intern \"Nome-Misto\" \"ALPHA\"))) "
                     "(list (symbol-name simbolo) "
                     "(multiple-value-list (find-symbol \"Nome-Misto\" \"ALPHA\")) "

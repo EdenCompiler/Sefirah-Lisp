@@ -70,6 +70,8 @@ not mean the entire milestone is complete.
   inherited-conflict protection.
 - [x] Phased `DEFPACKAGE` support for `:SHADOW`,
   `:SHADOWING-IMPORT-FROM`, `:USE`, `:IMPORT-FROM`, `:INTERN`, and `:EXPORT`.
+- [x] Reversible `USE-PACKAGE`/`UNUSE-PACKAGE` and `EXPORT`/`UNEXPORT`, with
+  fresh package-use and used-by relationship inquiries.
 
 ### Compiler
 

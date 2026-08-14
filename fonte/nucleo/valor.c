@@ -381,6 +381,28 @@ bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefEr
     return true;
 }
 
+bool sef_pacote_deixar_de_usar(SefRuntime *runtime, SefValor pacote, SefValor usado,
+                               SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || usado == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
+        usado->tipo != SEF_TIPO_PACOTE) {
+        sef_erro_definir(erro, 0, 0, "UNUSE-PACKAGE received an object that is not a package");
+        return false;
+    }
+    if (pacote == runtime->pacote_common_lisp) {
+        sef_erro_definir(erro, 0, 0, "the COMMON-LISP package is locked");
+        return false;
+    }
+    for (size_t i = 0; i < pacote->como.pacote.quantidade_usados; i++) {
+        if (pacote->como.pacote.usados[i] != usado)
+            continue;
+        memmove(&pacote->como.pacote.usados[i], &pacote->como.pacote.usados[i + 1],
+                (pacote->como.pacote.quantidade_usados - i - 1) * sizeof(SefValor));
+        pacote->como.pacote.quantidade_usados--;
+        return true;
+    }
+    return true;
+}
+
 bool sef_pacote_usa(SefValor pacote, SefValor usado) {
     if (pacote == usado)
         return true;
@@ -423,6 +445,29 @@ bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
         return false;
     pacote->como.pacote.exportados[pacote->como.pacote.quantidade_exportados++] = simbolo;
     return true;
+}
+
+bool sef_pacote_deixar_de_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                   SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE ||
+        !sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "UNEXPORT requires a symbol and package");
+        return false;
+    }
+    if (pacote == runtime->pacote_common_lisp) {
+        sef_erro_definir(erro, 0, 0, "the COMMON-LISP package is locked");
+        return false;
+    }
+    for (size_t i = 0; i < pacote->como.pacote.quantidade_exportados; i++) {
+        if (pacote->como.pacote.exportados[i] != simbolo)
+            continue;
+        memmove(&pacote->como.pacote.exportados[i], &pacote->como.pacote.exportados[i + 1],
+                (pacote->como.pacote.quantidade_exportados - i - 1) * sizeof(SefValor));
+        pacote->como.pacote.quantidade_exportados--;
+        return true;
+    }
+    sef_erro_definir(erro, 0, 0, "UNEXPORT requires a symbol external to the package");
+    return false;
 }
 
 static SefValor pacote_buscar_simbolo(SefValor pacote, const char *nome, size_t tamanho) {

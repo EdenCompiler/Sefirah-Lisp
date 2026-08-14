@@ -368,8 +368,10 @@ Available forms and functions:
   `:IMPORT-FROM`, `:INTERN`, and `:EXPORT`;
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME`, and `PACKAGEP`;
-- `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
-  `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN`, and `FIND-SYMBOL`;
+- `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
+  `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`,
+  `SHADOW`, `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN`, and
+  `FIND-SYMBOL`;
 - `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, and
   `LIST-ALL-PACKAGES`.
 
@@ -398,6 +400,11 @@ semantic phases rather than textual order. Shadow and shadowing-import choices
 are installed before use lists; ordinary imports and interned names follow;
 exports are last. Both import options name a source package followed by the
 symbol names to reuse.
+
+`USE-PACKAGE` and `UNUSE-PACKAGE` accept one package designator or a proper
+list. `PACKAGE-USE-LIST` and `PACKAGE-USED-BY-LIST` return fresh relationship
+lists. `UNEXPORT` makes an external symbol internal without changing its
+identity; the implementation lock protects `COMMON-LISP` from topology edits.
 
 `NIL` is simultaneously the empty list, false, and the external symbol named
 `"NIL"` in `COMMON-LISP`. It is inherited by `COMMON-LISP-USER`; `SYMBOLP`,

@@ -72,6 +72,8 @@ não significa que o marco inteiro esteja concluído.
   proteção contra conflitos herdados, todos persistentes.
 - [x] `DEFPACKAGE` em fases com `:SHADOW`, `:SHADOWING-IMPORT-FROM`, `:USE`,
   `:IMPORT-FROM`, `:INTERN` e `:EXPORT`.
+- [x] `USE-PACKAGE`/`UNUSE-PACKAGE` e `EXPORT`/`UNEXPORT` reversíveis, com
+  consultas novas das relações de uso e de packages usuários.
 
 ### Compilador
 

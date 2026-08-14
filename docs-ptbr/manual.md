@@ -375,7 +375,8 @@ Formas e funções disponíveis:
   `:IMPORT-FROM`, `:INTERN` e `:EXPORT`;
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME` e `PACKAGEP`;
-- `USE-PACKAGE`, `EXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
+- `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
+  `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
   `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN` e `FIND-SYMBOL`;
 - `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE` e
   `LIST-ALL-PACKAGES`.
@@ -405,6 +406,12 @@ semânticas em vez da ordem textual. Escolhas de shadow e shadowing-import são
 instaladas antes das listas de uso; seguem importações comuns e nomes
 internados; exportações ficam por último. As duas opções de importação recebem
 um package de origem seguido pelos nomes de símbolos que serão reutilizados.
+
+`USE-PACKAGE` e `UNUSE-PACKAGE` aceitam um designador de package ou uma lista
+própria. `PACKAGE-USE-LIST` e `PACKAGE-USED-BY-LIST` devolvem listas novas de
+relacionamentos. `UNEXPORT` torna interno um símbolo externo sem mudar sua
+identidade; o lock da implementação protege `COMMON-LISP` de alterações na
+topologia.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

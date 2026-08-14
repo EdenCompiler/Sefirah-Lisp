@@ -260,6 +260,7 @@ bool sef_simbolo_propriedade_remover(SefRuntime *runtime, SefValor simbolo, SefV
 SefValor sef_pacote_novo(SefRuntime *runtime, const char *nome, SefErro *erro);
 SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tamanho);
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
+bool sef_pacote_deixar_de_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
 bool sef_pacote_usa(SefValor pacote, SefValor usado);
 bool sef_pacote_importar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro);
 bool sef_pacote_sombrear(SefRuntime *runtime, SefValor pacote, const char *nome, size_t tamanho,
@@ -270,6 +271,8 @@ SefValor sef_pacote_simbolos_sombreados(SefRuntime *runtime, SefValor pacote, Se
 bool sef_pacote_desinternar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, bool *removeu,
                             SefErro *erro);
 bool sef_pacote_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo, SefErro *erro);
+bool sef_pacote_deixar_de_exportar(SefRuntime *runtime, SefValor pacote, SefValor simbolo,
+                                   SefErro *erro);
 bool sef_pacote_instalar_nulo(SefRuntime *runtime, SefErro *erro);
 bool sef_pacote_simbolo_exportado(SefValor pacote, SefValor simbolo);
 SefValor sef_pacote_localizar_simbolo(SefValor pacote, const char *nome, size_t tamanho,

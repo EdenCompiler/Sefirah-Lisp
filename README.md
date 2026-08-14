@@ -67,6 +67,7 @@ the roadmap.
 - persistent package shadowing with explicit inherited-conflict resolution;
 - declarative package construction with phased shadow, use, import, intern, and
   export options;
+- reversible package use/export topology with fresh relationship inquiries;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -398,6 +399,7 @@ nativa permanecem no roteiro.
 - shadowing persistente de packages com resolução explícita de conflitos herdados;
 - construção declarativa de packages com opções em fases para shadow, use,
   importação, internamento e exportação;
+- topologia reversível de uso/exportação com consultas novas de relacionamentos;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

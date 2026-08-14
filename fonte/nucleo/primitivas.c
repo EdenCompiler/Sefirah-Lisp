@@ -1177,13 +1177,96 @@ static SefValor primitiva_packagep(SefRuntime *runtime, SefValor argumentos, Sef
 static SefValor primitiva_use_package(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 2, "USE-PACKAGE", erro))
         return NULL;
-    SefValor usado = pacote_designador(runtime, car(argumentos), erro);
     SefValor destino = cdr(argumentos) == runtime->nulo
                            ? runtime->pacote_atual
                            : pacote_designador(runtime, car(cdr(argumentos)), erro);
-    return usado != NULL && destino != NULL && sef_pacote_usar(runtime, destino, usado, erro)
-               ? runtime->verdadeiro
-               : NULL;
+    if (destino == NULL)
+        return NULL;
+    SefValor designadores = car(argumentos);
+    bool lista = designadores == runtime->nulo || designadores->tipo == SEF_TIPO_PAR;
+    if (lista && !sef_e_lista_propria(runtime, designadores)) {
+        sef_erro_definir(erro, 0, 0, "USE-PACKAGE requires a package designator or proper list");
+        return NULL;
+    }
+    while (lista && designadores != runtime->nulo) {
+        SefValor designador = car(designadores);
+        SefValor usado = pacote_designador(runtime, designador, erro);
+        if (usado == NULL || !sef_pacote_usar(runtime, destino, usado, erro))
+            return NULL;
+        designadores = cdr(designadores);
+    }
+    if (!lista) {
+        SefValor usado = pacote_designador(runtime, designadores, erro);
+        if (usado == NULL || !sef_pacote_usar(runtime, destino, usado, erro))
+            return NULL;
+    }
+    return runtime->verdadeiro;
+}
+
+static SefValor primitiva_unuse_package(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "UNUSE-PACKAGE", erro))
+        return NULL;
+    SefValor destino = cdr(argumentos) == runtime->nulo
+                           ? runtime->pacote_atual
+                           : pacote_designador(runtime, car(cdr(argumentos)), erro);
+    if (destino == NULL)
+        return NULL;
+    SefValor designadores = car(argumentos);
+    bool lista = designadores == runtime->nulo || designadores->tipo == SEF_TIPO_PAR;
+    if (lista && !sef_e_lista_propria(runtime, designadores)) {
+        sef_erro_definir(erro, 0, 0, "UNUSE-PACKAGE requires a package designator or proper list");
+        return NULL;
+    }
+    while (lista && designadores != runtime->nulo) {
+        SefValor designador = car(designadores);
+        SefValor usado = pacote_designador(runtime, designador, erro);
+        if (usado == NULL || !sef_pacote_deixar_de_usar(runtime, destino, usado, erro))
+            return NULL;
+        designadores = cdr(designadores);
+    }
+    if (!lista) {
+        SefValor usado = pacote_designador(runtime, designadores, erro);
+        if (usado == NULL || !sef_pacote_deixar_de_usar(runtime, destino, usado, erro))
+            return NULL;
+    }
+    return runtime->verdadeiro;
+}
+
+static SefValor lista_pacotes_usados(SefRuntime *runtime, SefValor pacote, SefErro *erro) {
+    SefValor resultado = runtime->nulo;
+    for (size_t i = pacote->como.pacote.quantidade_usados; i > 0; i--) {
+        resultado = sef_par_novo(runtime, pacote->como.pacote.usados[i - 1], resultado, erro);
+        if (resultado == NULL)
+            return NULL;
+    }
+    return resultado;
+}
+
+static SefValor primitiva_package_use_list(SefRuntime *runtime, SefValor argumentos,
+                                           SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "PACKAGE-USE-LIST", erro))
+        return NULL;
+    SefValor pacote = pacote_designador(runtime, car(argumentos), erro);
+    return pacote == NULL ? NULL : lista_pacotes_usados(runtime, pacote, erro);
+}
+
+static SefValor primitiva_package_used_by_list(SefRuntime *runtime, SefValor argumentos,
+                                               SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "PACKAGE-USED-BY-LIST", erro))
+        return NULL;
+    SefValor pacote = pacote_designador(runtime, car(argumentos), erro);
+    if (pacote == NULL)
+        return NULL;
+    SefValor resultado = runtime->nulo;
+    for (size_t i = runtime->quantidade_pacotes; i > 0; i--) {
+        SefValor candidato = runtime->pacotes[i - 1];
+        if (!sef_pacote_usa(candidato, pacote) || candidato == pacote)
+            continue;
+        resultado = sef_par_novo(runtime, candidato, resultado, erro);
+        if (resultado == NULL)
+            return NULL;
+    }
+    return resultado;
 }
 
 static SefValor primitiva_export(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -1203,6 +1286,30 @@ static SefValor primitiva_export(SefRuntime *runtime, SefValor argumentos, SefEr
     }
     while (simbolos != runtime->nulo) {
         if (!sef_pacote_exportar(runtime, pacote, car(simbolos), erro))
+            return NULL;
+        simbolos = cdr(simbolos);
+    }
+    return runtime->verdadeiro;
+}
+
+static SefValor primitiva_unexport(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "UNEXPORT", erro))
+        return NULL;
+    SefValor pacote = cdr(argumentos) == runtime->nulo
+                          ? runtime->pacote_atual
+                          : pacote_designador(runtime, car(cdr(argumentos)), erro);
+    if (pacote == NULL)
+        return NULL;
+    SefValor simbolos = car(argumentos);
+    if (sef_valor_e_simbolo_logico(runtime, simbolos))
+        return sef_pacote_deixar_de_exportar(runtime, pacote, simbolos, erro) ? runtime->verdadeiro
+                                                                              : NULL;
+    if (!sef_e_lista_propria(runtime, simbolos)) {
+        sef_erro_definir(erro, 0, 0, "UNEXPORT requires a symbol or list of symbols");
+        return NULL;
+    }
+    while (simbolos != runtime->nulo) {
+        if (!sef_pacote_deixar_de_exportar(runtime, pacote, car(simbolos), erro))
             return NULL;
         simbolos = cdr(simbolos);
     }
@@ -1957,7 +2064,11 @@ static const struct {
                   {"PACKAGE-NAME", primitiva_package_name},
                   {"PACKAGEP", primitiva_packagep},
                   {"USE-PACKAGE", primitiva_use_package},
+                  {"UNUSE-PACKAGE", primitiva_unuse_package},
+                  {"PACKAGE-USE-LIST", primitiva_package_use_list},
+                  {"PACKAGE-USED-BY-LIST", primitiva_package_used_by_list},
                   {"EXPORT", primitiva_export},
+                  {"UNEXPORT", primitiva_unexport},
                   {"IMPORT", primitiva_import},
                   {"UNINTERN", primitiva_unintern},
                   {"SHADOW", primitiva_shadow},
