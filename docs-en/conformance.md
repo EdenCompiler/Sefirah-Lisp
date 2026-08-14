@@ -19,7 +19,7 @@ implementation.
 | --- | --- | --- |
 | Reader and printer | ◐ | Lists, dotted lists, strings, numbers, characters, vectors, escaped symbols, quote, function quote, and quasiquote work; readtables, radix syntax, and circular notation are missing. |
 | Evaluation and binding | ◐ | Lexical functions, macros, local functions, basic special variables, generalized places, and non-local control work; declarations and the full lambda-list protocol are missing. |
-| Symbols | ◐ | `NIL` has its external `COMMON-LISP` symbol identity. Tested contracts include symbol inquiries, separate value/function cells, writable binding accessors, unbinding, and persistent property lists through `SYMBOL-PLIST`, `GET`, and `REMPROP`; symbol creation/copying and gensyms remain missing. |
+| Symbols | ◐ | `NIL` has its external `COMMON-LISP` symbol identity. Tested contracts include inquiries, separate mutable cells, unbinding, persistent property lists, fresh uninterned `MAKE-SYMBOL`/`COPY-SYMBOL` identities, and `GENSYM` with `*GENSYM-COUNTER*`; symbol macros, `GENTEMP`, and complete function-name designators remain missing. |
 | Multiple values | ✅ | The implemented multiple-value forms preserve values across calls, cleanup, and non-local transfer. `GETHASH`, `READ-LINE`, `INTERN`, and `FIND-SYMBOL` expose their tested secondary values. |
 | Lists and sequences | ◐ | Core list operations and an initial sequence protocol cover lists, vectors, and UTF-8 strings; keyword arguments and the complete sequence function family are missing. |
 | Numbers | ◐ | Fixed-width integers and host doubles exist; bignums, ratios, complex numbers, exact overflow behavior, and the full numeric library are missing. |

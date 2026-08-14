@@ -1289,7 +1289,157 @@ static SefValor primitiva_symbol_package(SefRuntime *runtime, SefValor argumento
     }
     if (simbolo == runtime->nulo)
         return runtime->pacote_common_lisp;
-    return simbolo->como.simbolo.pacote == NULL ? runtime->nulo : simbolo->como.simbolo.pacote;
+    return sef_simbolo_nao_internado(runtime, simbolo) || simbolo->como.simbolo.pacote == NULL
+               ? runtime->nulo
+               : simbolo->como.simbolo.pacote;
+}
+
+static SefValor primitiva_make_symbol(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "MAKE-SYMBOL", erro))
+        return NULL;
+    SefValor nome = car(argumentos);
+    if (nome->tipo != SEF_TIPO_TEXTO) {
+        sef_erro_definir(erro, 0, 0, "MAKE-SYMBOL requires a string name");
+        return NULL;
+    }
+    return sef_simbolo_novo_nao_internado(runtime, nome->como.texto.dados, nome->como.texto.tamanho,
+                                          erro);
+}
+
+static SefValor copiar_lista_propriedades(SefRuntime *runtime, SefValor lista, SefErro *erro) {
+    SefValor copia = runtime->nulo;
+    SefValor *fim = &copia;
+    while (lista != runtime->nulo) {
+        SefValor chave = sef_par_novo(runtime, car(lista), runtime->nulo, erro);
+        SefValor valor =
+            chave == NULL ? NULL : sef_par_novo(runtime, car(cdr(lista)), runtime->nulo, erro);
+        if (valor == NULL)
+            return NULL;
+        chave->como.par.resto = valor;
+        *fim = chave;
+        fim = &valor->como.par.resto;
+        lista = cdr(cdr(lista));
+    }
+    return copia;
+}
+
+static SefValor primitiva_copy_symbol(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 2, "COPY-SYMBOL", erro))
+        return NULL;
+    SefValor original = car(argumentos);
+    const char *nome = NULL;
+    size_t tamanho = 0;
+    if (!sef_simbolo_nome_logico(runtime, original, &nome, &tamanho)) {
+        sef_erro_definir(erro, 0, 0, "COPY-SYMBOL requires a symbol");
+        return NULL;
+    }
+    SefValor copia = sef_simbolo_novo_nao_internado(runtime, nome, tamanho, erro);
+    bool copiar_propriedades =
+        cdr(argumentos) != runtime->nulo && car(cdr(argumentos)) != runtime->nulo;
+    if (copia == NULL || !copiar_propriedades)
+        return copia;
+
+    SefValor lista = sef_simbolo_lista_propriedades(runtime, original, erro);
+    SefValor lista_copiada = lista == NULL ? NULL : copiar_lista_propriedades(runtime, lista, erro);
+    if (lista_copiada == NULL ||
+        !sef_simbolo_lista_propriedades_definir(runtime, copia, lista_copiada, erro))
+        return NULL;
+
+    SefValor valor = NULL;
+    bool vinculado = sef_simbolo_e_constante(runtime, original);
+    if (vinculado)
+        valor = original;
+    else
+        vinculado = sef_ambiente_obter(runtime->ambiente_global, original, &valor);
+    if (vinculado && !sef_ambiente_definir(runtime, runtime->ambiente_global, copia, valor, erro))
+        return NULL;
+    if (sef_ambiente_obter_funcao(runtime->ambiente_global, original, &valor) &&
+        !sef_ambiente_definir_funcao(runtime, runtime->ambiente_global, copia, valor, erro))
+        return NULL;
+    return copia;
+}
+
+static bool contador_gensym_instalar(SefRuntime *runtime, SefErro *erro) {
+    static const char nome[] = "*GENSYM-COUNTER*";
+    SefValor simbolo =
+        sef_simbolo_internar_em(runtime, runtime->pacote_common_lisp, nome, sizeof(nome) - 1, erro);
+    if (simbolo == NULL ||
+        !sef_pacote_exportar(runtime, runtime->pacote_common_lisp, simbolo, erro))
+        return false;
+    SefValor existente = NULL;
+    if (sef_ambiente_obter(runtime->ambiente_global, simbolo, &existente))
+        return true;
+    SefValor zero = sef_inteiro_novo(runtime, 0, erro);
+    return zero != NULL &&
+           sef_ambiente_definir(runtime, runtime->ambiente_global, simbolo, zero, erro);
+}
+
+static SefValor primitiva_gensym(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 0, 1, "GENSYM", erro))
+        return NULL;
+    const char *prefixo = "G";
+    size_t tamanho_prefixo = 1;
+    int64_t sufixo = 0;
+    bool incrementar = true;
+    if (argumentos != runtime->nulo) {
+        SefValor opcao = car(argumentos);
+        if (opcao->tipo == SEF_TIPO_TEXTO) {
+            prefixo = opcao->como.texto.dados;
+            tamanho_prefixo = opcao->como.texto.tamanho;
+        } else if (opcao->tipo == SEF_TIPO_INTEIRO && opcao->como.inteiro >= 0) {
+            sufixo = opcao->como.inteiro;
+            incrementar = false;
+        } else {
+            sef_erro_definir(erro, 0, 0,
+                             "GENSYM argument must be a string or non-negative integer");
+            return NULL;
+        }
+    }
+    static const char nome_contador[] = "*GENSYM-COUNTER*";
+    SefValor simbolo_contador = NULL;
+    SefValor contador = NULL;
+    if (incrementar) {
+        simbolo_contador = sef_pacote_localizar_simbolo(runtime->pacote_common_lisp, nome_contador,
+                                                        sizeof(nome_contador) - 1, false);
+        if (simbolo_contador == NULL ||
+            !sef_ambiente_obter(runtime->ambiente_global, simbolo_contador, &contador)) {
+            sef_erro_definir(erro, 0, 0, "GENSYM counter is unbound");
+            return NULL;
+        }
+        if (contador->tipo != SEF_TIPO_INTEIRO || contador->como.inteiro < 0) {
+            sef_erro_definir(erro, 0, 0, "*GENSYM-COUNTER* must be a non-negative integer");
+            return NULL;
+        }
+        sufixo = contador->como.inteiro;
+    }
+    if (incrementar && contador->como.inteiro == INT64_MAX) {
+        sef_erro_definir(erro, 0, 0, "*GENSYM-COUNTER* exceeded its maximum value");
+        return NULL;
+    }
+    char texto_sufixo[32];
+    int escritos = snprintf(texto_sufixo, sizeof(texto_sufixo), "%lld", (long long)sufixo);
+    if (escritos < 0 || (size_t)escritos >= sizeof(texto_sufixo) ||
+        tamanho_prefixo > SIZE_MAX - (size_t)escritos) {
+        sef_erro_definir(erro, 0, 0, "GENSYM name is too large");
+        return NULL;
+    }
+    size_t tamanho = tamanho_prefixo + (size_t)escritos;
+    char *nome = malloc(tamanho == 0 ? 1 : tamanho);
+    if (nome == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for GENSYM name");
+        return NULL;
+    }
+    memcpy(nome, prefixo, tamanho_prefixo);
+    memcpy(nome + tamanho_prefixo, texto_sufixo, (size_t)escritos);
+    SefValor simbolo = sef_simbolo_novo_nao_internado(runtime, nome, tamanho, erro);
+    free(nome);
+    if (simbolo == NULL || !incrementar)
+        return simbolo;
+    SefValor proximo = sef_inteiro_novo(runtime, contador->como.inteiro + 1, erro);
+    return proximo != NULL &&
+                   sef_ambiente_atribuir(runtime->ambiente_global, simbolo_contador, proximo)
+               ? simbolo
+               : NULL;
 }
 
 static SefValor primitiva_symbol_plist(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -1705,6 +1855,9 @@ static const struct {
                   {"FIND-SYMBOL", primitiva_find_symbol},
                   {"SYMBOL-NAME", primitiva_symbol_name},
                   {"SYMBOL-PACKAGE", primitiva_symbol_package},
+                  {"MAKE-SYMBOL", primitiva_make_symbol},
+                  {"COPY-SYMBOL", primitiva_copy_symbol},
+                  {"GENSYM", primitiva_gensym},
                   {"SYMBOL-PLIST", primitiva_symbol_plist},
                   {"GET", primitiva_get},
                   {"REMPROP", primitiva_remprop},
@@ -1741,7 +1894,7 @@ bool sef_primitivas_instalar(SefRuntime *runtime, SefErro *erro) {
             return false;
         }
     }
-    return true;
+    return contador_gensym_instalar(runtime, erro);
 }
 
 bool sef_primitivas_reconciliar(SefRuntime *runtime, SefErro *erro) {
@@ -1749,5 +1902,5 @@ bool sef_primitivas_reconciliar(SefRuntime *runtime, SefErro *erro) {
         if (!instalar(runtime, primitivas[i].nome, primitivas[i].funcao, true, erro))
             return false;
     }
-    return true;
+    return contador_gensym_instalar(runtime, erro);
 }

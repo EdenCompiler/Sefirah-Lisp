@@ -203,6 +203,10 @@ lets an older world acquire new built-ins without serializing or trusting stale
 C addresses. Symbol property lists live in an internal heap hash table rooted
 by the global environment, so the existing v10 graph encoding persists them;
 older images naturally begin with an empty table on first use.
+Uninterned symbols reference an implementation-private package sentinel that
+is absent from the public package registry. This keeps the v10 reference graph
+valid while `SYMBOL-PACKAGE`, printing, and inspection expose the required
+uninterned semantics.
 
 Process resources follow an explicit policy:
 

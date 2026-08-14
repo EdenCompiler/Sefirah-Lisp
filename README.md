@@ -61,6 +61,8 @@ the roadmap.
   `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND`, and generalized `SETF` places;
 - persistent symbol metadata through `SYMBOL-PLIST`, `GET`, `REMPROP`, and
   generalized `SETF` places;
+- fresh uninterned symbols through `MAKE-SYMBOL`, `COPY-SYMBOL`, and `GENSYM`,
+  including world-image persistence;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -386,6 +388,8 @@ nativa permanecem no roteiro.
   `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND` e lugares `SETF`;
 - metadados persistentes de símbolos por `SYMBOL-PLIST`, `GET`, `REMPROP` e
   lugares generalizados de `SETF`;
+- símbolos novos e não internados por `MAKE-SYMBOL`, `COPY-SYMBOL` e `GENSYM`,
+  incluindo persistência na imagem do mundo;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

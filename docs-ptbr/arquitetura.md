@@ -215,6 +215,10 @@ serializar nem confiar em endereços C obsoletos. As property lists dos símbolo
 vivem em uma tabela hash interna do heap, enraizada pelo ambiente global;
 portanto, a codificação existente do grafo v10 as preserva, enquanto imagens
 antigas começam naturalmente com uma tabela vazia no primeiro uso.
+Símbolos não internados referenciam uma sentinela de package privada da
+implementação, ausente do registro público de packages. Isso mantém válido o
+grafo de referências v10 enquanto `SYMBOL-PACKAGE`, impressão e inspeção
+expõem a semântica não internada exigida.
 
 Recursos do processo seguem uma política explícita:
 

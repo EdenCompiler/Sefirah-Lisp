@@ -74,6 +74,12 @@ int main(void) {
                       !texto_contem_portugues(erro.mensagem),
                   "symbol property diagnostics are English");
 
+        resultado = sef_runtime_avaliar_texto(runtime, "(gensym -1)", &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "non-negative integer") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "uninterned symbol diagnostics are English");
+
         resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
         char *impresso =
             resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);

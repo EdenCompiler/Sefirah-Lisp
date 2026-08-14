@@ -50,7 +50,7 @@ faz parte do formato público.
 | sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | números | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=` e `/=` |
 | funções | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
-| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
+| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `MAKE-SYMBOL`, `COPY-SYMBOL`, `GENSYM`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Símbolos possuem células separadas de valor e função. Portanto, uma variável e
 uma função podem compartilhar o mesmo nome:
@@ -89,6 +89,24 @@ imagens v10 do mundo:
 (get 'resposta :documentation) ; => "A resposta definitiva"
 (remprop 'resposta :documentation) ; => T
 ```
+
+`MAKE-SYMBOL` cria um símbolo novo e não internado cujo nome preserva
+exatamente a string. `COPY-SYMBOL` também cria um símbolo novo; com segundo
+argumento diferente de `NIL`, copia superficialmente a espinha da property
+list e as células vinculadas de valor e função. `GENSYM` aceita o prefixo
+string ou sufixo inteiro não negativo padrão e, nos demais casos, usa o
+`*GENSYM-COUNTER*` mutável:
+
+```lisp
+(setf *gensym-counter* 41)
+(gensym)         ; => #:G41
+(gensym "tmp-") ; => #:|tmp-42|
+(gensym 7)       ; => #:G7, sem alterar o contador
+```
+
+Identidades não internadas, células copiadas, metadados e o contador gensym
+permanecem após restaurar a imagem do mundo. O inspetor vivo expõe `PACKAGE`
+como `NIL` e uma aresta `PROPERTIES` nesses símbolos.
 
 ## Listas
 

@@ -501,6 +501,75 @@ SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const cha
     return simbolo;
 }
 
+static const char nome_pacote_nao_internado[] = "SEFIRAH-PRIVATE-UNINTERNED-SYMBOLS";
+
+static bool pacote_registrado(const SefRuntime *runtime, SefValor pacote) {
+    for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
+        if (runtime->pacotes[i] == pacote)
+            return true;
+    }
+    return false;
+}
+
+static bool pacote_e_sentinela_interno(const SefRuntime *runtime, SefValor pacote) {
+    return pacote != NULL && pacote->tipo == SEF_TIPO_PACOTE &&
+           !pacote_registrado(runtime, pacote) &&
+           strcmp(pacote->como.pacote.nome, nome_pacote_nao_internado) == 0;
+}
+
+static SefValor pacote_nao_internado_obter(SefRuntime *runtime, SefErro *erro) {
+    for (size_t i = 0; i < runtime->quantidade_simbolos; i++) {
+        SefValor pacote = runtime->simbolos[i]->como.simbolo.pacote;
+        if (pacote_e_sentinela_interno(runtime, pacote))
+            return pacote;
+    }
+    SefValor pacote = sef_objeto_novo(runtime, SEF_TIPO_PACOTE, erro);
+    if (pacote == NULL)
+        return NULL;
+    pacote->como.pacote.nome =
+        copiar_nome_exato(nome_pacote_nao_internado, sizeof(nome_pacote_nao_internado) - 1);
+    if (pacote->como.pacote.nome == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for uninterned symbol storage");
+        return NULL;
+    }
+    runtime->bytes_aproximados += sizeof(nome_pacote_nao_internado);
+    return pacote;
+}
+
+SefValor sef_simbolo_novo_nao_internado(SefRuntime *runtime, const char *nome, size_t tamanho,
+                                        SefErro *erro) {
+    if (runtime == NULL || (nome == NULL && tamanho > 0)) {
+        sef_erro_definir(erro, 0, 0, "invalid name while creating uninterned symbol");
+        return NULL;
+    }
+    if (!vetor_valores_crescer(&runtime->simbolos, &runtime->capacidade_simbolos,
+                               runtime->quantidade_simbolos + 1, erro))
+        return NULL;
+    SefValor pacote = pacote_nao_internado_obter(runtime, erro);
+    char *copia = pacote == NULL ? NULL : copiar_nome_exato(nome == NULL ? "" : nome, tamanho);
+    if (copia == NULL) {
+        if (!erro->ocorreu)
+            sef_erro_definir(erro, 0, 0, "not enough memory for uninterned symbol name");
+        return NULL;
+    }
+    SefValor simbolo = sef_objeto_novo(runtime, SEF_TIPO_SIMBOLO, erro);
+    if (simbolo == NULL) {
+        free(copia);
+        return NULL;
+    }
+    simbolo->como.simbolo.nome = copia;
+    simbolo->como.simbolo.tamanho = tamanho;
+    simbolo->como.simbolo.pacote = pacote;
+    runtime->bytes_aproximados += tamanho + 1;
+    runtime->simbolos[runtime->quantidade_simbolos++] = simbolo;
+    return simbolo;
+}
+
+bool sef_simbolo_nao_internado(const SefRuntime *runtime, SefValor simbolo) {
+    return runtime != NULL && simbolo != NULL && simbolo->tipo == SEF_TIPO_SIMBOLO &&
+           pacote_e_sentinela_interno(runtime, simbolo->como.simbolo.pacote);
+}
+
 static void substituir_simbolo_em_vetor(SefValor *valores, size_t quantidade, SefValor antigo,
                                         SefValor novo) {
     for (size_t i = 0; i < quantidade; i++)
@@ -998,9 +1067,9 @@ size_t sef_valor_quantidade_componentes(const SefRuntime *runtime, SefValor valo
         return 0;
     switch (valor->tipo) {
     case SEF_TIPO_NULO:
-        return 1;
+        return 2;
     case SEF_TIPO_SIMBOLO:
-        return valor->como.simbolo.pacote == NULL ? 0 : 1;
+        return 2;
     case SEF_TIPO_PAR:
         return 2;
     case SEF_TIPO_FUNCAO:
@@ -1065,6 +1134,14 @@ static bool componente_hash(SefValor valor, size_t indice, SefValor *componente,
     return false;
 }
 
+static bool componente_propriedades(const SefRuntime *runtime, SefValor simbolo,
+                                    SefValor *componente, char *rotulo, size_t capacidade_rotulo) {
+    SefErro erro;
+    sef_erro_limpar(&erro);
+    *componente = sef_simbolo_lista_propriedades((SefRuntime *)runtime, simbolo, &erro);
+    return *componente != NULL && definir_rotulo(rotulo, capacidade_rotulo, "PROPERTIES");
+}
+
 bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indice,
                           SefValor *componente, char *rotulo, size_t capacidade_rotulo) {
     if (runtime == NULL || valor == NULL || componente == NULL || rotulo == NULL ||
@@ -1072,11 +1149,18 @@ bool sef_valor_componente(const SefRuntime *runtime, SefValor valor, size_t indi
         return false;
     switch (valor->tipo) {
     case SEF_TIPO_NULO:
-        *componente = runtime->pacote_common_lisp;
-        return definir_rotulo(rotulo, capacidade_rotulo, "PACKAGE");
+        if (indice == 0) {
+            *componente = runtime->pacote_common_lisp;
+            return definir_rotulo(rotulo, capacidade_rotulo, "PACKAGE");
+        }
+        return componente_propriedades(runtime, valor, componente, rotulo, capacidade_rotulo);
     case SEF_TIPO_SIMBOLO:
-        *componente = valor->como.simbolo.pacote;
-        return definir_rotulo(rotulo, capacidade_rotulo, "PACKAGE");
+        if (indice == 0) {
+            *componente = sef_simbolo_nao_internado(runtime, valor) ? runtime->nulo
+                                                                    : valor->como.simbolo.pacote;
+            return definir_rotulo(rotulo, capacidade_rotulo, "PACKAGE");
+        }
+        return componente_propriedades(runtime, valor, componente, rotulo, capacidade_rotulo);
     case SEF_TIPO_PAR:
         *componente = indice == 0 ? valor->como.par.primeiro : valor->como.par.resto;
         return definir_rotulo(rotulo, capacidade_rotulo, "%s", indice == 0 ? "CAR" : "CDR");

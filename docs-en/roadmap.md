@@ -62,6 +62,8 @@ not mean the entire milestone is complete.
   `FMAKUNBOUND`, and generalized `SETF` access.
 - [x] Persistent symbol property lists with `SYMBOL-PLIST`, `GET`, `REMPROP`,
   `NIL` support, and generalized `SETF` access.
+- [x] Uninterned `MAKE-SYMBOL`/`COPY-SYMBOL` identities and deterministic
+  `GENSYM` with persistent `*GENSYM-COUNTER*`.
 
 ### Compiler
 

@@ -241,6 +241,9 @@ bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t ind
 SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho, SefErro *erro);
 SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const char *nome,
                                  size_t tamanho, SefErro *erro);
+SefValor sef_simbolo_novo_nao_internado(SefRuntime *runtime, const char *nome, size_t tamanho,
+                                        SefErro *erro);
+bool sef_simbolo_nao_internado(const SefRuntime *runtime, SefValor simbolo);
 bool sef_valor_e_simbolo_logico(const SefRuntime *runtime, SefValor valor);
 bool sef_simbolo_e_constante(const SefRuntime *runtime, SefValor simbolo);
 bool sef_simbolo_nome_logico(const SefRuntime *runtime, SefValor simbolo, const char **nome,

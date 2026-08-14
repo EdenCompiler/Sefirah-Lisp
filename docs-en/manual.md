@@ -49,7 +49,7 @@ not part of the public format.
 | sequences | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | numbers | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=`, and `/=` |
 | functions | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
-| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
+| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `MAKE-SYMBOL`, `COPY-SYMBOL`, `GENSYM`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Symbols have separate value and function cells, so a variable and a function
 can share a name:
@@ -88,6 +88,23 @@ images:
 (get 'answer :documentation) ; => "The ultimate answer"
 (remprop 'answer :documentation) ; => T
 ```
+
+`MAKE-SYMBOL` creates a fresh uninterned symbol whose exact string name is
+preserved. `COPY-SYMBOL` also creates a fresh symbol; with a non-`NIL` second
+argument it shallow-copies the property-list spine and copies bound value and
+function cells. `GENSYM` accepts the standard optional string prefix or
+non-negative integer suffix and uses the mutable `*GENSYM-COUNTER*` otherwise:
+
+```lisp
+(setf *gensym-counter* 41)
+(gensym)        ; => #:G41
+(gensym "tmp-") ; => #:|tmp-42|
+(gensym 7)      ; => #:G7, without changing the counter
+```
+
+Uninterned identities, copied cells, property metadata, and the gensym counter
+survive world-image restoration. The live inspector exposes `PACKAGE` as `NIL`
+and a `PROPERTIES` edge for such symbols.
 
 ## Lists
 

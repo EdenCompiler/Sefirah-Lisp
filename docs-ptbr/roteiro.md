@@ -64,6 +64,8 @@ não significa que o marco inteiro esteja concluído.
   `FMAKUNBOUND` e acesso generalizado por `SETF`.
 - [x] Property lists persistentes de símbolos com `SYMBOL-PLIST`, `GET`,
   `REMPROP`, suporte a `NIL` e acesso generalizado por `SETF`.
+- [x] Identidades não internadas por `MAKE-SYMBOL`/`COPY-SYMBOL` e `GENSYM`
+  determinístico com `*GENSYM-COUNTER*` persistente.
 
 ### Compilador
 

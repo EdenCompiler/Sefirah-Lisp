@@ -346,11 +346,14 @@ int main(int argc, char **argv) {
             strcmp(rotulo_componente, "CDR") == 0 && sef_valor_como_inteiro(componente_sdk) == 42,
         "SDK expôs os dois componentes de um par");
     SefValor nulo_sdk = avaliar(runtime, "nil");
-    verificar(sef_valor_quantidade_componentes(runtime, nulo_sdk) == 1 &&
+    verificar(sef_valor_quantidade_componentes(runtime, nulo_sdk) == 2 &&
                   sef_valor_componente(runtime, nulo_sdk, 0, &componente_sdk, rotulo_componente,
                                        sizeof(rotulo_componente)) &&
                   strcmp(rotulo_componente, "PACKAGE") == 0 &&
-                  strcmp(sef_valor_nome_tipo(componente_sdk), "PACKAGE") == 0,
+                  strcmp(sef_valor_nome_tipo(componente_sdk), "PACKAGE") == 0 &&
+                  sef_valor_componente(runtime, nulo_sdk, 1, &componente_sdk, rotulo_componente,
+                                       sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "PROPERTIES") == 0 && componente_sdk == nulo_sdk,
               "SDK preservou a identidade simbolica de NIL na introspeccao");
     SefValor funcao_sdk = avaliar(runtime, "#'(lambda (x) (+ x 1))");
     verificar(sef_valor_quantidade_componentes(runtime, funcao_sdk) == 3 &&
@@ -500,6 +503,28 @@ int main(int argc, char **argv) {
                     "(handler-case (setf (symbol-plist 'metadata) cyclic) "
                     "(error (condition) (list :cyclic (type-of condition)))))",
                     "(:CYCLIC ERROR)");
+    verificar_texto(runtime,
+                    "(let ((a (make-symbol \"MiXeD\")) (b (make-symbol \"MiXeD\"))) "
+                    "(list a (symbol-name a) (symbol-package a) (eq a b)))",
+                    "(#:|MiXeD| \"MiXeD\" NIL NIL)");
+    verificar_texto(runtime,
+                    "(progn (setf (symbol-value 'copy-source) 40) "
+                    "(setf (get 'copy-source :tag) 42) "
+                    "(defun copy-source (x) (+ x 2)) "
+                    "(let ((copy (copy-symbol 'copy-source t)) "
+                    "(empty (copy-symbol 'copy-source))) "
+                    "(list (symbol-package copy) (boundp copy) (symbol-value copy) "
+                    "(fboundp copy) (get copy :tag) "
+                    "(funcall (symbol-function copy) 40) "
+                    "(boundp empty) (fboundp empty) (symbol-plist empty))))",
+                    "(NIL T 40 T 42 42 NIL NIL NIL)");
+    verificar_texto(runtime,
+                    "(progn (setf *gensym-counter* 41) "
+                    "(let ((a (gensym)) (b (gensym \"tmp-\")) (c (gensym 7))) "
+                    "(list (symbol-name a) (symbol-name b) (symbol-name c) "
+                    "*gensym-counter* (not (eq a b)) (symbol-package a) "
+                    "(symbol-package b) (symbol-package c))))",
+                    "(\"G41\" \"tmp-42\" \"G7\" 43 T NIL NIL NIL)");
     verificar_texto(runtime,
                     "(define celula-separada 41) "
                     "(defun celula-separada () 42) "
@@ -944,6 +969,8 @@ int main(int argc, char **argv) {
                     "(define vetor-da-imagem (vector 'persistente 41 42)) "
                     "(define caractere-da-imagem #\\λ) "
                     "(define tabela-da-imagem (make-hash-table)) "
+                    "(define simbolo-da-imagem (gensym \"saved-\")) "
+                    "(setf (get simbolo-da-imagem :answer) 42) "
                     "(setf (symbol-value 'binding-da-imagem) 40) "
                     "(setf (fdefinition 'soma-da-imagem) (symbol-function '+)) "
                     "(setf (gethash 'resposta tabela-da-imagem) 42 "
@@ -966,6 +993,12 @@ int main(int argc, char **argv) {
     if (runtime != NULL)
         verificar_texto(runtime, "(list (symbol-plist 'metadata) (get nil :documentation))",
                         "((:A 1 :B 2) \"empty-list symbol\")");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(list (symbol-name simbolo-da-imagem) "
+                        "(symbol-package simbolo-da-imagem) "
+                        "(get simbolo-da-imagem :answer))",
+                        "(\"saved-43\" NIL 42)");
     if (runtime != NULL)
         verificar_texto(runtime, "(setf (aref vetor-da-imagem 1) 42) vetor-da-imagem",
                         "#(PERSISTENTE 42 42)");

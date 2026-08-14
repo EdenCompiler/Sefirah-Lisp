@@ -197,6 +197,10 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
     case SEF_TIPO_TEXTO:
         return imprimir_texto(texto, valor, legivel, erro);
     case SEF_TIPO_SIMBOLO:
+        if (sef_simbolo_nao_internado(runtime, valor) || valor->como.simbolo.pacote == NULL)
+            return anexar(texto, "#:", erro) &&
+                   imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
+                                         valor->como.simbolo.tamanho, legivel, erro);
         if (valor->como.simbolo.pacote == runtime->pacote_keyword)
             return anexar(texto, ":", erro) &&
                    imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
@@ -204,10 +208,6 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
         if (valor->como.simbolo.pacote == runtime->pacote_atual ||
             sef_pacote_usa(runtime->pacote_atual, valor->como.simbolo.pacote))
             return imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
-                                         valor->como.simbolo.tamanho, legivel, erro);
-        if (valor->como.simbolo.pacote == NULL)
-            return anexar(texto, "#:", erro) &&
-                   imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
                                          valor->como.simbolo.tamanho, legivel, erro);
         return anexar(texto, valor->como.simbolo.pacote->como.pacote.nome, erro) &&
                anexar(texto,
