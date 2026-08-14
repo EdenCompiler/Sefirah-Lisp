@@ -48,8 +48,8 @@ not part of the public format.
 | characters | `CHARACTERP`, `CHAR-CODE`, `CODE-CHAR`, and `CHAR...` comparisons |
 | sequences | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | numbers | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=`, and `/=` |
-| functions | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION` |
-| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `EQ`, `NOT`, `TYPE-OF` |
+| functions | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
+| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Symbols have separate value and function cells, so a variable and a function
 can share a name:
@@ -61,6 +61,21 @@ can share a name:
 ```
 
 `#'name` reads the function cell.
+
+`MAKUNBOUND` and `FMAKUNBOUND` remove global value and function bindings and
+return their symbol even when the cell was already empty. `FDEFINITION` reads
+the function cell. `SYMBOL-VALUE`, `SYMBOL-FUNCTION`, and `FDEFINITION` are
+writable `SETF` places, so a live world can install or replace definitions
+without restarting:
+
+```lisp
+(setf (symbol-value 'answer) 41)
+(setf (fdefinition 'sum) (symbol-function '+))
+(sum answer 1) ; => 42
+```
+
+Function names are currently limited to symbols; `(SETF name)` function names
+remain pending.
 
 ## Lists
 

@@ -317,9 +317,11 @@ bool sef_ambiente_definir(SefRuntime *runtime, SefValor ambiente, SefValor simbo
                           SefErro *erro);
 bool sef_ambiente_obter(SefValor ambiente, SefValor simbolo, SefValor *valor);
 bool sef_ambiente_atribuir(SefValor ambiente, SefValor simbolo, SefValor valor);
+bool sef_ambiente_remover(SefValor ambiente, SefValor simbolo);
 bool sef_ambiente_definir_funcao(SefRuntime *runtime, SefValor ambiente, SefValor simbolo,
                                  SefValor valor, SefErro *erro);
 bool sef_ambiente_obter_funcao(SefValor ambiente, SefValor simbolo, SefValor *valor);
+bool sef_ambiente_remover_funcao(SefValor ambiente, SefValor simbolo);
 
 void sef_leitor_iniciar(SefLeitor *leitor, SefRuntime *runtime, const char *codigo);
 SefValor sef_ler_forma(SefLeitor *leitor, bool *encontrou, SefErro *erro);

@@ -953,6 +953,50 @@ static SefValor primitiva_symbol_function(SefRuntime *runtime, SefValor argument
     return valor;
 }
 
+static SefValor primitiva_fdefinition(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "FDEFINITION", erro))
+        return NULL;
+    SefValor simbolo = car(argumentos);
+    SefValor valor;
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "FDEFINITION currently requires a symbol function name");
+        return NULL;
+    }
+    if (!sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &valor)) {
+        sef_erro_definir(erro, 0, 0, "function name has no global definition");
+        return NULL;
+    }
+    return valor;
+}
+
+static SefValor primitiva_makunbound(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "MAKUNBOUND", erro))
+        return NULL;
+    SefValor simbolo = car(argumentos);
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "MAKUNBOUND requires a symbol");
+        return NULL;
+    }
+    if (sef_simbolo_e_constante(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "MAKUNBOUND cannot modify a constant symbol");
+        return NULL;
+    }
+    sef_ambiente_remover(runtime->ambiente_global, simbolo);
+    return simbolo;
+}
+
+static SefValor primitiva_fmakunbound(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "FMAKUNBOUND", erro))
+        return NULL;
+    SefValor simbolo = car(argumentos);
+    if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "FMAKUNBOUND currently requires a symbol function name");
+        return NULL;
+    }
+    sef_ambiente_remover_funcao(runtime->ambiente_global, simbolo);
+    return simbolo;
+}
+
 static SefValor primitiva_set(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 2, 2, "SET", erro))
         return NULL;
@@ -1603,6 +1647,9 @@ static const struct {
                   {"FBOUNDP", primitiva_fboundp},
                   {"SYMBOL-VALUE", primitiva_symbol_value},
                   {"SYMBOL-FUNCTION", primitiva_symbol_function},
+                  {"FDEFINITION", primitiva_fdefinition},
+                  {"MAKUNBOUND", primitiva_makunbound},
+                  {"FMAKUNBOUND", primitiva_fmakunbound},
                   {"SET", primitiva_set},
                   {"SYMBOLP", primitiva_symbolp},
                   {"KEYWORDP", primitiva_keywordp},

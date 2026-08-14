@@ -129,6 +129,26 @@ int main(int argc, char **argv) {
                     "(constantp ''variavel) (constantp '(+ 1 2)))",
                     "(T T T T T T T NIL T NIL)");
     verificar_texto(runtime,
+                    "(list (setf (symbol-value 'live-binding) 41) "
+                    "(boundp 'live-binding) (symbol-value 'live-binding) "
+                    "(makunbound 'live-binding) (boundp 'live-binding))",
+                    "(41 T 41 LIVE-BINDING NIL)");
+    verificar_texto(runtime,
+                    "(progn (defun removable-function (x) (+ x 1)) "
+                    "(list (fboundp 'removable-function) (removable-function 41) "
+                    "(eq (fdefinition 'removable-function) "
+                    "(symbol-function 'removable-function)) "
+                    "(fmakunbound 'removable-function) (fboundp 'removable-function)))",
+                    "(T 42 T REMOVABLE-FUNCTION NIL)");
+    verificar_texto(runtime,
+                    "(progn (setf (fdefinition 'runtime-sum) (symbol-function '+)) "
+                    "(list (runtime-sum 19 23) (fmakunbound 'runtime-sum)))",
+                    "(42 RUNTIME-SUM)");
+    verificar_texto(runtime,
+                    "(handler-case (makunbound nil) (error (condition) "
+                    "(list :protected (type-of condition))))",
+                    "(:PROTECTED ERROR)");
+    verificar_texto(runtime,
                     "(list (eq (intern \"NIL\" \"COMMON-LISP\") nil) "
                     "(eq 'common-lisp:nil nil) "
                     "(multiple-value-list (find-symbol \"NIL\" \"COMMON-LISP\")) "
@@ -901,6 +921,8 @@ int main(int argc, char **argv) {
                     "(define vetor-da-imagem (vector 'persistente 41 42)) "
                     "(define caractere-da-imagem #\\λ) "
                     "(define tabela-da-imagem (make-hash-table)) "
+                    "(setf (symbol-value 'binding-da-imagem) 40) "
+                    "(setf (fdefinition 'soma-da-imagem) (symbol-function '+)) "
                     "(setf (gethash 'resposta tabela-da-imagem) 42 "
                     "(gethash 'dados tabela-da-imagem) (list 'persistente 42) "
                     "(gethash :self tabela-da-imagem) tabela-da-imagem) "
@@ -913,6 +935,11 @@ int main(int argc, char **argv) {
     verificar(runtime != NULL, "imagem foi reaberta");
     if (runtime != NULL)
         verificar_texto(runtime, "(usar-imagem 2)", "42");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(list (boundp 'binding-da-imagem) binding-da-imagem "
+                        "(soma-da-imagem binding-da-imagem 2))",
+                        "(T 40 42)");
     if (runtime != NULL)
         verificar_texto(runtime, "(setf (aref vetor-da-imagem 1) 42) vetor-da-imagem",
                         "#(PERSISTENTE 42 42)");

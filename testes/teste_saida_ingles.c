@@ -60,6 +60,12 @@ int main(void) {
         verificar(funcao == NULL && erro.ocorreu && texto_contem(erro.mensagem, "compilable") &&
                       !texto_contem_portugues(erro.mensagem),
                   "compiler diagnostics are English");
+
+        resultado = sef_runtime_avaliar_texto(runtime, "(makunbound nil)", &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "constant symbol") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "symbol binding diagnostics are English");
         sef_runtime_destruir(runtime);
     }
 

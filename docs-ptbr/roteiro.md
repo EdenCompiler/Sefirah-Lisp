@@ -60,6 +60,8 @@ não significa que o marco inteiro esteja concluído.
   inspeção, segurança quando inativos, GC e persistência em imagem.
 - [x] Auxiliares nomeados `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`
   e `USE-VALUE`.
+- [x] Células globais mutáveis de valor/função com `FDEFINITION`, `MAKUNBOUND`,
+  `FMAKUNBOUND` e acesso generalizado por `SETF`.
 
 ### Compilador
 

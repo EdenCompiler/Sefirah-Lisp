@@ -58,6 +58,8 @@ not mean the entire milestone is complete.
   inspection, inactive-state safety, GC, and image persistence.
 - [x] Named helpers `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`, and
   `USE-VALUE`.
+- [x] Mutable global value/function cells with `FDEFINITION`, `MAKUNBOUND`,
+  `FMAKUNBOUND`, and generalized `SETF` access.
 
 ### Compiler
 

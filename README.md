@@ -57,6 +57,8 @@ the roadmap.
 - public language symbols use English to converge with ANSI Common Lisp;
 - separate value/function cells, macros, quasiquote, packages, and non-local
   control with cleanup;
+- live installation, replacement, and removal of global bindings through
+  `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND`, and generalized `SETF` places;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -378,6 +380,8 @@ nativa permanecem no roteiro.
   Lisp;
 - células separadas de valor e função, macros, quasiquote, packages e controle
   não local com limpeza;
+- instalação, substituição e remoção de bindings globais no mundo vivo por
+  `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND` e lugares `SETF`;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

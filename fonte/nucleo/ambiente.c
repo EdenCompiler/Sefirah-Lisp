@@ -96,6 +96,25 @@ bool sef_ambiente_atribuir(SefValor ambiente, SefValor simbolo, SefValor valor) 
     return false;
 }
 
+static bool remover_vinculo(SefVinculo **inicio, SefValor simbolo) {
+    while (*inicio != NULL) {
+        SefVinculo *atual = *inicio;
+        if (atual->simbolo == simbolo) {
+            *inicio = atual->proximo;
+            free(atual);
+            return true;
+        }
+        inicio = &atual->proximo;
+    }
+    return false;
+}
+
+bool sef_ambiente_remover(SefValor ambiente, SefValor simbolo) {
+    if (ambiente == NULL || ambiente->tipo != SEF_TIPO_AMBIENTE)
+        return false;
+    return remover_vinculo(&ambiente->como.ambiente.vinculos, simbolo);
+}
+
 bool sef_ambiente_obter_funcao(SefValor ambiente, SefValor simbolo, SefValor *valor) {
     while (ambiente != NULL && ambiente->tipo == SEF_TIPO_AMBIENTE) {
         for (SefVinculo *atual = ambiente->como.ambiente.funcoes; atual != NULL;
@@ -108,4 +127,10 @@ bool sef_ambiente_obter_funcao(SefValor ambiente, SefValor simbolo, SefValor *va
         ambiente = ambiente->como.ambiente.pai;
     }
     return false;
+}
+
+bool sef_ambiente_remover_funcao(SefValor ambiente, SefValor simbolo) {
+    if (ambiente == NULL || ambiente->tipo != SEF_TIPO_AMBIENTE)
+        return false;
+    return remover_vinculo(&ambiente->como.ambiente.funcoes, simbolo);
 }

@@ -336,6 +336,41 @@ static SefValor atribuir_lugar(SefRuntime *runtime, SefValor lugar, SefValor for
     bool lugar_texto =
         sef_simbolo_tem_nome(operador, "CHAR") || sef_simbolo_tem_nome(operador, "SCHAR");
     bool lugar_elt = sef_simbolo_tem_nome(operador, "ELT");
+    bool lugar_valor_simbolo = sef_simbolo_tem_nome(operador, "SYMBOL-VALUE");
+    bool lugar_funcao_simbolo = sef_simbolo_tem_nome(operador, "SYMBOL-FUNCTION") ||
+                                sef_simbolo_tem_nome(operador, "FDEFINITION");
+    if (lugar_valor_simbolo || lugar_funcao_simbolo) {
+        if (!contar_exato(runtime, argumentos, 1, "symbol binding SETF place", erro))
+            return NULL;
+        SefValor simbolo = sef_avaliar(runtime, primeiro(argumentos), ambiente, erro);
+        if (simbolo == NULL)
+            return NULL;
+        SefValor valor = sef_avaliar(runtime, forma_valor, ambiente, erro);
+        if (valor == NULL)
+            return NULL;
+        if (!sef_valor_e_simbolo_logico(runtime, simbolo)) {
+            sef_erro_definir(erro, 0, 0, "symbol binding SETF place requires a symbol name");
+            return NULL;
+        }
+        if (lugar_valor_simbolo) {
+            if (sef_simbolo_e_constante(runtime, simbolo)) {
+                sef_erro_definir(erro, 0, 0,
+                                 "SETF of SYMBOL-VALUE cannot modify a constant symbol");
+                return NULL;
+            }
+            return sef_ambiente_definir(runtime, runtime->ambiente_global, simbolo, valor, erro)
+                       ? valor
+                       : NULL;
+        }
+        if (valor->tipo != SEF_TIPO_FUNCAO && valor->tipo != SEF_TIPO_NATIVA) {
+            sef_erro_definir(erro, 0, 0,
+                             "SETF of SYMBOL-FUNCTION or FDEFINITION requires a function");
+            return NULL;
+        }
+        return sef_ambiente_definir_funcao(runtime, runtime->ambiente_global, simbolo, valor, erro)
+                   ? valor
+                   : NULL;
+    }
     if (sef_simbolo_tem_nome(operador, "GETHASH")) {
         if (!contar_exato(runtime, argumentos, 2, "SETF GETHASH place", erro))
             return NULL;

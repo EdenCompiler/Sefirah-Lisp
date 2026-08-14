@@ -49,8 +49,8 @@ faz parte do formato público.
 | caracteres | `CHARACTERP`, `CHAR-CODE`, `CODE-CHAR` e comparadores `CHAR...` |
 | sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | números | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=` e `/=` |
-| funções | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION` |
-| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `EQ`, `NOT`, `TYPE-OF` |
+| funções | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
+| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Símbolos possuem células separadas de valor e função. Portanto, uma variável e
 uma função podem compartilhar o mesmo nome:
@@ -62,6 +62,21 @@ uma função podem compartilhar o mesmo nome:
 ```
 
 `#'nome` consulta a célula de função.
+
+`MAKUNBOUND` e `FMAKUNBOUND` removem bindings globais de valor e função e
+devolvem o símbolo mesmo quando a célula já estava vazia. `FDEFINITION`
+consulta a célula de função. `SYMBOL-VALUE`, `SYMBOL-FUNCTION` e `FDEFINITION`
+são lugares graváveis de `SETF`, permitindo instalar ou substituir definições
+no mundo vivo sem reiniciá-lo:
+
+```lisp
+(setf (symbol-value 'resposta) 41)
+(setf (fdefinition 'soma) (symbol-function '+))
+(soma resposta 1) ; => 42
+```
+
+Nomes de função estão limitados a símbolos neste estágio; nomes da forma
+`(SETF nome)` ainda estão pendentes.
 
 ## Listas
 

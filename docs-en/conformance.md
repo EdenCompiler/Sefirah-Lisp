@@ -19,7 +19,7 @@ implementation.
 | --- | --- | --- |
 | Reader and printer | ◐ | Lists, dotted lists, strings, numbers, characters, vectors, escaped symbols, quote, function quote, and quasiquote work; readtables, radix syntax, and circular notation are missing. |
 | Evaluation and binding | ◐ | Lexical functions, macros, local functions, basic special variables, generalized places, and non-local control work; declarations and the full lambda-list protocol are missing. |
-| Symbols | ◐ | `NIL` has its external `COMMON-LISP` symbol identity, and the tested inquiry/value contracts include `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP`, and `SYMBOL-VALUE`; property lists, symbol creation/copying, gensyms, and unbinding remain missing. |
+| Symbols | ◐ | `NIL` has its external `COMMON-LISP` symbol identity. Tested contracts include symbol inquiries, separate value/function cells, `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND`, and writable binding accessors; property lists, symbol creation/copying, and gensyms remain missing. |
 | Multiple values | ✅ | The implemented multiple-value forms preserve values across calls, cleanup, and non-local transfer. `GETHASH`, `READ-LINE`, `INTERN`, and `FIND-SYMBOL` expose their tested secondary values. |
 | Lists and sequences | ◐ | Core list operations and an initial sequence protocol cover lists, vectors, and UTF-8 strings; keyword arguments and the complete sequence function family are missing. |
 | Numbers | ◐ | Fixed-width integers and host doubles exist; bignums, ratios, complex numbers, exact overflow behavior, and the full numeric library are missing. |
@@ -52,6 +52,9 @@ implementation.
   not exposed yet.
 - Keyword symbols are external, self-evaluating, bound to themselves, and
   protected from assignment, but symbol property lists remain pending.
+- `FDEFINITION`, `FMAKUNBOUND`, and writable function-cell access currently
+  accept symbol function names; compound `(SETF name)` function names remain
+  pending.
 - `FIND-RESTART` and `COMPUTE-RESTARTS` return first-class `RESTART` objects;
   name and object designators preserve identity and inactive objects remain
   inspectable but cannot be invoked. Condition association and the `:REPORT`,

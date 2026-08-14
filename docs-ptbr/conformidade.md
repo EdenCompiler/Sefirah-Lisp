@@ -19,7 +19,7 @@ ao ANSI Common Lisp.
 | --- | --- | --- |
 | Leitor e impressor | ◐ | Listas, listas pontuadas, strings, números, caracteres, vetores, símbolos escapados, quote, function quote e quasiquote funcionam; faltam readtables, sintaxe de bases e notação circular. |
 | Avaliação e binding | ◐ | Funções lexicais, macros, funções locais, variáveis especiais iniciais, lugares generalizados e controle não local funcionam; faltam declarações e o protocolo completo de lambda lists. |
-| Símbolos | ◐ | `NIL` possui sua identidade de símbolo externo de `COMMON-LISP`, e os contratos testados de consulta/valor incluem `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `BOUNDP` e `SYMBOL-VALUE`; ainda faltam property lists, criação/cópia de símbolos, gensyms e operações de unbinding. |
+| Símbolos | ◐ | `NIL` possui sua identidade de símbolo externo de `COMMON-LISP`. Os contratos testados incluem consultas de símbolo, células separadas de valor/função, `FDEFINITION`, `MAKUNBOUND`, `FMAKUNBOUND` e accessors graváveis de binding; ainda faltam property lists, criação/cópia de símbolos e gensyms. |
 | Valores múltiplos | ✅ | As formas implementadas preservam valores entre chamadas, limpeza e transferência não local. `GETHASH`, `READ-LINE`, `INTERN` e `FIND-SYMBOL` expõem seus valores secundários testados. |
 | Listas e sequências | ◐ | Operações centrais de listas e um protocolo inicial de sequências cobrem listas, vetores e strings UTF-8; faltam argumentos keyword e a família completa de funções de sequência. |
 | Números | ◐ | Existem inteiros de largura fixa e doubles do hospedeiro; faltam bignums, razões, complexos, overflow exato e a biblioteca numérica completa. |
@@ -52,6 +52,9 @@ ao ANSI Common Lisp.
   ainda não são expostos.
 - Símbolos keyword são externos, autoavaliáveis, vinculados a si próprios e
   protegidos contra atribuição, mas as property lists de símbolos estão pendentes.
+- `FDEFINITION`, `FMAKUNBOUND` e a gravação da célula de função aceitam neste
+  estágio nomes de função que sejam símbolos; nomes compostos `(SETF nome)`
+  ainda estão pendentes.
 - `FIND-RESTART` e `COMPUTE-RESTARTS` devolvem objetos `RESTART` de primeira
   classe; designadores por nome e objeto preservam identidade, e objetos
   inativos continuam inspecionáveis, mas não podem ser invocados. Associação a
