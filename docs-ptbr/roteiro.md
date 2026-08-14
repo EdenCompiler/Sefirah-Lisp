@@ -74,6 +74,8 @@ não significa que o marco inteiro esteja concluído.
   `:IMPORT-FROM`, `:INTERN` e `:EXPORT`.
 - [x] `USE-PACKAGE`/`UNUSE-PACKAGE` e `EXPORT`/`UNEXPORT` reversíveis, com
   consultas novas das relações de uso e de packages usuários.
+- [x] Apelidos de packages persistentes e únicos por `DEFPACKAGE`,
+  `MAKE-PACKAGE`, `FIND-PACKAGE` e `PACKAGE-NICKNAMES`.
 
 ### Compilador
 

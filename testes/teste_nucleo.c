@@ -745,12 +745,16 @@ int main(int argc, char **argv) {
                     "(defpackage :definition-source-b (:use) (:export \"SHARED\")) "
                     "(defpackage :definition-target "
                     "(:use :definition-source-a :definition-source-b) "
+                    "(:nicknames :definition-target-short \"Definition-Target-Alias\") "
                     "(:export \"PUBLIC\") (:intern \"INTERNAL-ONLY\") "
                     "(:import-from :definition-source-a \"PRIVATE-A\") "
                     "(:shadow \"LOCAL\") "
                     "(:shadowing-import-from :definition-source-b \"SHARED\")) "
                     "(let ((shared (find-symbol \"SHARED\" \"DEFINITION-TARGET\"))) "
-                    "(list (eq shared (find-symbol \"SHARED\" \"DEFINITION-SOURCE-B\")) "
+                    "(list (eq (find-package \"definition-target-short\") "
+                    "(find-package \"Definition-Target-Alias\")) "
+                    "(package-nicknames \"definition-target-short\") "
+                    "(eq shared (find-symbol \"SHARED\" \"DEFINITION-SOURCE-B\")) "
                     "(eq shared (first "
                     "(package-shadowing-symbols \"DEFINITION-TARGET\"))) "
                     "(nth-value 1 (find-symbol \"PRIVATE-A\" \"DEFINITION-TARGET\")) "
@@ -759,7 +763,14 @@ int main(int argc, char **argv) {
                     "(nth-value 1 (find-symbol \"LOCAL\" \"DEFINITION-TARGET\")) "
                     "(nth-value 1 (find-symbol \"INTERNAL-ONLY\" \"DEFINITION-TARGET\")) "
                     "(nth-value 1 (find-symbol \"PUBLIC\" \"DEFINITION-TARGET\"))))",
-                    "(T T :INTERNAL \"DEFINITION-SOURCE-A\" :INTERNAL :INTERNAL :EXTERNAL)");
+                    "(T (\"DEFINITION-TARGET-SHORT\" \"DEFINITION-TARGET-ALIAS\") "
+                    "T T :INTERNAL \"DEFINITION-SOURCE-A\" :INTERNAL :INTERNAL :EXTERNAL)");
+    verificar_texto(runtime,
+                    "(let ((package (make-package \"CREATED-PACKAGE\" "
+                    ":nicknames (list \"CP\" \"Created-Alias\") :use nil))) "
+                    "(list (eq package (find-package \"cp\")) "
+                    "(package-nicknames package) (package-use-list package)))",
+                    "(T (\"CP\" \"CREATED-ALIAS\") NIL)");
     verificar_texto(runtime,
                     "(let ((target (find-package \"DEFINITION-TARGET\")) "
                     "(source-a (find-package \"DEFINITION-SOURCE-A\")) "
@@ -1125,7 +1136,10 @@ int main(int argc, char **argv) {
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(let ((shared (find-symbol \"SHARED\" \"DEFINITION-TARGET\"))) "
-                        "(list (eq shared "
+                        "(list (eq (find-package \"definition-target-alias\") "
+                        "(find-package \"DEFINITION-TARGET\")) "
+                        "(package-nicknames \"definition-target-short\") "
+                        "(eq shared "
                         "(find-symbol \"SHARED\" \"DEFINITION-SOURCE-B\")) "
                         "(eq shared (first "
                         "(package-shadowing-symbols \"DEFINITION-TARGET\"))) "
@@ -1133,7 +1147,8 @@ int main(int argc, char **argv) {
                         "(find-symbol \"PRIVATE-A\" \"DEFINITION-TARGET\")) "
                         "(nth-value 1 "
                         "(find-symbol \"PUBLIC\" \"DEFINITION-TARGET\"))))",
-                        "(T T :INTERNAL :EXTERNAL)");
+                        "(T (\"DEFINITION-TARGET-SHORT\" \"DEFINITION-TARGET-ALIAS\") "
+                        "T T :INTERNAL :EXTERNAL)");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (calcular-compilado 10 22) "

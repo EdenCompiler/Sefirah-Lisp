@@ -72,6 +72,8 @@ not mean the entire milestone is complete.
   `:SHADOWING-IMPORT-FROM`, `:USE`, `:IMPORT-FROM`, `:INTERN`, and `:EXPORT`.
 - [x] Reversible `USE-PACKAGE`/`UNUSE-PACKAGE` and `EXPORT`/`UNEXPORT`, with
   fresh package-use and used-by relationship inquiries.
+- [x] Persistent, unique package nicknames through `DEFPACKAGE`,
+  `MAKE-PACKAGE`, `FIND-PACKAGE`, and `PACKAGE-NICKNAMES`.
 
 ### Compiler
 

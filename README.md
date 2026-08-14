@@ -68,6 +68,8 @@ the roadmap.
 - declarative package construction with phased shadow, use, import, intern, and
   export options;
 - reversible package use/export topology with fresh relationship inquiries;
+- case-insensitive persistent package nicknames in `DEFPACKAGE` and
+  keyword-aware `MAKE-PACKAGE`;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -400,6 +402,8 @@ nativa permanecem no roteiro.
 - construção declarativa de packages com opções em fases para shadow, use,
   importação, internamento e exportação;
 - topologia reversível de uso/exportação com consultas novas de relacionamentos;
+- apelidos persistentes e case-insensitive de packages em `DEFPACKAGE` e
+  `MAKE-PACKAGE` com keywords;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

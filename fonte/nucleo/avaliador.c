@@ -1342,14 +1342,14 @@ static bool nome_simbolo_defpackage(SefRuntime *runtime, SefValor designador, co
 }
 
 static bool opcao_defpackage_reconhecida(SefValor chave) {
-    return sef_simbolo_tem_nome(chave, "SHADOW") ||
+    return sef_simbolo_tem_nome(chave, "NICKNAMES") || sef_simbolo_tem_nome(chave, "SHADOW") ||
            sef_simbolo_tem_nome(chave, "SHADOWING-IMPORT-FROM") ||
            sef_simbolo_tem_nome(chave, "USE") || sef_simbolo_tem_nome(chave, "IMPORT-FROM") ||
            sef_simbolo_tem_nome(chave, "INTERN") || sef_simbolo_tem_nome(chave, "EXPORT");
 }
 
 static int fase_opcao_defpackage(SefValor chave) {
-    if (sef_simbolo_tem_nome(chave, "SHADOW") ||
+    if (sef_simbolo_tem_nome(chave, "NICKNAMES") || sef_simbolo_tem_nome(chave, "SHADOW") ||
         sef_simbolo_tem_nome(chave, "SHADOWING-IMPORT-FROM"))
         return 0;
     if (sef_simbolo_tem_nome(chave, "USE"))
@@ -1424,7 +1424,10 @@ static bool aplicar_opcao_defpackage(SefRuntime *runtime, SefValor pacote, SefVa
         if (!nome_simbolo_defpackage(runtime, primeiro(itens), &nome_simbolo, &tamanho_simbolo,
                                      erro))
             return false;
-        if (sef_simbolo_tem_nome(chave, "SHADOW")) {
+        if (sef_simbolo_tem_nome(chave, "NICKNAMES")) {
+            if (!sef_pacote_adicionar_apelido(runtime, pacote, nome_simbolo, tamanho_simbolo, erro))
+                return false;
+        } else if (sef_simbolo_tem_nome(chave, "SHADOW")) {
             if (!sef_pacote_sombrear(runtime, pacote, nome_simbolo, tamanho_simbolo, erro))
                 return false;
         } else {
@@ -1499,7 +1502,7 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
         SefValor chave = primeiro(opcao);
         if (!opcao_defpackage_reconhecida(chave)) {
             sef_erro_definir(erro, 0, 0,
-                             "unsupported DEFPACKAGE option; expected :SHADOW, "
+                             "unsupported DEFPACKAGE option; expected :NICKNAMES, :SHADOW, "
                              ":SHADOWING-IMPORT-FROM, :USE, :IMPORT-FROM, :INTERN, or :EXPORT");
             return NULL;
         }

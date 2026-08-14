@@ -1126,12 +1126,49 @@ static SefValor pacote_designador(SefRuntime *runtime, SefValor valor, SefErro *
 }
 
 static SefValor primitiva_make_package(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
-    if (!quantidade(runtime, argumentos, 1, 1, "MAKE-PACKAGE", erro))
+    bool propria = false;
+    size_t total = sef_lista_tamanho(runtime, argumentos, &propria);
+    if (!propria || total == 0 || total % 2 == 0) {
+        sef_erro_definir(erro, 0, 0,
+                         "MAKE-PACKAGE requires a name followed by keyword/value pairs");
         return NULL;
+    }
     size_t tamanho = 0;
     const char *nome = nome_designador(runtime, car(argumentos), &tamanho);
     if (nome == NULL || tamanho == 0) {
         sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE requires a string name");
+        return NULL;
+    }
+    SefValor apelidos = runtime->nulo;
+    SefValor usados = runtime->nulo;
+    bool definiu_apelidos = false;
+    bool definiu_usados = false;
+    for (SefValor opcoes = cdr(argumentos); opcoes != runtime->nulo; opcoes = cdr(cdr(opcoes))) {
+        SefValor chave = car(opcoes);
+        SefValor valor = car(cdr(opcoes));
+        if (sef_simbolo_tem_nome(chave, "NICKNAMES")) {
+            if (definiu_apelidos) {
+                sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE received :NICKNAMES more than once");
+                return NULL;
+            }
+            apelidos = valor;
+            definiu_apelidos = true;
+        } else if (sef_simbolo_tem_nome(chave, "USE")) {
+            if (definiu_usados) {
+                sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE received :USE more than once");
+                return NULL;
+            }
+            usados = valor;
+            definiu_usados = true;
+        } else {
+            sef_erro_definir(erro, 0, 0,
+                             "MAKE-PACKAGE accepts only the :NICKNAMES and :USE keywords");
+            return NULL;
+        }
+    }
+    if (!sef_e_lista_propria(runtime, apelidos) ||
+        (definiu_usados && !sef_e_lista_propria(runtime, usados))) {
+        sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE nickname and use values must be proper lists");
         return NULL;
     }
     char *copia = malloc(tamanho + 1);
@@ -1143,8 +1180,27 @@ static SefValor primitiva_make_package(SefRuntime *runtime, SefValor argumentos,
     copia[tamanho] = '\0';
     SefValor pacote = sef_pacote_novo(runtime, copia, erro);
     free(copia);
-    if (pacote != NULL && !sef_pacote_usar(runtime, pacote, runtime->pacote_common_lisp, erro))
+    if (pacote == NULL)
         return NULL;
+    while (apelidos != runtime->nulo) {
+        size_t tamanho_apelido = 0;
+        const char *apelido = nome_designador(runtime, car(apelidos), &tamanho_apelido);
+        if (apelido == NULL ||
+            !sef_pacote_adicionar_apelido(runtime, pacote, apelido, tamanho_apelido, erro)) {
+            if (!erro->ocorreu)
+                sef_erro_definir(erro, 0, 0, "MAKE-PACKAGE nickname is not a string designator");
+            return NULL;
+        }
+        apelidos = cdr(apelidos);
+    }
+    if (!definiu_usados)
+        return sef_pacote_usar(runtime, pacote, runtime->pacote_common_lisp, erro) ? pacote : NULL;
+    while (usados != runtime->nulo) {
+        SefValor usado = pacote_designador(runtime, car(usados), erro);
+        if (usado == NULL || !sef_pacote_usar(runtime, pacote, usado, erro))
+            return NULL;
+        usados = cdr(usados);
+    }
     return pacote;
 }
 
@@ -1166,6 +1222,14 @@ static SefValor primitiva_package_name(SefRuntime *runtime, SefValor argumentos,
     return pacote == NULL ? NULL
                           : sef_texto_novo(runtime, pacote->como.pacote.nome,
                                            strlen(pacote->como.pacote.nome), erro);
+}
+
+static SefValor primitiva_package_nicknames(SefRuntime *runtime, SefValor argumentos,
+                                            SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "PACKAGE-NICKNAMES", erro))
+        return NULL;
+    SefValor pacote = pacote_designador(runtime, car(argumentos), erro);
+    return pacote == NULL ? NULL : sef_pacote_apelidos(runtime, pacote, erro);
 }
 
 static SefValor primitiva_packagep(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -2062,6 +2126,7 @@ static const struct {
                   {"MAKE-PACKAGE", primitiva_make_package},
                   {"FIND-PACKAGE", primitiva_find_package},
                   {"PACKAGE-NAME", primitiva_package_name},
+                  {"PACKAGE-NICKNAMES", primitiva_package_nicknames},
                   {"PACKAGEP", primitiva_packagep},
                   {"USE-PACKAGE", primitiva_use_package},
                   {"UNUSE-PACKAGE", primitiva_unuse_package},

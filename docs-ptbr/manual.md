@@ -371,10 +371,11 @@ nomes específicos da implementação, como `SEFIRAH::ENVIRONMENT` e
 
 Formas e funções disponíveis:
 
-- `DEFPACKAGE` com `:SHADOW`, `:SHADOWING-IMPORT-FROM`, `:USE`,
+- `DEFPACKAGE` com `:NICKNAMES`, `:SHADOW`, `:SHADOWING-IMPORT-FROM`, `:USE`,
   `:IMPORT-FROM`, `:INTERN` e `:EXPORT`;
 - `IN-PACKAGE`;
-- `MAKE-PACKAGE`, `FIND-PACKAGE`, `PACKAGE-NAME` e `PACKAGEP`;
+- `MAKE-PACKAGE` com `:NICKNAMES` e `:USE`, `FIND-PACKAGE`, `PACKAGE-NAME`,
+  `PACKAGE-NICKNAMES` e `PACKAGEP`;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
   `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN` e `FIND-SYMBOL`;
@@ -412,6 +413,13 @@ própria. `PACKAGE-USE-LIST` e `PACKAGE-USED-BY-LIST` devolvem listas novas de
 relacionamentos. `UNEXPORT` torna interno um símbolo externo sem mudar sua
 identidade; o lock da implementação protege `COMMON-LISP` de alterações na
 topologia.
+
+Nomes e apelidos de packages são comparados sem distinção de caixa para
+designadores ASCII. Apelidos declarados por `DEFPACKAGE :NICKNAMES` ou
+`MAKE-PACKAGE :NICKNAMES` são únicos entre nomes canônicos e outros apelidos,
+persistem nas imagens do mundo e são devolvidos como strings copiadas por
+`PACKAGE-NICKNAMES`. `MAKE-PACKAGE :USE` aceita uma lista própria; sua omissão
+mantém o padrão conveniente da implementação de usar `COMMON-LISP`.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

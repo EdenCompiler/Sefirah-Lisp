@@ -274,7 +274,7 @@ bool sef_simbolo_nome_logico(const SefRuntime *runtime, SefValor simbolo, const 
     return true;
 }
 
-SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tamanho) {
+static SefValor pacote_encontrar_principal(SefRuntime *runtime, const char *nome, size_t tamanho) {
     for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
         SefValor pacote = runtime->pacotes[i];
         if (strlen(pacote->como.pacote.nome) != tamanho)
@@ -292,6 +292,15 @@ SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tama
             return pacote;
     }
     return NULL;
+}
+
+static SefValor pacote_encontrar_por_apelido(SefRuntime *runtime, const char *nome, size_t tamanho);
+
+SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tamanho) {
+    if (runtime == NULL || nome == NULL)
+        return NULL;
+    SefValor principal = pacote_encontrar_principal(runtime, nome, tamanho);
+    return principal != NULL ? principal : pacote_encontrar_por_apelido(runtime, nome, tamanho);
 }
 
 SefValor sef_pacote_novo(SefRuntime *runtime, const char *nome, SefErro *erro) {
@@ -933,7 +942,7 @@ bool sef_simbolo_tem_nome(SefValor valor, const char *nome) {
 
 static SefValor tabela_interna(SefRuntime *runtime, const char *nome, size_t tamanho, bool criar,
                                SefErro *erro) {
-    SefValor pacote = sef_pacote_encontrar(runtime, "SEFIRAH", 7);
+    SefValor pacote = pacote_encontrar_principal(runtime, "SEFIRAH", 7);
     if (pacote == NULL) {
         sef_erro_definir(erro, 0, 0, "internal SEFIRAH package is missing");
         return NULL;
@@ -973,6 +982,11 @@ static SefValor tabela_simbolos_sombreados(SefRuntime *runtime, bool criar, SefE
     return tabela_interna(runtime, nome, sizeof(nome) - 1, criar, erro);
 }
 
+static SefValor tabela_apelidos_pacotes(SefRuntime *runtime, bool criar, SefErro *erro) {
+    static const char nome[] = "*PACKAGE-NICKNAMES*";
+    return tabela_interna(runtime, nome, sizeof(nome) - 1, criar, erro);
+}
+
 static bool lista_propria_limitada(SefRuntime *runtime, SefValor lista) {
     size_t visitados = 0;
     while (lista != runtime->nulo) {
@@ -982,6 +996,118 @@ static bool lista_propria_limitada(SefRuntime *runtime, SefValor lista) {
         lista = lista->como.par.resto;
     }
     return true;
+}
+
+static SefValor pacote_lista_apelidos(SefRuntime *runtime, SefValor pacote, SefErro *erro) {
+    SefValor tabela = tabela_apelidos_pacotes(runtime, false, erro);
+    if (tabela == NULL)
+        return erro->ocorreu ? NULL : runtime->nulo;
+    bool encontrou = false;
+    SefValor lista =
+        sef_tabela_hash_obter(runtime, tabela, pacote, runtime->nulo, &encontrou, erro);
+    if (lista == NULL || !lista_propria_limitada(runtime, lista)) {
+        if (!erro->ocorreu)
+            sef_erro_definir(erro, 0, 0, "package nickname list is malformed");
+        return NULL;
+    }
+    for (SefValor atual = lista; atual != runtime->nulo; atual = atual->como.par.resto) {
+        if (atual->como.par.primeiro->tipo != SEF_TIPO_TEXTO) {
+            sef_erro_definir(erro, 0, 0, "package nickname list contains a non-string value");
+            return NULL;
+        }
+    }
+    return lista;
+}
+
+static bool nome_pacote_igual(const char *armazenado, size_t tamanho_armazenado, const char *nome,
+                              size_t tamanho) {
+    if (tamanho_armazenado != tamanho)
+        return false;
+    for (size_t i = 0; i < tamanho; i++) {
+        unsigned char caractere = (unsigned char)nome[i];
+        char normalizado = (char)(caractere < 128 ? toupper(caractere) : caractere);
+        if (armazenado[i] != normalizado)
+            return false;
+    }
+    return true;
+}
+
+static SefValor pacote_encontrar_por_apelido(SefRuntime *runtime, const char *nome,
+                                             size_t tamanho) {
+    if (runtime->ambiente_global == NULL || runtime->ambiente_global->tipo != SEF_TIPO_AMBIENTE)
+        return NULL;
+    SefErro erro;
+    sef_erro_limpar(&erro);
+    for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
+        SefValor lista = pacote_lista_apelidos(runtime, runtime->pacotes[i], &erro);
+        if (lista == NULL)
+            return NULL;
+        for (; lista != runtime->nulo; lista = lista->como.par.resto) {
+            SefValor apelido = lista->como.par.primeiro;
+            if (nome_pacote_igual(apelido->como.texto.dados, apelido->como.texto.tamanho, nome,
+                                  tamanho))
+                return runtime->pacotes[i];
+        }
+    }
+    return NULL;
+}
+
+bool sef_pacote_adicionar_apelido(SefRuntime *runtime, SefValor pacote, const char *nome,
+                                  size_t tamanho, SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE || nome == NULL ||
+        tamanho == 0) {
+        sef_erro_definir(erro, 0, 0, "package nicknames must be nonempty string designators");
+        return false;
+    }
+    if (pacote == runtime->pacote_common_lisp) {
+        sef_erro_definir(erro, 0, 0, "the COMMON-LISP package is locked");
+        return false;
+    }
+    SefValor lista = pacote_lista_apelidos(runtime, pacote, erro);
+    if (lista == NULL)
+        return false;
+    for (SefValor atual = lista; atual != runtime->nulo; atual = atual->como.par.resto) {
+        SefValor apelido = atual->como.par.primeiro;
+        if (nome_pacote_igual(apelido->como.texto.dados, apelido->como.texto.tamanho, nome,
+                              tamanho))
+            return true;
+    }
+    if (sef_pacote_encontrar(runtime, nome, tamanho) != NULL) {
+        sef_erro_definir(erro, 0, 0, "package nickname %.*s is already in use", (int)tamanho, nome);
+        return false;
+    }
+    char *normalizado = copiar_nome_maiusculo(nome, tamanho);
+    if (normalizado == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for package nickname");
+        return false;
+    }
+    SefValor texto = sef_texto_novo(runtime, normalizado, tamanho, erro);
+    free(normalizado);
+    SefValor nova = texto == NULL ? NULL : sef_par_novo(runtime, texto, lista, erro);
+    if (nova == NULL)
+        return false;
+    SefValor tabela = tabela_apelidos_pacotes(runtime, true, erro);
+    return tabela != NULL && sef_tabela_hash_definir(runtime, tabela, pacote, nova, erro);
+}
+
+SefValor sef_pacote_apelidos(SefRuntime *runtime, SefValor pacote, SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE) {
+        sef_erro_definir(erro, 0, 0, "PACKAGE-NICKNAMES requires a package");
+        return NULL;
+    }
+    SefValor lista = pacote_lista_apelidos(runtime, pacote, erro);
+    if (lista == NULL)
+        return NULL;
+    SefValor copia = runtime->nulo;
+    for (SefValor atual = lista; atual != runtime->nulo; atual = atual->como.par.resto) {
+        SefValor original = atual->como.par.primeiro;
+        SefValor texto =
+            sef_texto_novo(runtime, original->como.texto.dados, original->como.texto.tamanho, erro);
+        copia = texto == NULL ? NULL : sef_par_novo(runtime, texto, copia, erro);
+        if (copia == NULL)
+            return NULL;
+    }
+    return copia;
 }
 
 static SefValor pacote_lista_sombras(SefRuntime *runtime, SefValor pacote, SefErro *erro) {

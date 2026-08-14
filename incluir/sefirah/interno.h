@@ -259,6 +259,9 @@ bool sef_simbolo_propriedade_remover(SefRuntime *runtime, SefValor simbolo, SefV
                                      bool *removeu, SefErro *erro);
 SefValor sef_pacote_novo(SefRuntime *runtime, const char *nome, SefErro *erro);
 SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tamanho);
+bool sef_pacote_adicionar_apelido(SefRuntime *runtime, SefValor pacote, const char *nome,
+                                  size_t tamanho, SefErro *erro);
+SefValor sef_pacote_apelidos(SefRuntime *runtime, SefValor pacote, SefErro *erro);
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
 bool sef_pacote_deixar_de_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
 bool sef_pacote_usa(SefValor pacote, SefValor usado);

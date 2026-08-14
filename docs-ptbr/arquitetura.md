@@ -228,6 +228,11 @@ Escolhas de shadowing usam outra tabela hash interna do heap, enraizada pelo
 ambiente global. A validação de uso de package a consulta antes de aceitar ou
 rejeitar um conflito de exportação, e uninterning se recusa a expor identidades
 herdadas ambíguas. A mesma persistência do grafo v10 vale para esse registro.
+Apelidos de packages usam o mesmo padrão de metadados enraizados no grafo. A
+consulta tenta primeiro o nome canônico e depois listas validadas de apelidos;
+ambos os caminhos usam a comparação case-insensitive ASCII do sistema de
+packages. A consulta pública devolve strings copiadas, impedindo a mutação do
+registro por seus chamadores.
 `DEFPACKAGE` valida todas as opções antes de aplicá-las e então executa as declarações
 em fases determinísticas: shadow e shadowing import, listas de uso, importação
 comum e internamento, seguidos de exportação. Assim, um conflito tem o mesmo
