@@ -376,6 +376,7 @@ Formas e funções disponíveis:
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE` com `:NICKNAMES` e `:USE`, `FIND-PACKAGE`, `PACKAGE-NAME`,
   `PACKAGE-NICKNAMES` e `PACKAGEP`;
+- `RENAME-PACKAGE` com substituição de apelidos;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
   `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN` e `FIND-SYMBOL`;
@@ -420,6 +421,12 @@ designadores ASCII. Apelidos declarados por `DEFPACKAGE :NICKNAMES` ou
 persistem nas imagens do mundo e são devolvidos como strings copiadas por
 `PACKAGE-NICKNAMES`. `MAKE-PACKAGE :USE` aceita uma lista própria; sua omissão
 mantém o padrão conveniente da implementação de usar `COMMON-LISP`.
+
+`RENAME-PACKAGE` substitui atomicamente o nome canônico e o conjunto completo
+de apelidos depois de verificar conflitos em todos os designadores novos e
+apelidos duplicados. Nomes antigos deixam de resolver, exceto quando incluídos
+explicitamente na nova lista de apelidos. Renomeações persistem nas imagens do
+mundo.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

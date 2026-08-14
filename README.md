@@ -70,6 +70,7 @@ the roadmap.
 - reversible package use/export topology with fresh relationship inquiries;
 - case-insensitive persistent package nicknames in `DEFPACKAGE` and
   keyword-aware `MAKE-PACKAGE`;
+- collision-safe package renaming with atomic nickname-set replacement;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -404,6 +405,7 @@ nativa permanecem no roteiro.
 - topologia reversível de uso/exportação com consultas novas de relacionamentos;
 - apelidos persistentes e case-insensitive de packages em `DEFPACKAGE` e
   `MAKE-PACKAGE` com keywords;
+- renomeação de packages com detecção de conflitos e troca atômica dos apelidos;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

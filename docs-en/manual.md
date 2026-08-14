@@ -369,6 +369,7 @@ Available forms and functions:
 - `IN-PACKAGE`;
 - `MAKE-PACKAGE` with `:NICKNAMES` and `:USE`, `FIND-PACKAGE`, `PACKAGE-NAME`,
   `PACKAGE-NICKNAMES`, and `PACKAGEP`;
+- `RENAME-PACKAGE` with replacement nicknames;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`,
   `SHADOW`, `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN`, and
@@ -413,6 +414,11 @@ designators. Nicknames declared through `DEFPACKAGE :NICKNAMES` or
 nicknames, persist in world images, and are returned as copied strings by
 `PACKAGE-NICKNAMES`. `MAKE-PACKAGE :USE` accepts a proper list; omitting it
 retains the implementation's convenient `COMMON-LISP` default.
+
+`RENAME-PACKAGE` atomically replaces the canonical name and the complete
+nickname set after checking every new designator for collisions and duplicate
+nicknames. Old names stop resolving unless they are explicitly included in the
+replacement nickname list. Renames persist in world images.
 
 `NIL` is simultaneously the empty list, false, and the external symbol named
 `"NIL"` in `COMMON-LISP`. It is inherited by `COMMON-LISP-USER`; `SYMBOLP`,

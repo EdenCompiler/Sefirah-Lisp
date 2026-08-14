@@ -112,6 +112,13 @@ int main(void) {
                       !texto_contem_portugues(erro.mensagem),
                   "package nickname diagnostics are English");
 
+        resultado = sef_runtime_avaliar_texto(
+            runtime, "(rename-package (make-package \"RENAME-COLLISION\") \"COMMON-LISP\")", &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "name COMMON-LISP is already in use") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "package rename diagnostics are English");
+
         resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
         char *impresso =
             resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);

@@ -1019,6 +1019,17 @@ static SefValor pacote_lista_apelidos(SefRuntime *runtime, SefValor pacote, SefE
     return lista;
 }
 
+static bool pacote_lista_apelidos_definir(SefRuntime *runtime, SefValor pacote, SefValor lista,
+                                          SefErro *erro) {
+    SefValor tabela = tabela_apelidos_pacotes(runtime, lista != runtime->nulo, erro);
+    if (tabela == NULL)
+        return !erro->ocorreu;
+    if (lista != runtime->nulo)
+        return sef_tabela_hash_definir(runtime, tabela, pacote, lista, erro);
+    bool removeu = false;
+    return sef_tabela_hash_remover(runtime, tabela, pacote, &removeu, erro);
+}
+
 static bool nome_pacote_igual(const char *armazenado, size_t tamanho_armazenado, const char *nome,
                               size_t tamanho) {
     if (tamanho_armazenado != tamanho)
@@ -1086,8 +1097,7 @@ bool sef_pacote_adicionar_apelido(SefRuntime *runtime, SefValor pacote, const ch
     SefValor nova = texto == NULL ? NULL : sef_par_novo(runtime, texto, lista, erro);
     if (nova == NULL)
         return false;
-    SefValor tabela = tabela_apelidos_pacotes(runtime, true, erro);
-    return tabela != NULL && sef_tabela_hash_definir(runtime, tabela, pacote, nova, erro);
+    return pacote_lista_apelidos_definir(runtime, pacote, nova, erro);
 }
 
 SefValor sef_pacote_apelidos(SefRuntime *runtime, SefValor pacote, SefErro *erro) {
@@ -1108,6 +1118,87 @@ SefValor sef_pacote_apelidos(SefRuntime *runtime, SefValor pacote, SefErro *erro
             return NULL;
     }
     return copia;
+}
+
+bool sef_pacote_renomear(SefRuntime *runtime, SefValor pacote, const char *nome, size_t tamanho,
+                         SefValor apelidos, SefErro *erro) {
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE || nome == NULL ||
+        tamanho == 0 || !lista_propria_limitada(runtime, apelidos)) {
+        sef_erro_definir(erro, 0, 0,
+                         "RENAME-PACKAGE requires a package, nonempty name, and nickname list");
+        return false;
+    }
+    if (pacote == runtime->pacote_common_lisp) {
+        sef_erro_definir(erro, 0, 0, "the COMMON-LISP package is locked");
+        return false;
+    }
+    SefValor conflito = sef_pacote_encontrar(runtime, nome, tamanho);
+    if (conflito != NULL && conflito != pacote) {
+        sef_erro_definir(erro, 0, 0, "package name %.*s is already in use", (int)tamanho, nome);
+        return false;
+    }
+    char *nome_novo = copiar_nome_maiusculo(nome, tamanho);
+    if (nome_novo == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for renamed package");
+        return false;
+    }
+    SefValor lista_nova = runtime->nulo;
+    for (SefValor atual = apelidos; atual != runtime->nulo; atual = atual->como.par.resto) {
+        SefValor designador = atual->como.par.primeiro;
+        const char *apelido = NULL;
+        size_t tamanho_apelido = 0;
+        if (designador->tipo == SEF_TIPO_TEXTO) {
+            apelido = designador->como.texto.dados;
+            tamanho_apelido = designador->como.texto.tamanho;
+        } else if (!sef_simbolo_nome_logico(runtime, designador, &apelido, &tamanho_apelido)) {
+            free(nome_novo);
+            sef_erro_definir(erro, 0, 0, "RENAME-PACKAGE nicknames must be string designators");
+            return false;
+        }
+        if (tamanho_apelido == 0 ||
+            nome_pacote_igual(nome_novo, tamanho, apelido, tamanho_apelido)) {
+            free(nome_novo);
+            sef_erro_definir(erro, 0, 0,
+                             "RENAME-PACKAGE nicknames must be nonempty and differ from the name");
+            return false;
+        }
+        conflito = sef_pacote_encontrar(runtime, apelido, tamanho_apelido);
+        if (conflito != NULL && conflito != pacote) {
+            free(nome_novo);
+            sef_erro_definir(erro, 0, 0, "package nickname %.*s is already in use",
+                             (int)tamanho_apelido, apelido);
+            return false;
+        }
+        for (SefValor item = lista_nova; item != runtime->nulo; item = item->como.par.resto) {
+            SefValor existente = item->como.par.primeiro;
+            if (nome_pacote_igual(existente->como.texto.dados, existente->como.texto.tamanho,
+                                  apelido, tamanho_apelido)) {
+                free(nome_novo);
+                sef_erro_definir(erro, 0, 0, "RENAME-PACKAGE received duplicate nicknames");
+                return false;
+            }
+        }
+        char *normalizado = copiar_nome_maiusculo(apelido, tamanho_apelido);
+        if (normalizado == NULL) {
+            free(nome_novo);
+            sef_erro_definir(erro, 0, 0, "not enough memory for renamed package nickname");
+            return false;
+        }
+        SefValor texto = sef_texto_novo(runtime, normalizado, tamanho_apelido, erro);
+        free(normalizado);
+        lista_nova = texto == NULL ? NULL : sef_par_novo(runtime, texto, lista_nova, erro);
+        if (lista_nova == NULL) {
+            free(nome_novo);
+            return false;
+        }
+    }
+    if (!pacote_lista_apelidos_definir(runtime, pacote, lista_nova, erro)) {
+        free(nome_novo);
+        return false;
+    }
+    free(pacote->como.pacote.nome);
+    pacote->como.pacote.nome = nome_novo;
+    return true;
 }
 
 static SefValor pacote_lista_sombras(SefRuntime *runtime, SefValor pacote, SefErro *erro) {

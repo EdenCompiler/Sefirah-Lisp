@@ -262,6 +262,8 @@ SefValor sef_pacote_encontrar(SefRuntime *runtime, const char *nome, size_t tama
 bool sef_pacote_adicionar_apelido(SefRuntime *runtime, SefValor pacote, const char *nome,
                                   size_t tamanho, SefErro *erro);
 SefValor sef_pacote_apelidos(SefRuntime *runtime, SefValor pacote, SefErro *erro);
+bool sef_pacote_renomear(SefRuntime *runtime, SefValor pacote, const char *nome, size_t tamanho,
+                         SefValor apelidos, SefErro *erro);
 bool sef_pacote_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
 bool sef_pacote_deixar_de_usar(SefRuntime *runtime, SefValor pacote, SefValor usado, SefErro *erro);
 bool sef_pacote_usa(SefValor pacote, SefValor usado);

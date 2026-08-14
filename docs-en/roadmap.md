@@ -74,6 +74,8 @@ not mean the entire milestone is complete.
   fresh package-use and used-by relationship inquiries.
 - [x] Persistent, unique package nicknames through `DEFPACKAGE`,
   `MAKE-PACKAGE`, `FIND-PACKAGE`, and `PACKAGE-NICKNAMES`.
+- [x] Collision-safe `RENAME-PACKAGE` with atomic nickname replacement and
+  world-image persistence.
 
 ### Compiler
 

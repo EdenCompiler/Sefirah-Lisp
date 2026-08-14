@@ -1232,6 +1232,24 @@ static SefValor primitiva_package_nicknames(SefRuntime *runtime, SefValor argume
     return pacote == NULL ? NULL : sef_pacote_apelidos(runtime, pacote, erro);
 }
 
+static SefValor primitiva_rename_package(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 2, 3, "RENAME-PACKAGE", erro))
+        return NULL;
+    SefValor pacote = pacote_designador(runtime, car(argumentos), erro);
+    size_t tamanho = 0;
+    const char *nome = nome_designador(runtime, car(cdr(argumentos)), &tamanho);
+    SefValor apelidos =
+        cdr(cdr(argumentos)) == runtime->nulo ? runtime->nulo : car(cdr(cdr(argumentos)));
+    if (pacote == NULL)
+        return NULL;
+    if (nome == NULL || !sef_e_lista_propria(runtime, apelidos)) {
+        sef_erro_definir(erro, 0, 0,
+                         "RENAME-PACKAGE requires a string name and proper nickname list");
+        return NULL;
+    }
+    return sef_pacote_renomear(runtime, pacote, nome, tamanho, apelidos, erro) ? pacote : NULL;
+}
+
 static SefValor primitiva_packagep(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "PACKAGEP", erro))
         return NULL;
@@ -2127,6 +2145,7 @@ static const struct {
                   {"FIND-PACKAGE", primitiva_find_package},
                   {"PACKAGE-NAME", primitiva_package_name},
                   {"PACKAGE-NICKNAMES", primitiva_package_nicknames},
+                  {"RENAME-PACKAGE", primitiva_rename_package},
                   {"PACKAGEP", primitiva_packagep},
                   {"USE-PACKAGE", primitiva_use_package},
                   {"UNUSE-PACKAGE", primitiva_unuse_package},

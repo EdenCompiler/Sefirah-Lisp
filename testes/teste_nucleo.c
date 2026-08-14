@@ -772,6 +772,15 @@ int main(int argc, char **argv) {
                     "(package-nicknames package) (package-use-list package)))",
                     "(T (\"CP\" \"CREATED-ALIAS\") NIL)");
     verificar_texto(runtime,
+                    "(let* ((package (find-package \"CP\")) "
+                    "(renamed (rename-package package \"Renamed-Package\" "
+                    "'(\"RP\" \"Renamed-Alias\")))) "
+                    "(list (eq renamed package) (package-name package) "
+                    "(package-nicknames package) (find-package \"CP\") "
+                    "(find-package \"CREATED-PACKAGE\") "
+                    "(eq package (find-package \"renamed-alias\"))))",
+                    "(T \"RENAMED-PACKAGE\" (\"RP\" \"RENAMED-ALIAS\") NIL NIL T)");
+    verificar_texto(runtime,
                     "(let ((target (find-package \"DEFINITION-TARGET\")) "
                     "(source-a (find-package \"DEFINITION-SOURCE-A\")) "
                     "(source-b (find-package \"DEFINITION-SOURCE-B\")) "
@@ -1149,6 +1158,13 @@ int main(int argc, char **argv) {
                         "(find-symbol \"PUBLIC\" \"DEFINITION-TARGET\"))))",
                         "(T (\"DEFINITION-TARGET-SHORT\" \"DEFINITION-TARGET-ALIAS\") "
                         "T T :INTERNAL :EXTERNAL)");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(let ((package (find-package \"rp\"))) "
+                        "(list (package-name package) (package-nicknames package) "
+                        "(eq package (find-package \"RENAMED-ALIAS\")) "
+                        "(find-package \"CP\")))",
+                        "(\"RENAMED-PACKAGE\" (\"RP\" \"RENAMED-ALIAS\") T NIL)");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (calcular-compilado 10 22) "

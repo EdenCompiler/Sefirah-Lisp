@@ -76,6 +76,8 @@ não significa que o marco inteiro esteja concluído.
   consultas novas das relações de uso e de packages usuários.
 - [x] Apelidos de packages persistentes e únicos por `DEFPACKAGE`,
   `MAKE-PACKAGE`, `FIND-PACKAGE` e `PACKAGE-NICKNAMES`.
+- [x] `RENAME-PACKAGE` seguro contra conflitos, com troca atômica de apelidos e
+  persistência na imagem do mundo.
 
 ### Compilador
 
