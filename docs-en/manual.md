@@ -371,6 +371,7 @@ Available forms and functions:
   `PACKAGE-NICKNAMES`, and `PACKAGEP`;
 - `RENAME-PACKAGE` with replacement nicknames;
 - guarded `DELETE-PACKAGE`;
+- `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS`, and `DO-ALL-SYMBOLS`;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`,
   `SHADOW`, `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN`, and
@@ -428,6 +429,14 @@ Successful deletion clears package registry metadata and outgoing uses.
 Surviving symbols retain their package object identity, print with `#:`, and
 remain valid across world-image restoration; `PACKAGE-NAME` and
 `PACKAGE-NICKNAMES` return `NIL` for that deleted object.
+
+The three symbol iteration forms bind a lexical symbol variable and provide an
+implicit `NIL` block, so `RETURN` exits the iteration. `DO-SYMBOLS` visits the
+package's local and inherited accessible symbols exactly once;
+`DO-EXTERNAL-SYMBOLS` visits its exports; and `DO-ALL-SYMBOLS` visits each
+symbol whose home package remains registered, including `NIL` and excluding
+uninterned/deleted-package symbols. Their optional result form is evaluated
+after the loop with the iterator variable bound to `NIL`.
 
 `NIL` is simultaneously the empty list, false, and the external symbol named
 `"NIL"` in `COMMON-LISP`. It is inherited by `COMMON-LISP-USER`; `SYMBOLP`,

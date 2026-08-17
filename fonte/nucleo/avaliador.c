@@ -1518,6 +1518,156 @@ static SefValor especial_defpackage(SefRuntime *runtime, SefValor argumentos, Se
     return pacote;
 }
 
+typedef enum SefModoIteracaoSimbolos {
+    SEF_ITERAR_SIMBOLOS_ACESSIVEIS,
+    SEF_ITERAR_SIMBOLOS_EXTERNOS,
+    SEF_ITERAR_TODOS_SIMBOLOS
+} SefModoIteracaoSimbolos;
+
+static SefValor pacote_avaliado_para_iteracao(SefRuntime *runtime, SefValor forma,
+                                              SefValor ambiente, SefErro *erro) {
+    SefValor designador = sef_avaliar(runtime, forma, ambiente, erro);
+    if (designador == NULL)
+        return NULL;
+    size_t tamanho = 0;
+    const char *nome = nome_pacote_literal(designador, &tamanho);
+    SefValor pacote = nome == NULL ? NULL : sef_pacote_encontrar(runtime, nome, tamanho);
+    if (pacote == NULL)
+        sef_erro_definir(erro, 0, 0, "symbol iteration names a nonexistent package");
+    return pacote;
+}
+
+static bool avaliar_corpo_iteracao_simbolos(SefRuntime *runtime, SefValor ambiente,
+                                            SefValor variavel, SefValor simbolo, SefValor corpo,
+                                            SefErro *erro) {
+    if (!sef_ambiente_atribuir(ambiente, variavel, simbolo)) {
+        sef_erro_definir(erro, 0, 0, "could not bind symbol iteration variable");
+        return false;
+    }
+    return avaliar_sequencia(runtime, corpo, ambiente, erro) != NULL;
+}
+
+static bool simbolo_acessivel_ja_iterado(SefValor pacote, size_t indice_usado,
+                                         size_t indice_exportado, SefValor simbolo) {
+    for (size_t i = 0; i < pacote->como.pacote.quantidade_simbolos; i++)
+        if (pacote->como.pacote.simbolos[i] == simbolo)
+            return true;
+    for (size_t i = 0; i < indice_usado; i++) {
+        SefValor usado = pacote->como.pacote.usados[i];
+        for (size_t j = 0; j < usado->como.pacote.quantidade_exportados; j++)
+            if (usado->como.pacote.exportados[j] == simbolo)
+                return true;
+    }
+    SefValor usado = pacote->como.pacote.usados[indice_usado];
+    for (size_t i = 0; i < indice_exportado; i++)
+        if (usado->como.pacote.exportados[i] == simbolo)
+            return true;
+    return false;
+}
+
+static bool iterar_simbolos(SefRuntime *runtime, SefModoIteracaoSimbolos modo, SefValor pacote,
+                            SefValor ambiente, SefValor variavel, SefValor corpo, SefErro *erro) {
+    if (modo == SEF_ITERAR_TODOS_SIMBOLOS) {
+        if (!avaliar_corpo_iteracao_simbolos(runtime, ambiente, variavel, runtime->nulo, corpo,
+                                             erro))
+            return false;
+        for (size_t i = 0; i < runtime->quantidade_simbolos; i++) {
+            SefValor simbolo = runtime->simbolos[i];
+            if (sef_simbolo_nao_internado(runtime, simbolo) ||
+                !sef_pacote_registrado(runtime, simbolo->como.simbolo.pacote))
+                continue;
+            if (!avaliar_corpo_iteracao_simbolos(runtime, ambiente, variavel, simbolo, corpo, erro))
+                return false;
+        }
+        return true;
+    }
+    if (modo == SEF_ITERAR_SIMBOLOS_EXTERNOS) {
+        for (size_t i = 0; i < pacote->como.pacote.quantidade_exportados; i++) {
+            if (!avaliar_corpo_iteracao_simbolos(runtime, ambiente, variavel,
+                                                 pacote->como.pacote.exportados[i], corpo, erro))
+                return false;
+        }
+        return true;
+    }
+    for (size_t i = 0; i < pacote->como.pacote.quantidade_simbolos; i++) {
+        if (!avaliar_corpo_iteracao_simbolos(runtime, ambiente, variavel,
+                                             pacote->como.pacote.simbolos[i], corpo, erro))
+            return false;
+    }
+    for (size_t i = 0; i < pacote->como.pacote.quantidade_usados; i++) {
+        SefValor usado = pacote->como.pacote.usados[i];
+        for (size_t j = 0; j < usado->como.pacote.quantidade_exportados; j++) {
+            SefValor simbolo = usado->como.pacote.exportados[j];
+            if (simbolo_acessivel_ja_iterado(pacote, i, j, simbolo))
+                continue;
+            if (!avaliar_corpo_iteracao_simbolos(runtime, ambiente, variavel, simbolo, corpo, erro))
+                return false;
+        }
+    }
+    return true;
+}
+
+static SefValor especial_do_simbolos(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
+                                     SefModoIteracaoSimbolos modo, SefErro *erro) {
+    if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
+        sef_erro_definir(erro, 0, 0, "symbol iteration requires a binding specification");
+        return NULL;
+    }
+    SefValor especificacao = primeiro(argumentos);
+    bool propria = false;
+    size_t quantidade = sef_lista_tamanho(runtime, especificacao, &propria);
+    size_t minimo = modo == SEF_ITERAR_TODOS_SIMBOLOS ? 1 : 2;
+    size_t maximo = minimo + 1;
+    if (!propria || quantidade < minimo || quantidade > maximo) {
+        sef_erro_definir(erro, 0, 0, "invalid symbol iteration binding specification");
+        return NULL;
+    }
+    SefValor variavel = primeiro(especificacao);
+    if (!exigir_nome_variavel(runtime, variavel, "symbol iteration", erro))
+        return NULL;
+    SefValor pacote = NULL;
+    if (modo != SEF_ITERAR_TODOS_SIMBOLOS) {
+        pacote =
+            pacote_avaliado_para_iteracao(runtime, primeiro(resto(especificacao)), ambiente, erro);
+        if (pacote == NULL)
+            return NULL;
+    }
+    bool tem_resultado = quantidade == maximo;
+    SefValor cauda_resultado = especificacao;
+    for (size_t i = 0; i < minimo; i++)
+        cauda_resultado = resto(cauda_resultado);
+    SefValor resultado = tem_resultado ? primeiro(cauda_resultado) : runtime->nulo;
+    SefValor local = sef_ambiente_novo(runtime, ambiente, erro);
+    if (local == NULL || !sef_ambiente_definir(runtime, local, variavel, runtime->nulo, erro))
+        return NULL;
+
+    SefQuadroControle quadro;
+    quadro.tipo = SEF_CONTROLE_BLOCO;
+    quadro.nome_ou_etiqueta = runtime->nulo;
+    quadro.anterior = runtime->controle;
+    quadro.reinicios_anteriores = runtime->reinicios;
+    quadro.handlers_anteriores = runtime->handlers;
+    runtime->controle = &quadro;
+    if (setjmp(quadro.salto) == 0) {
+        bool iterou =
+            iterar_simbolos(runtime, modo, pacote, local, variavel, resto(argumentos), erro);
+        if (iterou && !sef_ambiente_atribuir(local, variavel, runtime->nulo)) {
+            sef_erro_definir(erro, 0, 0, "could not clear symbol iteration variable");
+            iterou = false;
+        }
+        SefValor valor = iterou ? (tem_resultado ? sef_avaliar(runtime, resultado, local, erro)
+                                                 : valor_unico(runtime, runtime->nulo, erro))
+                                : NULL;
+        runtime->controle = quadro.anterior;
+        return valor;
+    }
+    runtime->controle = quadro.anterior;
+    SefValor valor = runtime->valor_transferencia;
+    bool restaurou = sef_valores_restaurar(runtime, &runtime->valores_transferencia, erro);
+    transferencia_limpar(runtime);
+    return restaurou ? valor : NULL;
+}
+
 static SefValor especial_funcoes_locais(SefRuntime *runtime, SefValor argumentos, SefValor ambiente,
                                         bool recursivas, bool macros, SefErro *erro) {
     if (argumentos == runtime->nulo || argumentos->tipo != SEF_TIPO_PAR) {
@@ -1800,6 +1950,15 @@ static SefValor avaliar_forma(SefRuntime *runtime, SefValor forma, SefValor ambi
             return especial_in_package(runtime, argumentos, erro);
         if (sef_simbolo_tem_nome(operador, "DEFPACKAGE"))
             return especial_defpackage(runtime, argumentos, erro);
+        if (sef_simbolo_tem_nome(operador, "DO-SYMBOLS"))
+            return especial_do_simbolos(runtime, argumentos, ambiente,
+                                        SEF_ITERAR_SIMBOLOS_ACESSIVEIS, erro);
+        if (sef_simbolo_tem_nome(operador, "DO-EXTERNAL-SYMBOLS"))
+            return especial_do_simbolos(runtime, argumentos, ambiente, SEF_ITERAR_SIMBOLOS_EXTERNOS,
+                                        erro);
+        if (sef_simbolo_tem_nome(operador, "DO-ALL-SYMBOLS"))
+            return especial_do_simbolos(runtime, argumentos, ambiente, SEF_ITERAR_TODOS_SIMBOLOS,
+                                        erro);
         if (sef_simbolo_tem_nome(operador, "AND"))
             return especial_logico(runtime, argumentos, ambiente, true, erro);
         if (sef_simbolo_tem_nome(operador, "OR"))

@@ -815,6 +815,24 @@ int main(int argc, char **argv) {
                     "(length (package-use-list target))))",
                     "(T T T :INTERNAL T T 0 T T 2)");
     verificar_texto(runtime,
+                    "(list "
+                    "(let ((seen nil)) "
+                    "(do-external-symbols (symbol \"DEFINITION-TARGET\" (reverse seen)) "
+                    "(setq seen (cons (symbol-name symbol) seen)))) "
+                    "(let ((target (find-package \"DEFINITION-TARGET\")) (seen nil)) "
+                    "(do-symbols (symbol target "
+                    "(list (not (null (member (find-symbol \"PUBLIC\" target) seen))) "
+                    "(not (null (member (find-symbol \"PRIVATE-A\" target) seen))) "
+                    "(not (null (member (find-symbol \"SHARED\" target) seen))))) "
+                    "(setq seen (cons symbol seen)))) "
+                    "(do-external-symbols (symbol \"DEFINITION-TARGET\" :finished) "
+                    "(return (symbol-name symbol))) "
+                    "(let ((found nil)) "
+                    "(do-all-symbols (symbol found) "
+                    "(when (eq symbol (find-symbol \"PUBLIC\" \"DEFINITION-TARGET\")) "
+                    "(setq found t)))))",
+                    "((\"PUBLIC\") (T T T) \"PUBLIC\" T)");
+    verificar_texto(runtime,
                     "(let ((simbolo (intern \"Nome-Misto\" \"ALPHA\"))) "
                     "(list (symbol-name simbolo) "
                     "(multiple-value-list (find-symbol \"Nome-Misto\" \"ALPHA\")) "
@@ -1183,6 +1201,11 @@ int main(int argc, char **argv) {
                         "(eq package (find-package \"RENAMED-ALIAS\")) "
                         "(find-package \"CP\")))",
                         "(\"RENAMED-PACKAGE\" (\"RP\" \"RENAMED-ALIAS\") T NIL)");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(do-external-symbols (symbol \"DEFINITION-TARGET\" :missing) "
+                        "(return (symbol-name symbol)))",
+                        "\"PUBLIC\"");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (find-package \"DELETE-SOURCE\") "

@@ -378,6 +378,7 @@ Formas e funções disponíveis:
   `PACKAGE-NICKNAMES` e `PACKAGEP`;
 - `RENAME-PACKAGE` com substituição de apelidos;
 - `DELETE-PACKAGE` protegido;
+- `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS` e `DO-ALL-SYMBOLS`;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
   `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN` e `FIND-SYMBOL`;
@@ -436,6 +437,14 @@ bem-sucedida limpa metadados do registro e usos de saída. Símbolos sobrevivent
 mantêm a identidade do objeto package, são impressos com `#:` e continuam
 válidos após restaurar uma imagem; `PACKAGE-NAME` e `PACKAGE-NICKNAMES` devolvem
 `NIL` para esse objeto removido.
+
+As três formas de iteração de símbolos vinculam uma variável léxica de símbolo
+e fornecem um bloco implícito `NIL`, permitindo que `RETURN` encerre a
+iteração. `DO-SYMBOLS` visita uma vez os símbolos locais e herdados acessíveis
+do package; `DO-EXTERNAL-SYMBOLS` visita suas exportações; e `DO-ALL-SYMBOLS`
+visita cada símbolo cujo package de origem continua registrado, inclusive `NIL`
+e excluindo símbolos não internados/de packages removidos. A forma de resultado
+opcional é avaliada depois do loop com a variável iteradora ligada a `NIL`.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

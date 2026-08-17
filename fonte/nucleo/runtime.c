@@ -44,7 +44,10 @@ static const char *formas_common_lisp[] = {"QUOTE",
                                            "AND",
                                            "OR",
                                            "IN-PACKAGE",
-                                           "DEFPACKAGE"};
+                                           "DEFPACKAGE",
+                                           "DO-SYMBOLS",
+                                           "DO-EXTERNAL-SYMBOLS",
+                                           "DO-ALL-SYMBOLS"};
 
 bool sef_formas_especiais_reconciliar(SefRuntime *runtime, SefErro *erro) {
     for (size_t i = 0; i < sizeof(formas_common_lisp) / sizeof(formas_common_lisp[0]); i++) {

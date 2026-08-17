@@ -72,6 +72,8 @@ the roadmap.
   keyword-aware `MAKE-PACKAGE`;
 - collision-safe package renaming with atomic nickname-set replacement;
 - guarded package deletion with registry cleanup and surviving symbol identity;
+- package discovery through `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS`, and
+  `DO-ALL-SYMBOLS`;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -408,6 +410,8 @@ nativa permanecem no roteiro.
   `MAKE-PACKAGE` com keywords;
 - renomeação de packages com detecção de conflitos e troca atômica dos apelidos;
 - remoção protegida de packages com limpeza do registro e símbolos sobreviventes;
+- descoberta de símbolos de packages por `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS` e
+  `DO-ALL-SYMBOLS`;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

@@ -80,6 +80,9 @@ não significa que o marco inteiro esteja concluído.
   persistência na imagem do mundo.
 - [x] `DELETE-PACKAGE` protegido, com checagem de relações, limpeza de
   metadados, identidade dos símbolos sobreviventes e persistência.
+- [x] Descoberta de packages somente para leitura por `DO-SYMBOLS`,
+  `DO-EXTERNAL-SYMBOLS` e `DO-ALL-SYMBOLS`, com blocos `NIL` implícitos e
+  reconciliação da imagem.
 
 ### Compilador
 

@@ -78,6 +78,8 @@ not mean the entire milestone is complete.
   world-image persistence.
 - [x] Guarded `DELETE-PACKAGE` with relationship checks, metadata cleanup,
   surviving symbol identity, and world-image persistence.
+- [x] Read-only package discovery with `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS`, and
+  `DO-ALL-SYMBOLS`, including implicit `NIL` blocks and image reconciliation.
 
 ### Compiler
 

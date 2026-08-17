@@ -125,6 +125,12 @@ int main(void) {
                       !texto_contem_portugues(erro.mensagem),
                   "package deletion diagnostics are English");
 
+        resultado = sef_runtime_avaliar_texto(runtime, "(do-symbols (42 \"COMMON-LISP\"))", &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "symbol iteration requires a symbol") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "package iteration diagnostics are English");
+
         resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
         char *impresso =
             resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);
