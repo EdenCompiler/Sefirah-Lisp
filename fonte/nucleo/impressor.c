@@ -197,7 +197,8 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
     case SEF_TIPO_TEXTO:
         return imprimir_texto(texto, valor, legivel, erro);
     case SEF_TIPO_SIMBOLO:
-        if (sef_simbolo_nao_internado(runtime, valor) || valor->como.simbolo.pacote == NULL)
+        if (sef_simbolo_nao_internado(runtime, valor) || valor->como.simbolo.pacote == NULL ||
+            !sef_pacote_registrado(runtime, valor->como.simbolo.pacote))
             return anexar(texto, "#:", erro) &&
                    imprimir_nome_simbolo(texto, valor->como.simbolo.nome,
                                          valor->como.simbolo.tamanho, legivel, erro);
@@ -236,6 +237,8 @@ static bool imprimir_valor(TextoDinamico *texto, SefRuntime *runtime, SefValor v
                               profundidade + 1, erro) &&
                anexar(texto, ">", erro);
     case SEF_TIPO_PACOTE:
+        if (!sef_pacote_registrado(runtime, valor))
+            return anexar(texto, "#<DELETED-PACKAGE>", erro);
         return anexar(texto, "#<PACKAGE ", erro) && anexar(texto, valor->como.pacote.nome, erro) &&
                anexar(texto, ">", erro);
     case SEF_TIPO_STREAM:

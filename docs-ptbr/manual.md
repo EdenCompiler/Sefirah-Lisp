@@ -377,6 +377,7 @@ Formas e funções disponíveis:
 - `MAKE-PACKAGE` com `:NICKNAMES` e `:USE`, `FIND-PACKAGE`, `PACKAGE-NAME`,
   `PACKAGE-NICKNAMES` e `PACKAGEP`;
 - `RENAME-PACKAGE` com substituição de apelidos;
+- `DELETE-PACKAGE` protegido;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
   `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN` e `FIND-SYMBOL`;
@@ -427,6 +428,14 @@ de apelidos depois de verificar conflitos em todos os designadores novos e
 apelidos duplicados. Nomes antigos deixam de resolver, exceto quando incluídos
 explicitamente na nova lista de apelidos. Renomeações persistem nas imagens do
 mundo.
+
+`DELETE-PACKAGE` devolve falso para um package já ausente/removido. A operação
+rejeita packages da implementação, o package atual e packages ainda usados por
+outro; o chamador pode consultar e desligar essas relações primeiro. A remoção
+bem-sucedida limpa metadados do registro e usos de saída. Símbolos sobreviventes
+mantêm a identidade do objeto package, são impressos com `#:` e continuam
+válidos após restaurar uma imagem; `PACKAGE-NAME` e `PACKAGE-NICKNAMES` devolvem
+`NIL` para esse objeto removido.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

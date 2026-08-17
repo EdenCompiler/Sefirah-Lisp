@@ -119,6 +119,12 @@ int main(void) {
                       !texto_contem_portugues(erro.mensagem),
                   "package rename diagnostics are English");
 
+        resultado = sef_runtime_avaliar_texto(runtime, "(delete-package *package*)", &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "cannot delete the current package") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "package deletion diagnostics are English");
+
         resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
         char *impresso =
             resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);

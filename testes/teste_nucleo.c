@@ -781,6 +781,24 @@ int main(int argc, char **argv) {
                     "(eq package (find-package \"renamed-alias\"))))",
                     "(T \"RENAMED-PACKAGE\" (\"RP\" \"RENAMED-ALIAS\") NIL NIL T)");
     verificar_texto(runtime,
+                    "(define deleted-package "
+                    "(make-package \"DELETE-SOURCE\" :nicknames '(\"DS\") :use nil)) "
+                    "(define deleted-symbol (intern \"SURVIVOR\" deleted-package)) "
+                    "(define delete-user (make-package \"DELETE-USER\" :use nil)) "
+                    "(use-package deleted-package delete-user) "
+                    "(list (handler-case (delete-package deleted-package) "
+                    "(error (condition) :still-used)) "
+                    "(unuse-package deleted-package delete-user) "
+                    "(delete-package deleted-package) "
+                    "(delete-package deleted-package) "
+                    "(find-package \"DELETE-SOURCE\") (find-package \"DS\") "
+                    "(package-name deleted-package) (package-nicknames deleted-package) "
+                    "(packagep deleted-package) "
+                    "(eq (symbol-package deleted-symbol) deleted-package) deleted-symbol "
+                    "deleted-package)",
+                    "(:STILL-USED T T NIL NIL NIL NIL NIL T T #:SURVIVOR "
+                    "#<DELETED-PACKAGE>)");
+    verificar_texto(runtime,
                     "(let ((target (find-package \"DEFINITION-TARGET\")) "
                     "(source-a (find-package \"DEFINITION-SOURCE-A\")) "
                     "(source-b (find-package \"DEFINITION-SOURCE-B\")) "
@@ -1165,6 +1183,13 @@ int main(int argc, char **argv) {
                         "(eq package (find-package \"RENAMED-ALIAS\")) "
                         "(find-package \"CP\")))",
                         "(\"RENAMED-PACKAGE\" (\"RP\" \"RENAMED-ALIAS\") T NIL)");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(list (find-package \"DELETE-SOURCE\") "
+                        "(package-name deleted-package) (package-nicknames deleted-package) "
+                        "(packagep deleted-package) "
+                        "(eq (symbol-package deleted-symbol) deleted-package) deleted-symbol)",
+                        "(NIL NIL NIL T T #:SURVIVOR)");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (calcular-compilado 10 22) "

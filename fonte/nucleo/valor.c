@@ -567,7 +567,7 @@ SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const cha
 
 static const char nome_pacote_nao_internado[] = "SEFIRAH-PRIVATE-UNINTERNED-SYMBOLS";
 
-static bool pacote_registrado(const SefRuntime *runtime, SefValor pacote) {
+bool sef_pacote_registrado(const SefRuntime *runtime, SefValor pacote) {
     for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
         if (runtime->pacotes[i] == pacote)
             return true;
@@ -577,7 +577,7 @@ static bool pacote_registrado(const SefRuntime *runtime, SefValor pacote) {
 
 static bool pacote_e_sentinela_interno(const SefRuntime *runtime, SefValor pacote) {
     return pacote != NULL && pacote->tipo == SEF_TIPO_PACOTE &&
-           !pacote_registrado(runtime, pacote) &&
+           !sef_pacote_registrado(runtime, pacote) &&
            strcmp(pacote->como.pacote.nome, nome_pacote_nao_internado) == 0;
 }
 
@@ -1105,6 +1105,8 @@ SefValor sef_pacote_apelidos(SefRuntime *runtime, SefValor pacote, SefErro *erro
         sef_erro_definir(erro, 0, 0, "PACKAGE-NICKNAMES requires a package");
         return NULL;
     }
+    if (!sef_pacote_registrado(runtime, pacote))
+        return runtime->nulo;
     SefValor lista = pacote_lista_apelidos(runtime, pacote, erro);
     if (lista == NULL)
         return NULL;
@@ -1126,6 +1128,10 @@ bool sef_pacote_renomear(SefRuntime *runtime, SefValor pacote, const char *nome,
         tamanho == 0 || !lista_propria_limitada(runtime, apelidos)) {
         sef_erro_definir(erro, 0, 0,
                          "RENAME-PACKAGE requires a package, nonempty name, and nickname list");
+        return false;
+    }
+    if (!sef_pacote_registrado(runtime, pacote)) {
+        sef_erro_definir(erro, 0, 0, "RENAME-PACKAGE cannot rename a deleted package");
         return false;
     }
     if (pacote == runtime->pacote_common_lisp) {
@@ -1225,6 +1231,48 @@ static bool pacote_lista_sombras_definir(SefRuntime *runtime, SefValor pacote, S
         return sef_tabela_hash_definir(runtime, tabela, pacote, lista, erro);
     bool removeu = false;
     return sef_tabela_hash_remover(runtime, tabela, pacote, &removeu, erro);
+}
+
+bool sef_pacote_excluir(SefRuntime *runtime, SefValor pacote, bool *excluiu, SefErro *erro) {
+    if (excluiu != NULL)
+        *excluiu = false;
+    if (runtime == NULL || pacote == NULL || pacote->tipo != SEF_TIPO_PACOTE) {
+        sef_erro_definir(erro, 0, 0, "DELETE-PACKAGE requires a package designator");
+        return false;
+    }
+    if (!sef_pacote_registrado(runtime, pacote))
+        return true;
+    SefValor pacote_sefirah = pacote_encontrar_principal(runtime, "SEFIRAH", 7);
+    if (pacote == runtime->pacote_common_lisp || pacote == runtime->pacote_keyword ||
+        pacote == pacote_sefirah) {
+        sef_erro_definir(erro, 0, 0, "implementation package %s is locked",
+                         pacote->como.pacote.nome);
+        return false;
+    }
+    if (pacote == runtime->pacote_atual) {
+        sef_erro_definir(erro, 0, 0, "DELETE-PACKAGE cannot delete the current package");
+        return false;
+    }
+    for (size_t i = 0; i < runtime->quantidade_pacotes; i++) {
+        SefValor usuario = runtime->pacotes[i];
+        if (usuario != pacote && sef_pacote_usa(usuario, pacote)) {
+            sef_erro_definir(erro, 0, 0, "DELETE-PACKAGE cannot delete a package still in use");
+            return false;
+        }
+    }
+    if (!pacote_lista_apelidos_definir(runtime, pacote, runtime->nulo, erro) ||
+        !pacote_lista_sombras_definir(runtime, pacote, runtime->nulo, erro))
+        return false;
+    pacote->como.pacote.quantidade_usados = 0;
+    size_t indice = 0;
+    while (indice < runtime->quantidade_pacotes && runtime->pacotes[indice] != pacote)
+        indice++;
+    memmove(&runtime->pacotes[indice], &runtime->pacotes[indice + 1],
+            (runtime->quantidade_pacotes - indice - 1) * sizeof(SefValor));
+    runtime->quantidade_pacotes--;
+    if (excluiu != NULL)
+        *excluiu = true;
+    return true;
 }
 
 static bool pacote_simbolo_sombreia(SefRuntime *runtime, SefValor pacote, SefValor simbolo,

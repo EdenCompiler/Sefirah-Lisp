@@ -1115,8 +1115,12 @@ static const char *nome_designador(SefRuntime *runtime, SefValor valor, size_t *
 }
 
 static SefValor pacote_designador(SefRuntime *runtime, SefValor valor, SefErro *erro) {
-    if (valor->tipo == SEF_TIPO_PACOTE)
-        return valor;
+    if (valor->tipo == SEF_TIPO_PACOTE) {
+        if (sef_pacote_registrado(runtime, valor))
+            return valor;
+        sef_erro_definir(erro, 0, 0, "designator names a deleted package");
+        return NULL;
+    }
     size_t tamanho = 0;
     const char *nome = nome_designador(runtime, valor, &tamanho);
     SefValor pacote = nome == NULL ? NULL : sef_pacote_encontrar(runtime, nome, tamanho);
@@ -1218,17 +1222,23 @@ static SefValor primitiva_find_package(SefRuntime *runtime, SefValor argumentos,
 static SefValor primitiva_package_name(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "PACKAGE-NAME", erro))
         return NULL;
-    SefValor pacote = pacote_designador(runtime, car(argumentos), erro);
+    SefValor valor = car(argumentos);
+    SefValor pacote =
+        valor->tipo == SEF_TIPO_PACOTE ? valor : pacote_designador(runtime, valor, erro);
     return pacote == NULL ? NULL
-                          : sef_texto_novo(runtime, pacote->como.pacote.nome,
-                                           strlen(pacote->como.pacote.nome), erro);
+           : !sef_pacote_registrado(runtime, pacote)
+               ? runtime->nulo
+               : sef_texto_novo(runtime, pacote->como.pacote.nome, strlen(pacote->como.pacote.nome),
+                                erro);
 }
 
 static SefValor primitiva_package_nicknames(SefRuntime *runtime, SefValor argumentos,
                                             SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "PACKAGE-NICKNAMES", erro))
         return NULL;
-    SefValor pacote = pacote_designador(runtime, car(argumentos), erro);
+    SefValor valor = car(argumentos);
+    SefValor pacote =
+        valor->tipo == SEF_TIPO_PACOTE ? valor : pacote_designador(runtime, valor, erro);
     return pacote == NULL ? NULL : sef_pacote_apelidos(runtime, pacote, erro);
 }
 
@@ -1248,6 +1258,30 @@ static SefValor primitiva_rename_package(SefRuntime *runtime, SefValor argumento
         return NULL;
     }
     return sef_pacote_renomear(runtime, pacote, nome, tamanho, apelidos, erro) ? pacote : NULL;
+}
+
+static SefValor primitiva_delete_package(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "DELETE-PACKAGE", erro))
+        return NULL;
+    SefValor designador = car(argumentos);
+    SefValor pacote = NULL;
+    if (designador->tipo == SEF_TIPO_PACOTE) {
+        pacote = designador;
+    } else {
+        size_t tamanho = 0;
+        const char *nome = nome_designador(runtime, designador, &tamanho);
+        if (nome == NULL) {
+            sef_erro_definir(erro, 0, 0, "DELETE-PACKAGE requires a package designator");
+            return NULL;
+        }
+        pacote = sef_pacote_encontrar(runtime, nome, tamanho);
+        if (pacote == NULL)
+            return runtime->nulo;
+    }
+    bool excluiu = false;
+    if (!sef_pacote_excluir(runtime, pacote, &excluiu, erro))
+        return NULL;
+    return excluiu ? runtime->verdadeiro : runtime->nulo;
 }
 
 static SefValor primitiva_packagep(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
@@ -2146,6 +2180,7 @@ static const struct {
                   {"PACKAGE-NAME", primitiva_package_name},
                   {"PACKAGE-NICKNAMES", primitiva_package_nicknames},
                   {"RENAME-PACKAGE", primitiva_rename_package},
+                  {"DELETE-PACKAGE", primitiva_delete_package},
                   {"PACKAGEP", primitiva_packagep},
                   {"USE-PACKAGE", primitiva_use_package},
                   {"UNUSE-PACKAGE", primitiva_unuse_package},

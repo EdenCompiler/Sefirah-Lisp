@@ -78,6 +78,8 @@ não significa que o marco inteiro esteja concluído.
   `MAKE-PACKAGE`, `FIND-PACKAGE` e `PACKAGE-NICKNAMES`.
 - [x] `RENAME-PACKAGE` seguro contra conflitos, com troca atômica de apelidos e
   persistência na imagem do mundo.
+- [x] `DELETE-PACKAGE` protegido, com checagem de relações, limpeza de
+  metadados, identidade dos símbolos sobreviventes e persistência.
 
 ### Compilador
 

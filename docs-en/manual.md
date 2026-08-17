@@ -370,6 +370,7 @@ Available forms and functions:
 - `MAKE-PACKAGE` with `:NICKNAMES` and `:USE`, `FIND-PACKAGE`, `PACKAGE-NAME`,
   `PACKAGE-NICKNAMES`, and `PACKAGEP`;
 - `RENAME-PACKAGE` with replacement nicknames;
+- guarded `DELETE-PACKAGE`;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`,
   `SHADOW`, `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN`, and
@@ -419,6 +420,14 @@ retains the implementation's convenient `COMMON-LISP` default.
 nickname set after checking every new designator for collisions and duplicate
 nicknames. Old names stop resolving unless they are explicitly included in the
 replacement nickname list. Renames persist in world images.
+
+`DELETE-PACKAGE` returns false for an already absent/deleted package. It rejects
+implementation packages, the current package, and packages that are still used
+by another package; callers can inspect and detach those relationships first.
+Successful deletion clears package registry metadata and outgoing uses.
+Surviving symbols retain their package object identity, print with `#:`, and
+remain valid across world-image restoration; `PACKAGE-NAME` and
+`PACKAGE-NICKNAMES` return `NIL` for that deleted object.
 
 `NIL` is simultaneously the empty list, false, and the external symbol named
 `"NIL"` in `COMMON-LISP`. It is inherited by `COMMON-LISP-USER`; `SYMBOLP`,

@@ -233,6 +233,12 @@ consulta tenta primeiro o nome canônico e depois listas validadas de apelidos;
 ambos os caminhos usam a comparação case-insensitive ASCII do sistema de
 packages. A consulta pública devolve strings copiadas, impedindo a mutação do
 registro por seus chamadores.
+Remover um package o retira do registro de packages do runtime e limpa seus
+metadados de apelidos, shadowing e usos de saída. O objeto package no heap
+permanece alcançável pelos símbolos sobreviventes, preservando sua identidade e
+a relação de `SYMBOL-PACKAGE` após restauração da imagem; o impressor representa
+esses símbolos com a notação não internada `#:` e o package como explicitamente
+removido.
 `DEFPACKAGE` valida todas as opções antes de aplicá-las e então executa as declarações
 em fases determinísticas: shadow e shadowing import, listas de uso, importação
 comum e internamento, seguidos de exportação. Assim, um conflito tem o mesmo

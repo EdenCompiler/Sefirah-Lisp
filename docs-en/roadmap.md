@@ -76,6 +76,8 @@ not mean the entire milestone is complete.
   `MAKE-PACKAGE`, `FIND-PACKAGE`, and `PACKAGE-NICKNAMES`.
 - [x] Collision-safe `RENAME-PACKAGE` with atomic nickname replacement and
   world-image persistence.
+- [x] Guarded `DELETE-PACKAGE` with relationship checks, metadata cleanup,
+  surviving symbol identity, and world-image persistence.
 
 ### Compiler
 

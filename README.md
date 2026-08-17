@@ -71,6 +71,7 @@ the roadmap.
 - case-insensitive persistent package nicknames in `DEFPACKAGE` and
   keyword-aware `MAKE-PACKAGE`;
 - collision-safe package renaming with atomic nickname-set replacement;
+- guarded package deletion with registry cleanup and surviving symbol identity;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -406,6 +407,7 @@ nativa permanecem no roteiro.
 - apelidos persistentes e case-insensitive de packages em `DEFPACKAGE` e
   `MAKE-PACKAGE` com keywords;
 - renomeação de packages com detecção de conflitos e troca atômica dos apelidos;
+- remoção protegida de packages com limpeza do registro e símbolos sobreviventes;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela

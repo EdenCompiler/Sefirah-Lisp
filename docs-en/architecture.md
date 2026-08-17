@@ -221,6 +221,12 @@ lookup is attempted first, followed by validated nickname lists; both paths use
 the package system's ASCII case-insensitive designator comparison. Inquiry
 returns copied strings so callers cannot mutate the registry through its public
 surface.
+Deleting a package removes it from the runtime package registry and clears its
+nickname, shadowing, and outgoing-use metadata. The package heap object remains
+reachable through any surviving symbols, so their identity and
+`SYMBOL-PACKAGE` relationship survive image restoration; the printer renders
+such symbols with the uninterned `#:` notation and the package as explicitly
+deleted.
 `DEFPACKAGE` validates every option before applying them and then applies declarations
 in deterministic phases: shadow and shadowing import, use lists, ordinary import
 and intern, then export. A conflict therefore has the same result regardless of
