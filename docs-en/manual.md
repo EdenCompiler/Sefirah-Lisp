@@ -372,6 +372,7 @@ Available forms and functions:
 - `RENAME-PACKAGE` with replacement nicknames;
 - guarded `DELETE-PACKAGE`;
 - `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS`, and `DO-ALL-SYMBOLS`;
+- `FIND-ALL-SYMBOLS`;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`,
   `SHADOW`, `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN`, and
@@ -437,6 +438,11 @@ package's local and inherited accessible symbols exactly once;
 symbol whose home package remains registered, including `NIL` and excluding
 uninterned/deleted-package symbols. Their optional result form is evaluated
 after the loop with the iterator variable bound to `NIL`.
+
+`FIND-ALL-SYMBOLS` returns the distinct interned identities with an exact name
+across registered packages, including `NIL` when requested. It intentionally
+excludes uninterned symbols and symbols whose home package was deleted; it does
+not promise a result order.
 
 `NIL` is simultaneously the empty list, false, and the external symbol named
 `"NIL"` in `COMMON-LISP`. It is inherited by `COMMON-LISP-USER`; `SYMBOLP`,

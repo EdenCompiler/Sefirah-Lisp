@@ -833,6 +833,14 @@ int main(int argc, char **argv) {
                     "(setq found t)))))",
                     "((\"PUBLIC\") (T T T) \"PUBLIC\" T)");
     verificar_texto(runtime,
+                    "(let ((symbols (find-all-symbols \"SHARED\"))) "
+                    "(list (not (null (member (find-symbol \"SHARED\" \"DEFINITION-SOURCE-A\") "
+                    "symbols))) "
+                    "(not (null (member (find-symbol \"SHARED\" \"DEFINITION-SOURCE-B\") "
+                    "symbols))) "
+                    "(not (null (member nil (find-all-symbols \"NIL\"))))))",
+                    "(T T T)");
+    verificar_texto(runtime,
                     "(let ((simbolo (intern \"Nome-Misto\" \"ALPHA\"))) "
                     "(list (symbol-name simbolo) "
                     "(multiple-value-list (find-symbol \"Nome-Misto\" \"ALPHA\")) "
@@ -1206,6 +1214,11 @@ int main(int argc, char **argv) {
                         "(do-external-symbols (symbol \"DEFINITION-TARGET\" :missing) "
                         "(return (symbol-name symbol)))",
                         "\"PUBLIC\"");
+    if (runtime != NULL)
+        verificar_texto(runtime,
+                        "(not (null (member (find-symbol \"SHARED\" \"DEFINITION-SOURCE-B\") "
+                        "(find-all-symbols \"SHARED\"))))",
+                        "T");
     if (runtime != NULL)
         verificar_texto(runtime,
                         "(list (find-package \"DELETE-SOURCE\") "

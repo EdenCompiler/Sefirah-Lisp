@@ -379,6 +379,7 @@ Formas e funções disponíveis:
 - `RENAME-PACKAGE` com substituição de apelidos;
 - `DELETE-PACKAGE` protegido;
 - `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS` e `DO-ALL-SYMBOLS`;
+- `FIND-ALL-SYMBOLS`;
 - `USE-PACKAGE`, `UNUSE-PACKAGE`, `PACKAGE-USE-LIST`,
   `PACKAGE-USED-BY-LIST`, `EXPORT`, `UNEXPORT`, `IMPORT`, `UNINTERN`, `SHADOW`,
   `SHADOWING-IMPORT`, `PACKAGE-SHADOWING-SYMBOLS`, `INTERN` e `FIND-SYMBOL`;
@@ -445,6 +446,11 @@ do package; `DO-EXTERNAL-SYMBOLS` visita suas exportações; e `DO-ALL-SYMBOLS`
 visita cada símbolo cujo package de origem continua registrado, inclusive `NIL`
 e excluindo símbolos não internados/de packages removidos. A forma de resultado
 opcional é avaliada depois do loop com a variável iteradora ligada a `NIL`.
+
+`FIND-ALL-SYMBOLS` devolve as identidades internadas distintas com um nome
+exato entre packages registrados, incluindo `NIL` quando solicitado. A função
+exclui intencionalmente símbolos não internados e símbolos cujo package de
+origem foi removido; a ordem do resultado não é prometida.
 
 `NIL` é simultaneamente a lista vazia, falso e o símbolo externo chamado
 `"NIL"` em `COMMON-LISP`. Ele é herdado por `COMMON-LISP-USER`; `SYMBOLP`,

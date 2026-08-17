@@ -80,6 +80,8 @@ not mean the entire milestone is complete.
   surviving symbol identity, and world-image persistence.
 - [x] Read-only package discovery with `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS`, and
   `DO-ALL-SYMBOLS`, including implicit `NIL` blocks and image reconciliation.
+- [x] Global registered-package name lookup through `FIND-ALL-SYMBOLS`, with
+  `NIL`, uninterned/deleted filtering, and image reconciliation.
 
 ### Compiler
 

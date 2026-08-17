@@ -83,6 +83,8 @@ não significa que o marco inteiro esteja concluído.
 - [x] Descoberta de packages somente para leitura por `DO-SYMBOLS`,
   `DO-EXTERNAL-SYMBOLS` e `DO-ALL-SYMBOLS`, com blocos `NIL` implícitos e
   reconciliação da imagem.
+- [x] Consulta global de nomes de packages registrados por `FIND-ALL-SYMBOLS`,
+  com `NIL`, filtragem de não internados/removidos e reconciliação de imagem.
 
 ### Compilador
 

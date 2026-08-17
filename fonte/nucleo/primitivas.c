@@ -1596,6 +1596,37 @@ static SefValor primitiva_find_symbol(SefRuntime *runtime, SefValor argumentos, 
     return sef_valores_definir(runtime, valores, 2, erro) ? resultado : NULL;
 }
 
+static SefValor primitiva_find_all_symbols(SefRuntime *runtime, SefValor argumentos,
+                                           SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 1, 1, "FIND-ALL-SYMBOLS", erro))
+        return NULL;
+    size_t tamanho = 0;
+    const char *nome = nome_designador(runtime, car(argumentos), &tamanho);
+    if (nome == NULL) {
+        sef_erro_definir(erro, 0, 0, "FIND-ALL-SYMBOLS requires a string designator");
+        return NULL;
+    }
+    SefValor resultado = runtime->nulo;
+    const char *nome_nulo = "NIL";
+    if (tamanho == 3 && memcmp(nome, nome_nulo, 3) == 0) {
+        resultado = sef_par_novo(runtime, runtime->nulo, resultado, erro);
+        if (resultado == NULL)
+            return NULL;
+    }
+    for (size_t i = runtime->quantidade_simbolos; i > 0; i--) {
+        SefValor simbolo = runtime->simbolos[i - 1];
+        if (sef_simbolo_nao_internado(runtime, simbolo) ||
+            !sef_pacote_registrado(runtime, simbolo->como.simbolo.pacote) ||
+            simbolo->como.simbolo.tamanho != tamanho ||
+            memcmp(simbolo->como.simbolo.nome, nome, tamanho) != 0)
+            continue;
+        resultado = sef_par_novo(runtime, simbolo, resultado, erro);
+        if (resultado == NULL)
+            return NULL;
+    }
+    return resultado;
+}
+
 static SefValor primitiva_symbol_name(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "SYMBOL-NAME", erro))
         return NULL;
@@ -2195,6 +2226,7 @@ static const struct {
                   {"PACKAGE-SHADOWING-SYMBOLS", primitiva_package_shadowing_symbols},
                   {"INTERN", primitiva_intern},
                   {"FIND-SYMBOL", primitiva_find_symbol},
+                  {"FIND-ALL-SYMBOLS", primitiva_find_all_symbols},
                   {"SYMBOL-NAME", primitiva_symbol_name},
                   {"SYMBOL-PACKAGE", primitiva_symbol_package},
                   {"MAKE-SYMBOL", primitiva_make_symbol},

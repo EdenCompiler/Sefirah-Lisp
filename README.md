@@ -74,6 +74,7 @@ the roadmap.
 - guarded package deletion with registry cleanup and surviving symbol identity;
 - package discovery through `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS`, and
   `DO-ALL-SYMBOLS`;
+- global registered-package symbol lookup through `FIND-ALL-SYMBOLS`;
 - first-class restart objects with dynamic discovery, invocation by name or
   identity, multiple values, and cleanup through `UNWIND-PROTECT`;
 - `SIGNAL` and dynamically scoped `HANDLER-BIND`, including recovery by
@@ -412,6 +413,7 @@ nativa permanecem no roteiro.
 - remoção protegida de packages com limpeza do registro e símbolos sobreviventes;
 - descoberta de símbolos de packages por `DO-SYMBOLS`, `DO-EXTERNAL-SYMBOLS` e
   `DO-ALL-SYMBOLS`;
+- consulta global de símbolos de packages registrados por `FIND-ALL-SYMBOLS`;
 - objetos restart de primeira classe com descoberta dinâmica, invocação por
   nome ou identidade, valores múltiplos e limpeza por `UNWIND-PROTECT`;
 - `SIGNAL` e `HANDLER-BIND` com escopo dinâmico, inclusive recuperação pela
