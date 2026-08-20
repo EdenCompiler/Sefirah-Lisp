@@ -192,6 +192,8 @@ não significa que o marco inteiro esteja concluído.
   com atualização e feedback de erros dentro do workbench.
 - [x] Prompts de caminho que preservam caixa, com glifos bitmap visualmente
   distintos para letras maiúsculas e minúsculas.
+- [x] Find no editor ativo com Ctrl+F, acesso pela barra/paleta, consulta iniciada
+  pela seleção, seleção UTF-8 segura anterior/próxima, contagem e retorno circular.
 - [x] Seletor multifonte de símbolos do workspace com índice estrutural de
   definições, buffers vivos não gravados, navegação exata, botão e Ctrl+T.
 - [x] Metadados de binding de valor/função ligados ao runtime e somente de

@@ -51,6 +51,11 @@ typedef enum SefMovimentoArquivoIde {
     SEF_ARQUIVO_PROXIMO
 } SefMovimentoArquivoIde;
 
+typedef enum SefMovimentoBuscaIde {
+    SEF_BUSCA_ANTERIOR,
+    SEF_BUSCA_PROXIMA
+} SefMovimentoBuscaIde;
+
 SefSessaoIde *sef_sessao_ide_criar(SefErro *erro);
 void sef_sessao_ide_destruir(SefSessaoIde *sessao);
 
@@ -95,6 +100,8 @@ bool sef_sessao_ide_editor_selecionar_forma(SefSessaoIde *sessao, SefErro *erro)
 bool sef_sessao_ide_editor_nova_linha(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_editor_buscar(SefSessaoIde *sessao, const char *consulta,
+                                  SefMovimentoBuscaIde movimento, SefErro *erro);
 
 bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro);

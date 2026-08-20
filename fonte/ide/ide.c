@@ -36,6 +36,7 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_COMANDOS,
     ACAO_BOTAO_SIMBOLOS,
     ACAO_BOTAO_REFERENCIAS,
+    ACAO_BOTAO_BUSCAR_EDITOR,
     ACAO_BOTAO_CONTROLE_VERSAO,
     ACAO_BOTAO_PERFIL,
     ACAO_BOTAO_ABRIR_ARQUIVO,
@@ -49,6 +50,7 @@ typedef enum ModoSobreposicaoIde {
     SOBREPOSICAO_NENHUMA,
     SOBREPOSICAO_ABRIR_RAPIDO,
     SOBREPOSICAO_SIMBOLOS,
+    SOBREPOSICAO_BUSCAR_EDITOR,
     SOBREPOSICAO_COMANDOS,
     SOBREPOSICAO_ABRIR_ARQUIVO,
     SOBREPOSICAO_ABRIR_PASTA,
@@ -59,6 +61,7 @@ typedef enum ModoSobreposicaoIde {
 typedef enum AcaoComandoIde {
     COMANDO_ABRIR_RAPIDO,
     COMANDO_BUSCAR_SIMBOLOS,
+    COMANDO_BUSCAR_EDITOR,
     COMANDO_ABRIR_ARQUIVO,
     COMANDO_ABRIR_PASTA,
     COMANDO_CRIAR_ARQUIVO,
@@ -104,9 +107,10 @@ typedef struct EstadoIde {
     SefComponente ouvinte;
     FerramentaIde ferramenta;
     SefRetangulo abas_ferramentas[FERRAMENTA_QUANTIDADE];
-    BotaoIde botoes[17];
+    BotaoIde botoes[18];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
+    char ultima_busca[1024];
     char mensagem_sobreposicao[256];
     size_t tamanho_consulta;
     size_t item_sobreposicao;
@@ -118,6 +122,7 @@ typedef struct EstadoIde {
 static const ComandoIde comandos[] = {
     {"Quick Open File", COMANDO_ABRIR_RAPIDO},
     {"Go to Symbol in Workspace", COMANDO_BUSCAR_SIMBOLOS},
+    {"Find in Active Editor", COMANDO_BUSCAR_EDITOR},
     {"Open File by Path", COMANDO_ABRIR_ARQUIVO},
     {"Open Folder", COMANDO_ABRIR_PASTA},
     {"Create New File", COMANDO_CRIAR_ARQUIVO},
@@ -165,13 +170,14 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[7] = (BotaoIde){"COMMANDS", ACAO_BOTAO_COMANDOS, {0}};
     estado->botoes[8] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
     estado->botoes[9] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
-    estado->botoes[10] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
-    estado->botoes[11] = (BotaoIde){"PROFILE", ACAO_BOTAO_PERFIL, {0}};
-    estado->botoes[12] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[13] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[14] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[15] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[16] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[10] = (BotaoIde){"FIND", ACAO_BOTAO_BUSCAR_EDITOR, {0}};
+    estado->botoes[11] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
+    estado->botoes[12] = (BotaoIde){"PROFILE", ACAO_BOTAO_PERFIL, {0}};
+    estado->botoes[13] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[14] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[15] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[16] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[17] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -350,6 +356,23 @@ static void abrir_sobreposicao_simbolos(EstadoIde *estado) {
     carregar_simbolos_espaco_trabalho(estado);
 }
 
+static void abrir_sobreposicao_busca_editor(EstadoIde *estado) {
+    abrir_sobreposicao(estado, SOBREPOSICAO_BUSCAR_EDITOR);
+    size_t inicio = 0;
+    size_t fim = 0;
+    const char *editor = sef_sessao_ide_editor(estado->sessao);
+    if (sef_sessao_ide_selecao_editor(estado->sessao, &inicio, &fim) &&
+        fim - inicio < sizeof(estado->consulta) &&
+        memchr(editor + inicio, '\n', fim - inicio) == NULL) {
+        memcpy(estado->consulta, editor + inicio, fim - inicio);
+        estado->tamanho_consulta = fim - inicio;
+        estado->consulta[estado->tamanho_consulta] = '\0';
+        return;
+    }
+    snprintf(estado->consulta, sizeof(estado->consulta), "%s", estado->ultima_busca);
+    estado->tamanho_consulta = strlen(estado->consulta);
+}
+
 static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
     switch (acao) {
     case ACAO_BOTAO_EXECUTAR:
@@ -394,6 +417,9 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         estado->ferramenta = FERRAMENTA_NAVEGADOR;
         sef_sessao_ide_navegar_referencia_espaco_trabalho(
             estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
+        break;
+    case ACAO_BOTAO_BUSCAR_EDITOR:
+        abrir_sobreposicao_busca_editor(estado);
         break;
     case ACAO_BOTAO_CONTROLE_VERSAO:
         estado->ferramenta = FERRAMENTA_CONTROLE_VERSAO;
@@ -626,6 +652,8 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
         titulo = "QUICK OPEN  CTRL+P";
     else if (estado->sobreposicao == SOBREPOSICAO_SIMBOLOS)
         titulo = "WORKSPACE SYMBOLS  CTRL+T";
+    else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
+        titulo = "FIND IN ACTIVE EDITOR  CTRL+F";
     else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_ARQUIVO)
         titulo = "OPEN FILE";
     else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_PASTA)
@@ -646,7 +674,18 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
     sef_superficie_texto(superficie, x + 22, y + 50, entrada, 2, SEF_COR(43, 54, 45));
 
     size_t quantidade = quantidade_itens_sobreposicao(estado);
-    if (sobreposicao_e_caminho(estado->sobreposicao)) {
+    if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR) {
+        const char *mensagem = estado->mensagem_sobreposicao[0] == '\0'
+                                   ? "ENTER NEXT   SHIFT+ENTER PREVIOUS"
+                                   : estado->mensagem_sobreposicao;
+        char linha_mensagem[128];
+        snprintf(linha_mensagem, sizeof(linha_mensagem), "%.127s", mensagem);
+        limitar_linha(linha_mensagem, largura > 48 ? (size_t)(largura - 48) / 12u : 0);
+        sef_superficie_texto(superficie, x + 22, y + 92, linha_mensagem, 2,
+                             SEF_COR(75, 84, 67));
+        estado->primeiro_item_sobreposicao = 0;
+        estado->quantidade_itens_visiveis = 0;
+    } else if (sobreposicao_e_caminho(estado->sobreposicao)) {
         const char *mensagem = estado->mensagem_sobreposicao[0] == '\0'
                                    ? "TYPE A PATH AND PRESS ENTER"
                                    : estado->mensagem_sobreposicao;
@@ -693,11 +732,12 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
             sef_superficie_texto(superficie, x + 22, item_y, linha_texto, 2, SEF_COR(43, 54, 45));
         }
     }
-    sef_superficie_texto(superficie, x + 12, y + altura - 18,
-                         sobreposicao_e_caminho(estado->sobreposicao)
-                             ? "ENTER CONFIRM   ESC CLOSE"
-                             : "ENTER SELECT   ESC CLOSE   UP/DOWN NAVIGATE",
-                         1, SEF_COR(75, 84, 67));
+    const char *ajuda = "ENTER SELECT   ESC CLOSE   UP/DOWN NAVIGATE";
+    if (sobreposicao_e_caminho(estado->sobreposicao))
+        ajuda = "ENTER CONFIRM   ESC CLOSE";
+    else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
+        ajuda = "ENTER NEXT   SHIFT+ENTER PREVIOUS   ESC CLOSE";
+    sef_superficie_texto(superficie, x + 12, y + altura - 18, ajuda, 1, SEF_COR(75, 84, 67));
 }
 
 static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
@@ -826,6 +866,9 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
     case COMANDO_BUSCAR_SIMBOLOS:
         abrir_sobreposicao_simbolos(estado);
         break;
+    case COMANDO_BUSCAR_EDITOR:
+        abrir_sobreposicao_busca_editor(estado);
+        break;
     case COMANDO_ABRIR_ARQUIVO:
         abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
         break;
@@ -950,6 +993,16 @@ static void executar_caminho_sobreposicao(EstadoIde *estado, SefErro *erro) {
     }
 }
 
+static void executar_busca_sobreposicao(EstadoIde *estado, bool anterior, SefErro *erro) {
+    snprintf(estado->ultima_busca, sizeof(estado->ultima_busca), "%s", estado->consulta);
+    bool executou = sef_sessao_ide_editor_buscar(
+        estado->sessao, estado->consulta, anterior ? SEF_BUSCA_ANTERIOR : SEF_BUSCA_PROXIMA, erro);
+    const char *mensagem = executou ? sef_sessao_ide_estado(estado->sessao) : erro->mensagem;
+    snprintf(estado->mensagem_sobreposicao, sizeof(estado->mensagem_sobreposicao), "%.255s",
+             mensagem);
+    estado->foco = FOCO_EDITOR;
+}
+
 static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela *evento,
                                        SefErro *erro) {
     if (evento->tipo == SEF_EVENTO_CANCELAR) {
@@ -991,7 +1044,9 @@ static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela 
         return true;
     }
     if (evento->tipo == SEF_EVENTO_ENTER) {
-        if (sobreposicao_e_caminho(estado->sobreposicao))
+        if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
+            executar_busca_sobreposicao(estado, evento->modificador_shift, erro);
+        else if (sobreposicao_e_caminho(estado->sobreposicao))
             executar_caminho_sobreposicao(estado, erro);
         else
             executar_item_sobreposicao(estado, erro);
@@ -1002,6 +1057,8 @@ static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela 
             estado->sobreposicao = SOBREPOSICAO_NENHUMA;
             return true;
         }
+        if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
+            return true;
         int inicio_y = estado->limites_sobreposicao.y + 81;
         if (evento->y >= inicio_y) {
             size_t linha = (size_t)(evento->y - inicio_y) / 22u;
@@ -1030,6 +1087,10 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     }
     if (evento->tipo == SEF_EVENTO_BUSCAR_SIMBOLOS) {
         abrir_sobreposicao_simbolos(estado);
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_BUSCAR_EDITOR) {
+        abrir_sobreposicao_busca_editor(estado);
         return true;
     }
     if (estado->sobreposicao != SOBREPOSICAO_NENHUMA)

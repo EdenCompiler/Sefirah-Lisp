@@ -198,6 +198,9 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
     } else if (comando && texto_igual_ascii(atalho, 't')) {
         evento.tipo = SEF_EVENTO_BUSCAR_SIMBOLOS;
         reconhecido = true;
+    } else if (comando && texto_igual_ascii(atalho, 'f')) {
+        evento.tipo = SEF_EVENTO_BUSCAR_EDITOR;
+        reconhecido = true;
     } else if (comando && texto_igual_ascii(atalho, 'z')) {
         evento.tipo = SEF_EVENTO_DESFAZER;
         reconhecido = true;

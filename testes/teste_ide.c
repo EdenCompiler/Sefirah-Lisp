@@ -485,6 +485,36 @@ int main(void) {
                   strcmp(sef_sessao_ide_editor(sessao), "açX") == 0,
               "Shift+setas selecionou pontos de codigo UTF-8 sem cortar bytes");
 
+    verificar(sef_sessao_ide_editor_definir(sessao, "Alpha beta ALPHA ação ação", &erro) &&
+                  sef_sessao_ide_editor_buscar(sessao, "alpha", SEF_BUSCA_PROXIMA, &erro) &&
+                  sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  inicio_selecao == 0 && fim_selecao == strlen("Alpha") &&
+                  strstr(sef_sessao_ide_estado(sessao), "Find 1/2 (wrapped): alpha") != NULL,
+              "busca do editor ignorou caixa ASCII e voltou ao primeiro resultado");
+    verificar(sef_sessao_ide_editor_buscar(sessao, "alpha", SEF_BUSCA_PROXIMA, &erro) &&
+                  sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  strncmp(sef_sessao_ide_editor(sessao) + inicio_selecao, "ALPHA",
+                          fim_selecao - inicio_selecao) == 0 &&
+                  strstr(sef_sessao_ide_estado(sessao), "Find 2/2: alpha") != NULL &&
+                  sef_sessao_ide_editor_buscar(sessao, "alpha", SEF_BUSCA_ANTERIOR, &erro) &&
+                  sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  inicio_selecao == 0,
+              "busca do editor navegou para frente e para tras com selecao exata");
+    verificar(sef_sessao_ide_editor_buscar(sessao, "ação", SEF_BUSCA_PROXIMA, &erro) &&
+                  sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  fim_selecao - inicio_selecao == strlen("ação") &&
+                  memcmp(sef_sessao_ide_editor(sessao) + inicio_selecao, "ação",
+                         strlen("ação")) == 0,
+              "busca do editor preservou limites UTF-8");
+    verificar(sef_sessao_ide_editor_buscar(sessao, "missing", SEF_BUSCA_PROXIMA, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao), "No matches for: missing") != NULL &&
+                  !sef_sessao_ide_editor_buscar(sessao, "", SEF_BUSCA_PROXIMA, &erro) &&
+                  strstr(erro.mensagem, "enter text to find") != NULL &&
+                  !sef_sessao_ide_editor_buscar(sessao, "alpha", (SefMovimentoBuscaIde)99,
+                                                &erro) &&
+                  strstr(erro.mensagem, "invalid editor search direction") != NULL,
+              "busca do editor informou consultas ausentes/vazias e direcao invalida em ingles");
+
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),
               "editor avaliou somente a forma completa no cursor");

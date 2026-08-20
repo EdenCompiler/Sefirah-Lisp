@@ -606,9 +606,9 @@ reuses an untouched empty tab.
 
 The command toolbar provides pointer buttons for Run, Run Form, Run Changes,
 Save, Auto Save, Snapshot, Restore, Commands, Symbols, References, Open File,
-Open Folder, New File, New Folder, Source Control, Profile, and Refresh. The
-toolbar wraps onto a second row instead of hiding actions when the window is narrow. File and
-folder controls use an in-IDE path prompt and report
+Open Folder, New File, New Folder, Find, Source Control, Profile, and Refresh.
+The toolbar wraps onto a second row instead of hiding actions when the window
+is narrow. File and folder controls use an in-IDE path prompt and report
 failures in English inside that prompt. Creation is exclusive—it does not
 overwrite an existing path—and Refresh preserves the selected source when it
 still exists. The evaluation and snapshot buttons invoke the same live-world
@@ -643,6 +643,14 @@ palette covering file/folder operations, evaluation, snapshots, structural
 navigation, focus, and undo/redo. Up/Down wraps through results, Enter invokes
 the selected item, Escape closes the overlay, and visible results accept pointer
 clicks. Ctrl+O opens the file path prompt.
+
+Ctrl+F, the `FIND` toolbar button, or `Find in Active Editor` in the command
+palette opens the editor Find overlay. A single-line selection seeds its query;
+otherwise the last submitted query is restored. Matching ignores ASCII letter
+case while preserving UTF-8 boundaries. Enter selects the next match,
+Shift+Enter selects the previous one, both directions wrap, and the overlay
+reports the current/total match count in English. Escape closes Find without
+changing source text.
 
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector

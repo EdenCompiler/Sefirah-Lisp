@@ -2172,6 +2172,109 @@ bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro) {
     return restaurar_editor(sessao, false, erro);
 }
 
+static unsigned char minuscula_ascii(unsigned char caractere) {
+    return caractere >= 'A' && caractere <= 'Z' ? (unsigned char)(caractere - 'A' + 'a')
+                                                : caractere;
+}
+
+static bool busca_corresponde(const TextoIde *texto, size_t posicao, const char *consulta,
+                              size_t tamanho_consulta) {
+    if (posicao > texto->tamanho || tamanho_consulta > texto->tamanho - posicao)
+        return false;
+    for (size_t i = 0; i < tamanho_consulta; i++)
+        if (minuscula_ascii((unsigned char)texto->dados[posicao + i]) !=
+            minuscula_ascii((unsigned char)consulta[i]))
+            return false;
+    return true;
+}
+
+static size_t busca_proxima_no_intervalo(const TextoIde *texto, const char *consulta,
+                                         size_t tamanho_consulta, size_t inicio, size_t fim) {
+    size_t posicao = inicio;
+    while (posicao < fim) {
+        if (tamanho_consulta <= fim - posicao &&
+            busca_corresponde(texto, posicao, consulta, tamanho_consulta))
+            return posicao;
+        posicao = utf8_proximo(texto, posicao);
+    }
+    return SIZE_MAX;
+}
+
+static size_t busca_anterior_no_intervalo(const TextoIde *texto, const char *consulta,
+                                          size_t tamanho_consulta, size_t inicio, size_t fim) {
+    size_t encontrada = SIZE_MAX;
+    size_t posicao = inicio;
+    while (posicao < fim) {
+        if (tamanho_consulta <= fim - posicao &&
+            busca_corresponde(texto, posicao, consulta, tamanho_consulta))
+            encontrada = posicao;
+        posicao = utf8_proximo(texto, posicao);
+    }
+    return encontrada;
+}
+
+bool sef_sessao_ide_editor_buscar(SefSessaoIde *sessao, const char *consulta,
+                                  SefMovimentoBuscaIde movimento, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || consulta == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session or editor search text");
+        return false;
+    }
+    if (movimento != SEF_BUSCA_ANTERIOR && movimento != SEF_BUSCA_PROXIMA) {
+        sef_erro_definir(erro, 0, 0, "invalid editor search direction");
+        return false;
+    }
+    size_t tamanho_consulta = strlen(consulta);
+    if (tamanho_consulta == 0) {
+        sef_erro_definir(erro, 0, 0, "enter text to find in the active editor");
+        return false;
+    }
+
+    size_t inicio_selecao = sessao->cursor_editor;
+    size_t fim_selecao = sessao->cursor_editor;
+    sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao);
+    size_t limite = movimento == SEF_BUSCA_PROXIMA ? fim_selecao : inicio_selecao;
+    size_t encontrada = SIZE_MAX;
+    bool retornou_ao_inicio = false;
+    if (movimento == SEF_BUSCA_PROXIMA) {
+        encontrada = busca_proxima_no_intervalo(&sessao->editor, consulta, tamanho_consulta,
+                                                limite, sessao->editor.tamanho);
+        if (encontrada == SIZE_MAX) {
+            encontrada = busca_proxima_no_intervalo(&sessao->editor, consulta, tamanho_consulta,
+                                                    0, limite);
+            retornou_ao_inicio = encontrada != SIZE_MAX;
+        }
+    } else {
+        encontrada = busca_anterior_no_intervalo(&sessao->editor, consulta, tamanho_consulta,
+                                                 0, limite);
+        if (encontrada == SIZE_MAX) {
+            encontrada = busca_anterior_no_intervalo(&sessao->editor, consulta,
+                                                     tamanho_consulta, limite,
+                                                     sessao->editor.tamanho);
+            retornou_ao_inicio = encontrada != SIZE_MAX;
+        }
+    }
+
+    size_t quantidade = 0;
+    size_t indice = 0;
+    for (size_t posicao = 0; posicao < sessao->editor.tamanho;
+         posicao = utf8_proximo(&sessao->editor, posicao)) {
+        if (!busca_corresponde(&sessao->editor, posicao, consulta, tamanho_consulta))
+            continue;
+        quantidade++;
+        if (posicao == encontrada)
+            indice = quantidade;
+    }
+    if (encontrada == SIZE_MAX)
+        return texto_formatar(&sessao->estado, erro, "No matches for: %s", consulta);
+
+    sessao->ancora_selecao_editor = encontrada;
+    sessao->cursor_editor = encontrada + tamanho_consulta;
+    sessao->selecao_editor_ativa = true;
+    return texto_formatar(&sessao->estado, erro, "Find %zu/%zu%s: %s", indice, quantidade,
+                          retornou_ao_inicio ? " (wrapped)" : "", consulta);
+}
+
 bool sef_sessao_ide_ouvinte_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL || texto == NULL) {

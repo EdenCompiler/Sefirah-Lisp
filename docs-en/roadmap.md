@@ -188,6 +188,8 @@ not mean the entire milestone is complete.
   actions with refresh and in-workbench error feedback.
 - [x] Case-preserving path prompts with visually distinct uppercase and
   lowercase bitmap glyphs.
+- [x] Active-editor Find with Ctrl+F, toolbar/command access, selection-seeded
+  queries, UTF-8-safe next/previous selection, counts, and wraparound.
 - [x] Multi-file workspace symbol picker with structural definition indexing,
   live unsaved buffers, exact source navigation, toolbar access, and Ctrl+T.
 - [x] Read-only runtime-backed value/function binding metadata in workspace

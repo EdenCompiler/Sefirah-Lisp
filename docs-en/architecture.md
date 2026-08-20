@@ -105,10 +105,11 @@ and the active editor makes tab switching lossless without duplicating buffers.
 `espaco_trabalho.c` builds the bounded, sorted project index through native
 directory enumeration, skips symlink/reparse-point recursion, and keeps
 absolute paths separate from the relative paths shown by the Explorer.
-The window adapters translate Ctrl+P, Ctrl+Shift+P, and Escape into portable
-events. Presentation code owns the filtered Quick Open/command-palette overlay;
-file discovery, exclusive file/folder creation, refresh, and opening remain in
-the testable session layer.
+The window adapters translate Ctrl+P, Ctrl+Shift+P, Ctrl+F, and Escape into
+portable events. Presentation code owns the filtered Quick Open, command
+palette, and active-editor Find overlays; text matching, file discovery,
+exclusive file/folder creation, refresh, and opening remain in the testable
+session layer.
 The session can execute, load, save, snapshot, and restore without a window,
 which makes behavior testable on CI. `sefirah_ide`
 only lays out the panels,

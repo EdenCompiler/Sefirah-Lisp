@@ -616,9 +616,9 @@ primeiro fonte reutiliza uma aba vazia ainda intocada.
 
 A barra de comandos fornece botões para Run, Run Form, Run Changes, Save, Auto
 Save, Snapshot, Restore, Commands, Symbols, References, Open File, Open Folder,
-New File, New Folder, Source Control, Profile e Refresh. A barra passa para uma
-segunda linha em vez de ocultar ações quando a janela fica estreita. Os controles de
-arquivos e pastas usam um prompt de caminho interno à IDE e exibem falhas em
+New File, New Folder, Find, Source Control, Profile e Refresh. A barra passa para
+uma segunda linha em vez de ocultar ações quando a janela fica estreita. Os
+controles de arquivos e pastas usam um prompt de caminho interno à IDE e exibem falhas em
 inglês nesse prompt. A criação é exclusiva — não
 sobrescreve um caminho existente — e Refresh preserva o fonte selecionado
 quando ele ainda existe. Os botões de avaliação e snapshot acionam as mesmas
@@ -656,6 +656,14 @@ arquivo/pasta, avaliação, snapshots, navegação estrutural, foco e desfazer/r
 Cima/Baixo percorrem resultados circularmente, Enter aciona o item selecionado,
 Escape fecha a sobreposição e resultados visíveis aceitam clique. Ctrl+O abre o
 prompt de caminho de arquivo.
+
+Ctrl+F, o botão `FIND` ou `Find in Active Editor` na paleta de comandos abre a
+sobreposição Find do editor. Uma seleção de linha única inicia sua consulta;
+caso contrário, a última consulta enviada é restaurada. A correspondência não
+diferencia letras ASCII por caixa e preserva limites UTF-8. Enter seleciona o
+próximo resultado, Shift+Enter seleciona o anterior, as duas direções retornam
+circularmente, e a sobreposição informa em inglês o resultado atual e o total.
+Escape fecha Find sem alterar o texto-fonte.
 
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou

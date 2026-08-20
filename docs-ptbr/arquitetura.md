@@ -111,10 +111,11 @@ sem perda e sem duplicação de buffers.
 `espaco_trabalho.c` constrói o índice limitado e ordenado do projeto por enumeração
 nativa de diretórios, evita recursão por links simbólicos/reparse points e
 separa caminhos absolutos daqueles relativos exibidos pelo Explorer.
-Os adaptadores de janela convertem Ctrl+P, Ctrl+Shift+P e Escape em eventos
-portáveis. A apresentação mantém a sobreposição filtrada de Quick Open/paleta
-de comandos; descoberta, criação exclusiva de arquivo/pasta, atualização e
-abertura permanecem na camada de sessão testável. A sessão
+Os adaptadores de janela convertem Ctrl+P, Ctrl+Shift+P, Ctrl+F e Escape em
+eventos portáveis. A apresentação mantém as sobreposições de Quick Open, paleta
+de comandos e Find do editor ativo; correspondência de texto, descoberta,
+criação exclusiva de arquivo/pasta, atualização e abertura permanecem na camada
+de sessão testável. A sessão
 executa, abre, grava, captura e restaura sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
 painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.
