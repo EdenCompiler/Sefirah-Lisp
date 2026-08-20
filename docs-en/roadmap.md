@@ -196,6 +196,9 @@ not mean the entire milestone is complete.
   exact source opening, F12/Shift+F12, and a toolbar action.
 - [x] Symbol-at-point F11 definition lookup across workspace files with a
   buffer-local fallback.
+- [x] GC-rooted historical snapshots of restart objects available at an
+  unhandled `ERROR`, retained with debugger history and navigable in the
+  inspector.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and full desktop-session restoration.

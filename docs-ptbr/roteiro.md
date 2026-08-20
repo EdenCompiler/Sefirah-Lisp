@@ -200,6 +200,9 @@ não significa que o marco inteiro esteja concluído.
   gravados, abertura exata, F12/Shift+F12 e ação na barra.
 - [x] Localização F11 da definição do símbolo no cursor entre arquivos do
   workspace, com fallback para o buffer local.
+- [x] Snapshots históricos enraizados no GC dos objetos restart disponíveis em
+  um `ERROR` não tratado, retidos com o histórico do depurador e navegáveis no
+  inspetor.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração completa da sessão de desktop.

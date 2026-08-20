@@ -204,6 +204,9 @@ struct SefRuntime {
     SefValor saida_padrao;
     SefValor erro_padrao;
     SefValor ultima_condicao;
+    SefValor *reinicios_ultima_condicao;
+    size_t quantidade_reinicios_ultima_condicao;
+    size_t capacidade_reinicios_ultima_condicao;
 
     SefQuadroControle *controle;
     SefReinicioDinamico *reinicios;
@@ -367,6 +370,7 @@ bool sef_formas_especiais_reconciliar(SefRuntime *runtime, SefErro *erro);
 SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor argumentos,
                               SefErro *erro);
 bool sef_condicao_sinalizar(SefRuntime *runtime, SefValor condicao, SefErro *erro);
+bool sef_runtime_registrar_reinicios_ativos(SefRuntime *runtime, SefErro *erro);
 SefFuncaoNativa sef_primitiva_buscar(const char *nome);
 const char *sef_primitiva_nome(SefFuncaoNativa funcao);
 SefValor sef_primitiva_copy_seq(SefRuntime *runtime, SefValor argumentos, SefErro *erro);

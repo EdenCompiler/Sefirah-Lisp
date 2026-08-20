@@ -133,10 +133,14 @@ code sees only formatted session state and never reaches into runtime internals.
 The runtime keeps the last unhandled condition rooted until the next evaluation
 and exposes it as a borrowed SDK value. The session converts that value into its
 own bounded set of public roots, so later collections cannot invalidate the
-debugger history. Restoring another world releases all condition and inspector
-roots before destroying the old runtime. Restart frames are intentionally not
-retained after unwinding; a future interactive debugger must suspend evaluation
-instead of storing dead `setjmp` destinations.
+debugger history. An unhandled `ERROR` also records a borrowed, GC-visible
+vector of the restart objects active at the signal point. The vector is reset at
+the next evaluation, while the session copies its members into roots owned by
+the corresponding history entry. Restoring another world releases all
+condition, restart, and inspector roots before destroying the old runtime.
+Restart frames are intentionally not retained after unwinding; a future
+interactive debugger must suspend evaluation instead of storing dead `setjmp`
+destinations.
 
 ## Compiler flow
 

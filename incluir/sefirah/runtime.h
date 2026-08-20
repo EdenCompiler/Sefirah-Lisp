@@ -31,6 +31,10 @@ void sef_runtime_destruir(SefRuntime *runtime);
 SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefErro *erro);
 /* Valor emprestado da ultima condicao nao tratada; pode ser NULL. */
 SefValor sef_runtime_ultima_condicao(const SefRuntime *runtime);
+/* Objetos emprestados dos restarts vistos pelo ultimo ERROR nao tratado.
+ * O snapshot permanece valido somente ate a proxima avaliacao. */
+size_t sef_runtime_quantidade_reinicios_ultima_condicao(const SefRuntime *runtime);
+SefValor sef_runtime_reinicio_ultima_condicao(const SefRuntime *runtime, size_t indice);
 SefEstadoCodigo sef_runtime_estado_codigo(const char *codigo, SefErro *erro);
 bool sef_runtime_executar_arquivo(SefRuntime *runtime, const char *caminho, SefValor *ultimo,
                                   SefErro *erro);

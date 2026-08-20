@@ -199,6 +199,8 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria) {
     marcar(runtime->saida_padrao);
     marcar(runtime->erro_padrao);
     marcar(runtime->ultima_condicao);
+    for (size_t i = 0; i < runtime->quantidade_reinicios_ultima_condicao; i++)
+        marcar(runtime->reinicios_ultima_condicao[i]);
     marcar(runtime->valor_transferencia);
     marcar(runtime->parametros_transferencia);
     marcar(runtime->corpo_transferencia);
@@ -380,6 +382,7 @@ void sef_runtime_destruir(SefRuntime *runtime) {
     }
     free(runtime->simbolos);
     free(runtime->pacotes);
+    free(runtime->reinicios_ultima_condicao);
     free(runtime->valores_multiplos);
     sef_valores_salvos_liberar(&runtime->valores_transferencia);
     free(runtime);
@@ -442,6 +445,39 @@ SefValor sef_runtime_ultima_condicao(const SefRuntime *runtime) {
     return runtime == NULL ? NULL : runtime->ultima_condicao;
 }
 
+size_t sef_runtime_quantidade_reinicios_ultima_condicao(const SefRuntime *runtime) {
+    return runtime == NULL ? 0 : runtime->quantidade_reinicios_ultima_condicao;
+}
+
+SefValor sef_runtime_reinicio_ultima_condicao(const SefRuntime *runtime, size_t indice) {
+    return runtime == NULL || indice >= runtime->quantidade_reinicios_ultima_condicao
+               ? NULL
+               : runtime->reinicios_ultima_condicao[indice];
+}
+
+bool sef_runtime_registrar_reinicios_ativos(SefRuntime *runtime, SefErro *erro) {
+    size_t quantidade = 0;
+    for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
+         reinicio = reinicio->anterior)
+        quantidade++;
+    if (quantidade > runtime->capacidade_reinicios_ultima_condicao) {
+        SefValor *reinicios =
+            realloc(runtime->reinicios_ultima_condicao, quantidade * sizeof(*reinicios));
+        if (reinicios == NULL) {
+            sef_erro_definir(erro, 0, 0, "not enough memory to snapshot active restarts");
+            return false;
+        }
+        runtime->reinicios_ultima_condicao = reinicios;
+        runtime->capacidade_reinicios_ultima_condicao = quantidade;
+    }
+    runtime->quantidade_reinicios_ultima_condicao = 0;
+    for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
+         reinicio = reinicio->anterior)
+        runtime->reinicios_ultima_condicao[runtime->quantidade_reinicios_ultima_condicao++] =
+            reinicio->objeto;
+    return true;
+}
+
 SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefErro *erro) {
     sef_erro_limpar(erro);
     if (runtime == NULL || codigo == NULL) {
@@ -449,6 +485,7 @@ SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefE
         return NULL;
     }
     runtime->ultima_condicao = NULL;
+    runtime->quantidade_reinicios_ultima_condicao = 0;
     if (!sef_valores_definir(runtime, NULL, 0, erro))
         return NULL;
 

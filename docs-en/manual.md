@@ -656,12 +656,22 @@ object in the general inspector. Internal evaluator and reader failures are
 represented by synthesized `ERROR` conditions, while syntax and external I/O
 diagnostics remain labeled entries without a Lisp object.
 
-Restart objects may survive for inspection, but their executable records
-belong to the evaluation stack and correctly become inactive when evaluation
-unwinds. The inspector exposes their `NAME` and live `ACTIVE` state. The panel
-therefore does not pretend that a completed failure still has invokable
-restarts. Interactive restart selection requires a suspendable
-evaluator/debugger continuation and remains pending.
+When an unhandled `ERROR` returns through `RESTART-CASE`, the runtime snapshots
+the first-class restart objects that were active at the signal point. The IDE
+copies them into public GC roots in the same bounded history entry as the
+condition. Enter opens a shelf containing the condition followed by those
+restart snapshots; Left/Right navigates the shelf, and the inspector exposes
+each restart's `NAME` and `ACTIVE` state.
+
+The C SDK exposes the borrowed snapshot through
+`sef_runtime_quantidade_reinicios_ultima_condicao` and
+`sef_runtime_reinicio_ultima_condicao`. Its lifetime ends when the next
+evaluation begins, so resident tools must create `SefRaiz` handles for values
+they retain. Restart executable records still belong to the evaluation stack
+and correctly become inactive when evaluation unwinds. The panel labels the
+snapshots as historical and does not pretend that a completed failure has
+invokable restarts. Invocation at the failure point still requires a
+suspendable evaluator/debugger continuation and remains pending.
 
 The browser can
 show the definition catalog or the references/callers for the selected symbol,

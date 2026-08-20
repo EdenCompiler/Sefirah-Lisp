@@ -688,6 +688,28 @@ int main(int argc, char **argv) {
                     "(error \"recuperavel\")) "
                     "(use-value (valor) valor))",
                     "42");
+    SefValor falha_com_reinicios = sef_runtime_avaliar_texto(
+        runtime,
+        "(restart-case (error \"restart snapshot\") "
+        "(use-value (value) value) (abort () nil))",
+        &erro);
+    verificar(falha_com_reinicios == NULL && erro.ocorreu &&
+                  sef_runtime_quantidade_reinicios_ultima_condicao(runtime) == 2,
+              "runtime registrou os restarts ativos da ultima condicao nao tratada");
+    SefValor reinicio_snapshot_0 = sef_runtime_reinicio_ultima_condicao(runtime, 0);
+    SefValor reinicio_snapshot_1 = sef_runtime_reinicio_ultima_condicao(runtime, 1);
+    verificar(reinicio_snapshot_0 != NULL && reinicio_snapshot_1 != NULL &&
+                  strcmp(sef_valor_nome_tipo(reinicio_snapshot_0), "RESTART") == 0 &&
+                  strcmp(sef_valor_nome_tipo(reinicio_snapshot_1), "RESTART") == 0 &&
+                  sef_valor_componente(runtime, reinicio_snapshot_0, 1, &componente_sdk,
+                                       rotulo_componente, sizeof(rotulo_componente)) &&
+                  strcmp(rotulo_componente, "ACTIVE") == 0 &&
+                  sef_valor_e_nulo(runtime, componente_sdk) &&
+                  sef_runtime_reinicio_ultima_condicao(runtime, 2) == NULL,
+              "snapshot publico preservou objetos RESTART inativos depois do desenrolamento");
+    verificar_texto(runtime, "(+ 40 2)", "42");
+    verificar(sef_runtime_quantidade_reinicios_ultima_condicao(runtime) == 0,
+              "nova avaliacao encerrou a vida emprestada do snapshot de restarts");
     verificar_texto(runtime,
                     "(defun escolher-valor-do-handler (condicao) "
                     "(invoke-restart 'usar-designador 43)) "

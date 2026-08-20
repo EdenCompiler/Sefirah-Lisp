@@ -47,6 +47,8 @@ typedef struct DiagnosticoIde {
     size_t linha;
     size_t coluna;
     SefRaiz *condicao;
+    SefRaiz **reinicios;
+    size_t quantidade_reinicios;
 } DiagnosticoIde;
 
 typedef struct ResultadoSimboloEspacoTrabalhoIde {
@@ -431,26 +433,59 @@ static bool atualizar_depurador(SefSessaoIde *sessao, SefErro *erro) {
     }
     if (!texto_formatar(&sessao->depurador, erro,
                         "CONDITIONS: %zu\nSELECTED: %zu/%zu\nSOURCE: %s\nTYPE: %s\n"
-                        "POSITION: %zu:%zu\nMESSAGE: %s",
+                        "POSITION: %zu:%zu\nMESSAGE: %s\nRESTARTS AT SIGNAL: %zu",
                         sessao->quantidade_diagnosticos, sessao->diagnostico_selecionado + 1,
                         sessao->quantidade_diagnosticos, diagnostico->origem, tipo,
-                        diagnostico->linha, diagnostico->coluna, diagnostico->mensagem))
+                        diagnostico->linha, diagnostico->coluna, diagnostico->mensagem,
+                        diagnostico->quantidade_reinicios))
         return false;
+    for (size_t i = 0; i < diagnostico->quantidade_reinicios; i++) {
+        char prefixo[48];
+        int tamanho = snprintf(prefixo, sizeof(prefixo), "\n  %zu: ", i + 1);
+        if (tamanho <= 0 || (size_t)tamanho >= sizeof(prefixo)) {
+            sef_erro_definir(erro, 0, 0, "restart snapshot index is too large to display");
+            return false;
+        }
+        char *representacao = sef_valor_para_texto(
+            sessao->runtime, sef_raiz_valor(diagnostico->reinicios[i]), true, erro);
+        if (representacao == NULL)
+            return false;
+        bool acrescentou = texto_acrescentar_n(&sessao->depurador, prefixo, (size_t)tamanho, erro) &&
+                           texto_acrescentar(&sessao->depurador, representacao, erro) &&
+                           texto_acrescentar(&sessao->depurador,
+                                             " [HISTORICAL, INACTIVE]", erro);
+        sef_texto_liberar(representacao);
+        if (!acrescentou)
+            return false;
+    }
     if (diagnostico->condicao != NULL)
         return texto_acrescentar(
             &sessao->depurador,
-            "\n\nENTER inspects the condition.\nActive restarts ended with evaluation.", erro);
+            "\n\nENTER inspects the condition and restart snapshots.\n"
+            "Snapshots are historical; evaluation has already unwound.", erro);
     return texto_acrescentar(&sessao->depurador,
                              "\n\nThis diagnostic has no inspectable Lisp object.", erro);
+}
+
+static void diagnostico_liberar(DiagnosticoIde *diagnostico) {
+    if (diagnostico == NULL)
+        return;
+    sef_raiz_liberar(diagnostico->condicao);
+    for (size_t i = 0; i < diagnostico->quantidade_reinicios; i++)
+        sef_raiz_liberar(diagnostico->reinicios[i]);
+    free(diagnostico->reinicios);
+    memset(diagnostico, 0, sizeof(*diagnostico));
 }
 
 static bool registrar_diagnostico(SefSessaoIde *sessao, const char *origem, const SefErro *causa,
                                   SefValor condicao, SefErro *erro) {
     if (sessao->quantidade_diagnosticos == SEF_LIMITE_CONDICOES_IDE) {
-        sef_raiz_liberar(sessao->diagnosticos[0].condicao);
+        diagnostico_liberar(&sessao->diagnosticos[0]);
         memmove(sessao->diagnosticos, sessao->diagnosticos + 1,
                 (SEF_LIMITE_CONDICOES_IDE - 1) * sizeof(sessao->diagnosticos[0]));
         sessao->quantidade_diagnosticos--;
+        memset(&sessao->diagnosticos[sessao->quantidade_diagnosticos], 0,
+               sizeof(sessao->diagnosticos[0]));
     }
     DiagnosticoIde diagnostico = {0};
     snprintf(diagnostico.origem, sizeof(diagnostico.origem), "%s", origem);
@@ -464,6 +499,28 @@ static bool registrar_diagnostico(SefSessaoIde *sessao, const char *origem, cons
             sef_erro_definir(erro, 0, 0, "%s", erro_raiz.mensagem);
             return false;
         }
+        diagnostico.quantidade_reinicios =
+            sef_runtime_quantidade_reinicios_ultima_condicao(sessao->runtime);
+        if (diagnostico.quantidade_reinicios > 0) {
+            diagnostico.reinicios =
+                calloc(diagnostico.quantidade_reinicios, sizeof(*diagnostico.reinicios));
+            if (diagnostico.reinicios == NULL) {
+                diagnostico_liberar(&diagnostico);
+                sef_erro_definir(erro, 0, 0,
+                                 "not enough memory to retain debugger restart snapshots");
+                return false;
+            }
+            for (size_t i = 0; i < diagnostico.quantidade_reinicios; i++) {
+                SefValor reinicio = sef_runtime_reinicio_ultima_condicao(sessao->runtime, i);
+                diagnostico.reinicios[i] = sef_raiz_criar(sessao->runtime, reinicio, &erro_raiz);
+                if (diagnostico.reinicios[i] == NULL) {
+                    diagnostico.quantidade_reinicios = i;
+                    diagnostico_liberar(&diagnostico);
+                    sef_erro_definir(erro, 0, 0, "%s", erro_raiz.mensagem);
+                    return false;
+                }
+            }
+        }
     }
     sessao->diagnosticos[sessao->quantidade_diagnosticos++] = diagnostico;
     sessao->diagnostico_selecionado = sessao->quantidade_diagnosticos - 1;
@@ -472,7 +529,7 @@ static bool registrar_diagnostico(SefSessaoIde *sessao, const char *origem, cons
 
 static void liberar_diagnosticos(SefSessaoIde *sessao) {
     for (size_t i = 0; i < sessao->quantidade_diagnosticos; i++)
-        sef_raiz_liberar(sessao->diagnosticos[i].condicao);
+        diagnostico_liberar(&sessao->diagnosticos[i]);
     memset(sessao->diagnosticos, 0, sizeof(sessao->diagnosticos));
     sessao->quantidade_diagnosticos = 0;
     sessao->diagnostico_selecionado = 0;
@@ -2221,22 +2278,30 @@ bool sef_sessao_ide_inspecionar_condicao(SefSessaoIde *sessao, SefErro *erro) {
     DiagnosticoIde *diagnostico = &sessao->diagnosticos[sessao->diagnostico_selecionado];
     if (diagnostico->condicao == NULL)
         return texto_definir(&sessao->estado, "Selected diagnostic has no CONDITION object", erro);
-    SefRaiz **objetos = calloc(1, sizeof(*objetos));
+    size_t quantidade_objetos = 1 + diagnostico->quantidade_reinicios;
+    SefRaiz **objetos = calloc(quantidade_objetos, sizeof(*objetos));
     if (objetos == NULL) {
         sef_erro_definir(erro, 0, 0, "not enough memory to inspect condition");
         return false;
     }
-    objetos[0] = sef_raiz_criar(sessao->runtime, sef_raiz_valor(diagnostico->condicao), erro);
-    if (objetos[0] == NULL) {
-        free(objetos);
-        return false;
+    for (size_t i = 0; i < quantidade_objetos; i++) {
+        SefRaiz *origem = i == 0 ? diagnostico->condicao : diagnostico->reinicios[i - 1];
+        objetos[i] = sef_raiz_criar(sessao->runtime, sef_raiz_valor(origem), erro);
+        if (objetos[i] == NULL) {
+            for (size_t j = 0; j < i; j++)
+                sef_raiz_liberar(objetos[j]);
+            free(objetos);
+            return false;
+        }
     }
     liberar_objetos_inspecao(sessao);
     sessao->objetos_inspecao = objetos;
-    sessao->quantidade_objetos_inspecao = 1;
+    sessao->quantidade_objetos_inspecao = quantidade_objetos;
     return atualizar_inspetor(sessao, erro) &&
-           texto_formatar(&sessao->estado, erro, "Condition %zu opened in inspector",
-                          sessao->diagnostico_selecionado + 1);
+           texto_formatar(&sessao->estado, erro,
+                          "Condition %zu and %zu restart snapshot(s) opened in inspector",
+                          sessao->diagnostico_selecionado + 1,
+                          diagnostico->quantidade_reinicios);
 }
 
 bool sef_sessao_ide_inspetor_mover(SefSessaoIde *sessao, SefMovimentoInspetorIde movimento,

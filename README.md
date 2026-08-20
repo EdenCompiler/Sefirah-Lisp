@@ -268,7 +268,10 @@ Backspace returns to its parent, and Left/Right switch between returned roots.
 The complete navigation path remains rooted in the garbage collector. Clicking
 the definition browser advances to the next definition. In the debugger,
 Up/Down select a condition and Enter opens its Lisp object in the recursive
-inspector; restart objects expose their name and current active state there. On
+inspector. When an unhandled `ERROR` unwinds through a `RESTART-CASE`, the
+debugger also preserves the restart objects that were available at the signal
+point. They open beside the condition with Left/Right and are clearly marked as
+historical and inactive; their executable stack frames are not retained. On
 macOS, Command can replace Ctrl.
 
 ## Architecture
@@ -621,8 +624,12 @@ inspetor, Cima/Baixo selecionam um componente, Enter o abre, Backspace volta ao
 pai e Esquerda/Direita alternam entre as raízes devolvidas. O caminho completo
 permanece enraizado no coletor de lixo. Clicar no navegador avança para a
 próxima definição. No depurador, Cima/Baixo selecionam uma condição e Enter
-abre seu objeto Lisp no inspetor recursivo; objetos restart expõem ali o nome e
-o estado ativo corrente. No macOS, Command pode substituir Ctrl.
+abre seu objeto Lisp no inspetor recursivo. Quando um `ERROR` não tratado
+desenrola através de um `RESTART-CASE`, o depurador também preserva os objetos
+restart disponíveis no ponto da sinalização. Eles podem ser abertos ao lado da
+condição com Esquerda/Direita e aparecem claramente como históricos e inativos;
+seus quadros executáveis da pilha não são retidos. No macOS, Command pode
+substituir Ctrl.
 
 ## Arquitetura
 

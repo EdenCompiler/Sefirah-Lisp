@@ -140,11 +140,14 @@ formatado da sessão e nunca acessa os detalhes internos do runtime.
 O runtime mantém a última condição não tratada enraizada até a próxima
 avaliação e a expõe como valor emprestado do SDK. A sessão converte esse valor
 em seu próprio conjunto limitado de raízes públicas, impedindo que coletas
-posteriores invalidem o histórico do depurador. Restaurar outro mundo libera
-todas as raízes de condições e inspeção antes de destruir o runtime anterior.
-Quadros de restart não são retidos depois do desenrolamento; um depurador
-interativo futuro deverá suspender a avaliação, em vez de armazenar destinos
-`setjmp` mortos.
+posteriores invalidem o histórico do depurador. Um `ERROR` não tratado também
+registra um vetor emprestado e visível ao GC com os objetos restart ativos no
+ponto da sinalização. O vetor é zerado na próxima avaliação, enquanto a sessão
+copia seus membros para raízes pertencentes à entrada correspondente do
+histórico. Restaurar outro mundo libera todas as raízes de condições, restarts e
+inspeção antes de destruir o runtime anterior. Quadros de restart não são
+retidos depois do desenrolamento; um depurador interativo futuro deverá
+suspender a avaliação, em vez de armazenar destinos `setjmp` mortos.
 
 ## Fluxo do compilador
 

@@ -1995,7 +1995,8 @@ static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErr
         sef_erro_definir(erro, 0, 0, "ERROR requires a string or condition");
         return NULL;
     }
-    if (condicao == NULL || !sef_condicao_sinalizar(runtime, condicao, erro))
+    if (condicao == NULL || !sef_condicao_sinalizar(runtime, condicao, erro) ||
+        !sef_runtime_registrar_reinicios_ativos(runtime, erro))
         return NULL;
     runtime->ultima_condicao = condicao;
     sef_erro_definir(erro, 0, 0, "%s", condicao->como.condicao.mensagem->como.texto.dados);

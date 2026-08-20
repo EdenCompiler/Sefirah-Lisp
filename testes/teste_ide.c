@@ -160,18 +160,29 @@ int main(void) {
                   strstr(sef_sessao_ide_inspetor(sessao), "> CAR: 30") != NULL,
               "inspetor voltou e alternou entre raizes estruturadas");
 
-    verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(error \"falha depuravel\")", &erro) &&
+    verificar(sef_sessao_ide_ouvinte_inserir(
+                  sessao,
+                  "(restart-case (error \"falha depuravel\") "
+                  "(use-value (value) value) (abort () nil))",
+                  &erro) &&
                   !sef_sessao_ide_ouvinte_enviar(sessao, &erro) && erro.ocorreu &&
                   strstr(sef_sessao_ide_depurador(sessao), "CONDITIONS: 1") != NULL &&
                   strstr(sef_sessao_ide_depurador(sessao), "TYPE: ERROR") != NULL &&
-                  strstr(sef_sessao_ide_depurador(sessao), "falha depuravel") != NULL,
-              "depurador reteve uma condicao Lisp nao tratada");
+                  strstr(sef_sessao_ide_depurador(sessao), "falha depuravel") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "RESTARTS AT SIGNAL: 2") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "#<RESTART USE-VALUE>") != NULL &&
+                  strstr(sef_sessao_ide_depurador(sessao), "#<RESTART ABORT>") != NULL,
+              "depurador reteve uma condicao Lisp e seus restarts historicos");
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(+ 20 22)", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
                   sef_sessao_ide_inspecionar_condicao(sessao, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "OBJECTS: 3") != NULL &&
                   strstr(sef_sessao_ide_inspetor(sessao), "TYPE: CONDITION") != NULL &&
-                  strstr(sef_sessao_ide_inspetor(sessao), "MESSAGE: \"falha depuravel\"") != NULL,
-              "condicao historica permaneceu enraizada e abriu no inspetor geral");
+                  strstr(sef_sessao_ide_inspetor(sessao), "MESSAGE: \"falha depuravel\"") != NULL &&
+                  sef_sessao_ide_inspetor_mover(sessao, SEF_INSPETOR_PROXIMO, &erro) &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "TYPE: RESTART") != NULL &&
+                  strstr(sef_sessao_ide_inspetor(sessao), "ACTIVE: NIL") != NULL,
+              "condicao e restarts historicos permaneceram enraizados no inspetor geral");
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "simbolo-sem-valor", &erro) &&
                   !sef_sessao_ide_ouvinte_enviar(sessao, &erro) && erro.ocorreu &&
                   strstr(sef_sessao_ide_depurador(sessao), "CONDITIONS: 2") != NULL &&

@@ -667,12 +667,23 @@ selecionado no inspetor geral. Falhas internas do avaliador e leitor recebem
 condições `ERROR` sintetizadas, enquanto diagnósticos de sintaxe e I/O externo
 permanecem entradas rotuladas sem objeto Lisp.
 
-Objetos restart podem sobreviver para inspeção, mas seus registros executáveis
-pertencem à pilha da avaliação e tornam-se corretamente inativos quando ela é
-desenrolada. O inspetor expõe seu `NOME` e estado `ATIVO` corrente. O painel não
-finge, portanto, que uma falha já encerrada ainda possui restarts invocáveis. A
-seleção interativa de restart exige continuação suspensível do
-avaliador/depurador e permanece pendente.
+Quando um `ERROR` não tratado retorna através de `RESTART-CASE`, o runtime
+registra os objetos restart de primeira classe que estavam ativos no ponto da
+sinalização. A IDE os copia para raízes públicas do GC na mesma entrada limitada
+de histórico da condição. Enter abre uma prateleira com a condição seguida
+desses snapshots de restart; Esquerda/Direita navega pela prateleira, e o
+inspetor expõe `NAME` e `ACTIVE` de cada restart.
+
+O SDK C expõe o snapshot emprestado por
+`sef_runtime_quantidade_reinicios_ultima_condicao` e
+`sef_runtime_reinicio_ultima_condicao`. Sua vida termina quando a próxima
+avaliação começa; portanto, ferramentas residentes devem criar raízes `SefRaiz`
+para valores retidos. Os registros executáveis dos restarts continuam
+pertencendo à pilha da avaliação e tornam-se corretamente inativos quando ela é
+desenrolada. O painel marca os snapshots como históricos e não finge que uma
+falha encerrada ainda possui restarts invocáveis. Invocá-los no ponto da falha
+ainda exige uma continuação suspensível do avaliador/depurador e permanece
+pendente.
 
 O navegador
 mostra o catálogo de definições ou as referências/callers do símbolo
