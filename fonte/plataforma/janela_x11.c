@@ -69,6 +69,10 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                         evento_sefirah.tipo = SEF_EVENTO_BUSCAR_SIMBOLOS;
                     } else if (controle && (tecla == XK_f || tecla == XK_F)) {
                         evento_sefirah.tipo = SEF_EVENTO_BUSCAR_EDITOR;
+                    } else if (controle && (tecla == XK_n || tecla == XK_N)) {
+                        evento_sefirah.tipo = SEF_EVENTO_NOVO_DOCUMENTO;
+                    } else if (controle && (tecla == XK_w || tecla == XK_W)) {
+                        evento_sefirah.tipo = SEF_EVENTO_FECHAR_DOCUMENTO;
                     } else if (tecla == XK_F5 ||
                                (controle && (tecla == XK_Return || tecla == XK_KP_Enter))) {
                         evento_sefirah.tipo = SEF_EVENTO_EXECUTAR;

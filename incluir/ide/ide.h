@@ -84,6 +84,9 @@ size_t sef_sessao_ide_documento_ativo(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_documento_caminho(const SefSessaoIde *sessao, size_t indice);
 bool sef_sessao_ide_documento_modificado(const SefSessaoIde *sessao, size_t indice);
 bool sef_sessao_ide_documento_ativar(SefSessaoIde *sessao, size_t indice, SefErro *erro);
+bool sef_sessao_ide_documento_novo(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_documento_fechar_ativo(SefSessaoIde *sessao, bool descartar_alteracoes,
+                                           SefErro *erro);
 bool sef_sessao_ide_salvamento_automatico(const SefSessaoIde *sessao);
 bool sef_sessao_ide_salvamento_automatico_definir(SefSessaoIde *sessao, bool ativo,
                                                   SefErro *erro);

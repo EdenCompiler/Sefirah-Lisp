@@ -190,6 +190,9 @@ not mean the entire milestone is complete.
   lowercase bitmap glyphs.
 - [x] Active-editor Find with Ctrl+F, toolbar/command access, selection-seeded
   queries, UTF-8-safe next/previous selection, counts, and wraparound.
+- [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
+  explicit unsaved-discard confirmation, deterministic neighbor selection, and
+  a permanent one-editor invariant.
 - [x] Multi-file workspace symbol picker with structural definition indexing,
   live unsaved buffers, exact source navigation, toolbar access, and Ctrl+T.
 - [x] Read-only runtime-backed value/function binding metadata in workspace

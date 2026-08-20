@@ -605,8 +605,9 @@ tab; a pointer click selects and opens a visible entry. The initial source file
 reuses an untouched empty tab.
 
 The command toolbar provides pointer buttons for Run, Run Form, Run Changes,
-Save, Auto Save, Snapshot, Restore, Commands, Symbols, References, Open File,
-Open Folder, New File, New Folder, Find, Source Control, Profile, and Refresh.
+Save, Auto Save, Snapshot, Restore, Commands, Symbols, References, New Tab,
+Close Tab, Open File, Open Folder, New File, New Folder, Find, Source Control,
+Profile, and Refresh.
 The toolbar wraps onto a second row instead of hiding actions when the window
 is narrow. File and folder controls use an in-IDE path prompt and report
 failures in English inside that prompt. Creation is exclusive—it does not
@@ -625,6 +626,15 @@ clears the unsaved marker. Untitled buffers remain modified until the user gives
 them a path with Save. The headless session API exposes the same behavior with
 `sef_sessao_ide_salvamento_automatico` and
 `sef_sessao_ide_salvamento_automatico_definir`.
+
+Ctrl+N, `NEW TAB`, or `New Untitled Tab` creates another empty editor document
+without requesting a filesystem path. Ctrl+W, `CLOSE TAB`, or `Close Active Tab`
+closes the active document and selects its right neighbor, or the left neighbor
+when closing the last tab. A modified document opens an in-workbench `UNSAVED
+CHANGES` confirmation; Enter explicitly discards and closes, while Escape keeps
+the tab. Closing the only tab replaces it with a fresh `untitled.lisp`, so the
+IDE never enters a zero-editor state. `NEW FILE` remains the separate operation
+that creates a named file on disk.
 
 Opening or refreshing a workspace also refreshes the read-only Source Control
 panel. The `SOURCE` button, a click on the panel, or `Refresh Source Control` in

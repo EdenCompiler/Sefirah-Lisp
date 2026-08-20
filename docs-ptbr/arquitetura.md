@@ -108,12 +108,18 @@ plano mantém texto, caminho, caminho da imagem, cursor, seleção, indicador de
 alteração, histórico do editor e assinaturas incrementais. A movimentação
 desses valores entre o slot do documento e o editor ativo torna a troca de abas
 sem perda e sem duplicação de buffers.
+Criar e fechar abas transfere esses campos proprietários pela mesma fronteira do
+documento ativo. A API da sessão rejeita o fechamento de um documento alterado
+sem confirmação explícita de descarte obtida pela apresentação; fechar o último
+documento o substitui por um documento novo sem nome, preservando a invariante
+de que sempre existe exatamente um editor ativo.
 `espaco_trabalho.c` constrói o índice limitado e ordenado do projeto por enumeração
 nativa de diretórios, evita recursão por links simbólicos/reparse points e
 separa caminhos absolutos daqueles relativos exibidos pelo Explorer.
-Os adaptadores de janela convertem Ctrl+P, Ctrl+Shift+P, Ctrl+F e Escape em
-eventos portáveis. A apresentação mantém as sobreposições de Quick Open, paleta
-de comandos e Find do editor ativo; correspondência de texto, descoberta,
+Os adaptadores de janela convertem Ctrl+P, Ctrl+Shift+P, Ctrl+F, Ctrl+N, Ctrl+W e
+Escape em eventos portáveis. A apresentação mantém as sobreposições de Quick
+Open, paleta de comandos, Find do editor ativo e confirmação de fechamento sem
+gravação; correspondência de texto, propriedade dos documentos, descoberta,
 criação exclusiva de arquivo/pasta, atualização e abertura permanecem na camada
 de sessão testável. A sessão
 executa, abre, grava, captura e restaura sem uma janela, o

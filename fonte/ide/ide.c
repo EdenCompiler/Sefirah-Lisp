@@ -37,6 +37,8 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_SIMBOLOS,
     ACAO_BOTAO_REFERENCIAS,
     ACAO_BOTAO_BUSCAR_EDITOR,
+    ACAO_BOTAO_NOVA_ABA,
+    ACAO_BOTAO_FECHAR_ABA,
     ACAO_BOTAO_CONTROLE_VERSAO,
     ACAO_BOTAO_PERFIL,
     ACAO_BOTAO_ABRIR_ARQUIVO,
@@ -51,6 +53,7 @@ typedef enum ModoSobreposicaoIde {
     SOBREPOSICAO_ABRIR_RAPIDO,
     SOBREPOSICAO_SIMBOLOS,
     SOBREPOSICAO_BUSCAR_EDITOR,
+    SOBREPOSICAO_CONFIRMAR_FECHAMENTO,
     SOBREPOSICAO_COMANDOS,
     SOBREPOSICAO_ABRIR_ARQUIVO,
     SOBREPOSICAO_ABRIR_PASTA,
@@ -62,6 +65,8 @@ typedef enum AcaoComandoIde {
     COMANDO_ABRIR_RAPIDO,
     COMANDO_BUSCAR_SIMBOLOS,
     COMANDO_BUSCAR_EDITOR,
+    COMANDO_NOVA_ABA,
+    COMANDO_FECHAR_ABA,
     COMANDO_ABRIR_ARQUIVO,
     COMANDO_ABRIR_PASTA,
     COMANDO_CRIAR_ARQUIVO,
@@ -107,7 +112,7 @@ typedef struct EstadoIde {
     SefComponente ouvinte;
     FerramentaIde ferramenta;
     SefRetangulo abas_ferramentas[FERRAMENTA_QUANTIDADE];
-    BotaoIde botoes[18];
+    BotaoIde botoes[20];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
     char ultima_busca[1024];
@@ -123,6 +128,8 @@ static const ComandoIde comandos[] = {
     {"Quick Open File", COMANDO_ABRIR_RAPIDO},
     {"Go to Symbol in Workspace", COMANDO_BUSCAR_SIMBOLOS},
     {"Find in Active Editor", COMANDO_BUSCAR_EDITOR},
+    {"New Untitled Tab", COMANDO_NOVA_ABA},
+    {"Close Active Tab", COMANDO_FECHAR_ABA},
     {"Open File by Path", COMANDO_ABRIR_ARQUIVO},
     {"Open Folder", COMANDO_ABRIR_PASTA},
     {"Create New File", COMANDO_CRIAR_ARQUIVO},
@@ -171,13 +178,15 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[8] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
     estado->botoes[9] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
     estado->botoes[10] = (BotaoIde){"FIND", ACAO_BOTAO_BUSCAR_EDITOR, {0}};
-    estado->botoes[11] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
-    estado->botoes[12] = (BotaoIde){"PROFILE", ACAO_BOTAO_PERFIL, {0}};
-    estado->botoes[13] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[14] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[15] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[16] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[17] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[11] = (BotaoIde){"NEW TAB", ACAO_BOTAO_NOVA_ABA, {0}};
+    estado->botoes[12] = (BotaoIde){"CLOSE TAB", ACAO_BOTAO_FECHAR_ABA, {0}};
+    estado->botoes[13] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
+    estado->botoes[14] = (BotaoIde){"PROFILE", ACAO_BOTAO_PERFIL, {0}};
+    estado->botoes[15] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[16] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[17] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[18] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[19] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -373,6 +382,19 @@ static void abrir_sobreposicao_busca_editor(EstadoIde *estado) {
     estado->tamanho_consulta = strlen(estado->consulta);
 }
 
+static void solicitar_fechar_aba(EstadoIde *estado, SefErro *erro) {
+    size_t ativa = sef_sessao_ide_documento_ativo(estado->sessao);
+    if (!sef_sessao_ide_documento_modificado(estado->sessao, ativa)) {
+        sef_sessao_ide_documento_fechar_ativo(estado->sessao, false, erro);
+        estado->foco = FOCO_EDITOR;
+        return;
+    }
+    abrir_sobreposicao(estado, SOBREPOSICAO_CONFIRMAR_FECHAMENTO);
+    const char *caminho = sef_sessao_ide_documento_caminho(estado->sessao, ativa);
+    snprintf(estado->mensagem_sobreposicao, sizeof(estado->mensagem_sobreposicao),
+             "Close %.220s without saving?", caminho == NULL ? "untitled.lisp" : caminho);
+}
+
 static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
     switch (acao) {
     case ACAO_BOTAO_EXECUTAR:
@@ -420,6 +442,13 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         break;
     case ACAO_BOTAO_BUSCAR_EDITOR:
         abrir_sobreposicao_busca_editor(estado);
+        break;
+    case ACAO_BOTAO_NOVA_ABA:
+        if (sef_sessao_ide_documento_novo(estado->sessao, erro))
+            estado->foco = FOCO_EDITOR;
+        break;
+    case ACAO_BOTAO_FECHAR_ABA:
+        solicitar_fechar_aba(estado, erro);
         break;
     case ACAO_BOTAO_CONTROLE_VERSAO:
         estado->ferramenta = FERRAMENTA_CONTROLE_VERSAO;
@@ -654,6 +683,8 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
         titulo = "WORKSPACE SYMBOLS  CTRL+T";
     else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
         titulo = "FIND IN ACTIVE EDITOR  CTRL+F";
+    else if (estado->sobreposicao == SOBREPOSICAO_CONFIRMAR_FECHAMENTO)
+        titulo = "UNSAVED CHANGES";
     else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_ARQUIVO)
         titulo = "OPEN FILE";
     else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_PASTA)
@@ -666,15 +697,25 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
     sef_superficie_retangulo(superficie, x + 12, y + 42, largura - 24, 32, SEF_COR(231, 224, 194));
     sef_superficie_contorno(superficie, x + 12, y + 42, largura - 24, 32, 1, SEF_COR(101, 112, 86));
     char entrada[160];
-    const char *consulta_visivel = estado->consulta;
-    if (estado->tamanho_consulta > 150)
-        consulta_visivel = estado->consulta + estado->tamanho_consulta - 150;
-    snprintf(entrada, sizeof(entrada), "> %.150s|", consulta_visivel);
+    if (estado->sobreposicao == SOBREPOSICAO_CONFIRMAR_FECHAMENTO) {
+        snprintf(entrada, sizeof(entrada), "%.159s", estado->mensagem_sobreposicao);
+    } else {
+        const char *consulta_visivel = estado->consulta;
+        if (estado->tamanho_consulta > 150)
+            consulta_visivel = estado->consulta + estado->tamanho_consulta - 150;
+        snprintf(entrada, sizeof(entrada), "> %.150s|", consulta_visivel);
+    }
     limitar_linha(entrada, largura > 48 ? (size_t)(largura - 48) / 12u : 0);
     sef_superficie_texto(superficie, x + 22, y + 50, entrada, 2, SEF_COR(43, 54, 45));
 
     size_t quantidade = quantidade_itens_sobreposicao(estado);
-    if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR) {
+    if (estado->sobreposicao == SOBREPOSICAO_CONFIRMAR_FECHAMENTO) {
+        sef_superficie_texto(superficie, x + 22, y + 92,
+                             "This discards the unsaved editor changes.", 2,
+                             SEF_COR(143, 65, 45));
+        estado->primeiro_item_sobreposicao = 0;
+        estado->quantidade_itens_visiveis = 0;
+    } else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR) {
         const char *mensagem = estado->mensagem_sobreposicao[0] == '\0'
                                    ? "ENTER NEXT   SHIFT+ENTER PREVIOUS"
                                    : estado->mensagem_sobreposicao;
@@ -737,6 +778,8 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
         ajuda = "ENTER CONFIRM   ESC CLOSE";
     else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
         ajuda = "ENTER NEXT   SHIFT+ENTER PREVIOUS   ESC CLOSE";
+    else if (estado->sobreposicao == SOBREPOSICAO_CONFIRMAR_FECHAMENTO)
+        ajuda = "ENTER DISCARD AND CLOSE   ESC CANCEL";
     sef_superficie_texto(superficie, x + 12, y + altura - 18, ajuda, 1, SEF_COR(75, 84, 67));
 }
 
@@ -868,6 +911,13 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
         break;
     case COMANDO_BUSCAR_EDITOR:
         abrir_sobreposicao_busca_editor(estado);
+        break;
+    case COMANDO_NOVA_ABA:
+        if (sef_sessao_ide_documento_novo(estado->sessao, erro))
+            estado->foco = FOCO_EDITOR;
+        break;
+    case COMANDO_FECHAR_ABA:
+        solicitar_fechar_aba(estado, erro);
         break;
     case COMANDO_ABRIR_ARQUIVO:
         abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
@@ -1009,6 +1059,21 @@ static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela 
         estado->sobreposicao = SOBREPOSICAO_NENHUMA;
         return true;
     }
+    if (estado->sobreposicao == SOBREPOSICAO_CONFIRMAR_FECHAMENTO) {
+        if (evento->tipo == SEF_EVENTO_ENTER) {
+            if (sef_sessao_ide_documento_fechar_ativo(estado->sessao, true, erro)) {
+                estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+                estado->foco = FOCO_EDITOR;
+            } else {
+                snprintf(estado->mensagem_sobreposicao,
+                         sizeof(estado->mensagem_sobreposicao), "%.255s", erro->mensagem);
+            }
+        } else if (evento->tipo == SEF_EVENTO_PONTEIRO_PRESSIONAR &&
+                   !ponto_dentro(estado->limites_sobreposicao, evento->x, evento->y)) {
+            estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+        }
+        return true;
+    }
     if (evento->tipo == SEF_EVENTO_TEXTO) {
         size_t tamanho = strlen(evento->texto_utf8);
         if (tamanho > 0 && estado->tamanho_consulta + tamanho < sizeof(estado->consulta)) {
@@ -1091,6 +1156,17 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     }
     if (evento->tipo == SEF_EVENTO_BUSCAR_EDITOR) {
         abrir_sobreposicao_busca_editor(estado);
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_NOVO_DOCUMENTO) {
+        estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+        if (sef_sessao_ide_documento_novo(estado->sessao, &erro))
+            estado->foco = FOCO_EDITOR;
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_FECHAR_DOCUMENTO) {
+        estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+        solicitar_fechar_aba(estado, &erro);
         return true;
     }
     if (estado->sobreposicao != SOBREPOSICAO_NENHUMA)

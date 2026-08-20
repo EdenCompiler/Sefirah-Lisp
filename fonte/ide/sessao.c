@@ -551,6 +551,15 @@ static bool atualizar_caminho_imagem(SefSessaoIde *sessao, SefErro *erro) {
     return definir_caminho_imagem(&sessao->caminho_imagem, &sessao->caminho, erro);
 }
 
+static bool documento_vazio_iniciar(DocumentoIde *documento, SefErro *erro) {
+    memset(documento, 0, sizeof(*documento));
+    documento->historico_editor = sef_historico_editor_criar("", 0, erro);
+    return documento->historico_editor != NULL &&
+           texto_definir(&documento->editor, "", erro) &&
+           texto_definir(&documento->caminho, "untitled.lisp", erro) &&
+           definir_caminho_imagem(&documento->caminho_imagem, &documento->caminho, erro);
+}
+
 static bool codigo_vazio(const char *codigo) {
     while (*codigo != '\0') {
         if (*codigo != ' ' && *codigo != '\t' && *codigo != '\r' && *codigo != '\n')
@@ -1195,6 +1204,74 @@ bool sef_sessao_ide_documento_ativar(SefSessaoIde *sessao, size_t indice, SefErr
     return texto_formatar(&sessao->estado, erro, "Active tab: %s",
                           nome_base(sessao->caminho.dados));
 }
+
+bool sef_sessao_ide_documento_novo(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while creating an editor tab");
+        return false;
+    }
+    DocumentoIde novo;
+    bool criou = documento_vazio_iniciar(&novo, erro) &&
+                 reservar_documentos(sessao, sessao->quantidade_documentos + 1, erro);
+    if (!criou) {
+        documento_liberar(&novo);
+        return false;
+    }
+    size_t indice = sessao->quantidade_documentos++;
+    guardar_documento_ativo(sessao);
+    sessao->documentos[indice] = novo;
+    memset(&novo, 0, sizeof(novo));
+    carregar_documento(sessao, indice);
+    referencias_espaco_trabalho_limpar(sessao);
+    return atualizar_abas(sessao, erro) && atualizar_navegador_atual(sessao, erro) &&
+           texto_definir(&sessao->estado, "New untitled tab", erro);
+}
+
+bool sef_sessao_ide_documento_fechar_ativo(SefSessaoIde *sessao, bool descartar_alteracoes,
+                                           SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || sessao->quantidade_documentos == 0) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session or active editor tab");
+        return false;
+    }
+    if (sessao->documento_modificado && !descartar_alteracoes) {
+        sef_erro_definir(erro, 0, 0,
+                         "active tab has unsaved changes; save it or confirm discard");
+        return false;
+    }
+    char nome_fechado[256];
+    snprintf(nome_fechado, sizeof(nome_fechado), "%.255s", nome_base(sessao->caminho.dados));
+
+    DocumentoIde substituto = {0};
+    if (sessao->quantidade_documentos == 1 && !documento_vazio_iniciar(&substituto, erro)) {
+        documento_liberar(&substituto);
+        return false;
+    }
+
+    size_t removido = sessao->documento_ativo;
+    guardar_documento_ativo(sessao);
+    documento_liberar(&sessao->documentos[removido]);
+    if (sessao->quantidade_documentos == 1) {
+        sessao->documentos[0] = substituto;
+        memset(&substituto, 0, sizeof(substituto));
+        carregar_documento(sessao, 0);
+    } else {
+        memmove(sessao->documentos + removido, sessao->documentos + removido + 1,
+                (sessao->quantidade_documentos - removido - 1) * sizeof(*sessao->documentos));
+        sessao->quantidade_documentos--;
+        memset(&sessao->documentos[sessao->quantidade_documentos], 0,
+               sizeof(*sessao->documentos));
+        size_t proximo = removido < sessao->quantidade_documentos
+                             ? removido
+                             : sessao->quantidade_documentos - 1;
+        carregar_documento(sessao, proximo);
+    }
+    referencias_espaco_trabalho_limpar(sessao);
+    return atualizar_abas(sessao, erro) && atualizar_navegador_atual(sessao, erro) &&
+           texto_formatar(&sessao->estado, erro, "Closed tab: %s", nome_fechado);
+}
+
 size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao) {
     return sessao == NULL ? 0 : sessao->cursor_editor;
 }

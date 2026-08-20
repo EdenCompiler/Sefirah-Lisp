@@ -102,14 +102,19 @@ history, active path, and runtime. Each background document retains its text,
 path, image path, cursor, selection, modified flag, editor history, and
 incremental fingerprints. Moving those owned values between a document slot
 and the active editor makes tab switching lossless without duplicating buffers.
+Creating and closing tabs transfers those owned fields through the same active
+document boundary. Closing a modified document is rejected by the session API
+unless the presentation has obtained explicit discard confirmation; closing the
+last document replaces it with a fresh untitled document, preserving the
+invariant that exactly one active editor always exists.
 `espaco_trabalho.c` builds the bounded, sorted project index through native
 directory enumeration, skips symlink/reparse-point recursion, and keeps
 absolute paths separate from the relative paths shown by the Explorer.
-The window adapters translate Ctrl+P, Ctrl+Shift+P, Ctrl+F, and Escape into
-portable events. Presentation code owns the filtered Quick Open, command
-palette, and active-editor Find overlays; text matching, file discovery,
-exclusive file/folder creation, refresh, and opening remain in the testable
-session layer.
+The window adapters translate Ctrl+P, Ctrl+Shift+P, Ctrl+F, Ctrl+N, Ctrl+W, and
+Escape into portable events. Presentation code owns the filtered Quick Open,
+command palette, active-editor Find, and unsaved-close confirmation overlays;
+text matching, document ownership, file discovery, exclusive file/folder
+creation, refresh, and opening remain in the testable session layer.
 The session can execute, load, save, snapshot, and restore without a window,
 which makes behavior testable on CI. `sefirah_ide`
 only lays out the panels,

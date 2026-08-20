@@ -615,8 +615,8 @@ selecionado em uma aba; um clique seleciona e abre uma entrada visível. O
 primeiro fonte reutiliza uma aba vazia ainda intocada.
 
 A barra de comandos fornece botões para Run, Run Form, Run Changes, Save, Auto
-Save, Snapshot, Restore, Commands, Symbols, References, Open File, Open Folder,
-New File, New Folder, Find, Source Control, Profile e Refresh. A barra passa para
+Save, Snapshot, Restore, Commands, Symbols, References, New Tab, Close Tab, Open
+File, Open Folder, New File, New Folder, Find, Source Control, Profile e Refresh. A barra passa para
 uma segunda linha em vez de ocultar ações quando a janela fica estreita. Os
 controles de arquivos e pastas usam um prompt de caminho interno à IDE e exibem falhas em
 inglês nesse prompt. A criação é exclusiva — não
@@ -636,6 +636,15 @@ marcador de alteração. Buffers sem nome continuam modificados até o usuário 
 dar um caminho com Save. A API headless da sessão oferece o mesmo comportamento
 por `sef_sessao_ide_salvamento_automatico` e
 `sef_sessao_ide_salvamento_automatico_definir`.
+
+Ctrl+N, `NEW TAB` ou `New Untitled Tab` cria outro documento vazio no editor sem
+pedir um caminho no sistema de arquivos. Ctrl+W, `CLOSE TAB` ou `Close Active
+Tab` fecha o documento ativo e seleciona seu vizinho à direita, ou o vizinho à
+esquerda ao fechar a última aba. Um documento alterado abre a confirmação
+`UNSAVED CHANGES` dentro do workbench; Enter descarta e fecha explicitamente,
+enquanto Escape mantém a aba. Fechar a única aba a substitui por um novo
+`untitled.lisp`, impedindo que a IDE fique sem editor. `NEW FILE` continua sendo
+a operação separada que cria um arquivo nomeado no disco.
 
 Abrir ou atualizar um workspace também atualiza o painel somente de leitura
 Source Control. O botão `SOURCE`, um clique no painel ou `Refresh Source Control`

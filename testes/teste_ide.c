@@ -276,6 +276,35 @@ int main(void) {
                   sef_sessao_ide_documento_ativar(sessao, 1, &erro) &&
                   strstr(sef_sessao_ide_editor(sessao), "second-tab") != NULL,
               "editor tabs preserved unsaved buffers and independent active state");
+    verificar(sef_sessao_ide_documento_novo(sessao, &erro) &&
+                  sef_sessao_ide_quantidade_documentos(sessao) == 3 &&
+                  sef_sessao_ide_documento_ativo(sessao) == 2 &&
+                  strcmp(sef_sessao_ide_caminho(sessao), "untitled.lisp") == 0 &&
+                  strcmp(sef_sessao_ide_editor(sessao), "") == 0 &&
+                  strstr(sef_sessao_ide_estado(sessao), "New untitled tab") != NULL,
+              "nova aba sem nome preservou os documentos existentes");
+    verificar(sef_sessao_ide_editor_inserir(sessao, "unsaved tab", &erro) &&
+                  !sef_sessao_ide_documento_fechar_ativo(sessao, false, &erro) &&
+                  strstr(erro.mensagem, "unsaved changes") != NULL &&
+                  sef_sessao_ide_quantidade_documentos(sessao) == 3 &&
+                  sef_sessao_ide_documento_fechar_ativo(sessao, true, &erro) &&
+                  sef_sessao_ide_quantidade_documentos(sessao) == 2 &&
+                  strstr(sef_sessao_ide_editor(sessao), "second-tab") != NULL,
+              "fechamento protegeu alteracoes e descartou somente apos confirmacao");
+    verificar(sef_sessao_ide_documento_novo(sessao, &erro) &&
+                  sef_sessao_ide_documento_ativar(sessao, 1, &erro) &&
+                  sef_sessao_ide_documento_fechar_ativo(sessao, false, &erro) &&
+                  sef_sessao_ide_quantidade_documentos(sessao) == 2 &&
+                  sef_sessao_ide_documento_ativo(sessao) == 1 &&
+                  strcmp(sef_sessao_ide_editor(sessao), "") == 0 &&
+                  sef_sessao_ide_documento_fechar_ativo(sessao, false, &erro) &&
+                  sef_sessao_ide_quantidade_documentos(sessao) == 1 &&
+                  strstr(sef_sessao_ide_editor(sessao), "defun resposta") != NULL &&
+                  sef_sessao_ide_documento_fechar_ativo(sessao, false, &erro) &&
+                  sef_sessao_ide_quantidade_documentos(sessao) == 1 &&
+                  strcmp(sef_sessao_ide_editor(sessao), "") == 0 &&
+                  strcmp(sef_sessao_ide_caminho(sessao), "untitled.lisp") == 0,
+              "fechamento escolheu abas vizinhas e manteve uma aba vazia final");
     remove("teste-ide.lisp");
     remove("teste-aba-2.lisp");
 
