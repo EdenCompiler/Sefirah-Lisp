@@ -841,6 +841,16 @@ int main(int argc, char **argv) {
                     "(not (null (member nil (find-all-symbols \"NIL\"))))))",
                     "(T T T)");
     verificar_texto(runtime,
+                    "(setf *gensym-counter* 5) "
+                    "(intern \"TMP5\" \"DEFINITION-TARGET\") "
+                    "(let ((first (gentemp \"TMP\" \"DEFINITION-TARGET\")) "
+                    "(second (gentemp \"TMP\" \"DEFINITION-TARGET\"))) "
+                    "(list (symbol-name first) (symbol-name second) "
+                    "(nth-value 1 (find-symbol \"TMP6\" \"DEFINITION-TARGET\")) "
+                    "*gensym-counter*))",
+                    "(\"TMP6\" \"TMP7\" :INTERNAL 8)");
+    verificar_texto(runtime, "(setf *gensym-counter* 43)", "43");
+    verificar_texto(runtime,
                     "(let ((simbolo (intern \"Nome-Misto\" \"ALPHA\"))) "
                     "(list (symbol-name simbolo) "
                     "(multiple-value-list (find-symbol \"Nome-Misto\" \"ALPHA\")) "

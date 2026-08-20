@@ -137,6 +137,12 @@ int main(void) {
                       !texto_contem_portugues(erro.mensagem),
                   "global symbol search diagnostics are English");
 
+        resultado = sef_runtime_avaliar_texto(runtime, "(gentemp 42)", &erro);
+        verificar(resultado == NULL && erro.ocorreu &&
+                      texto_contem(erro.mensagem, "must be a string") &&
+                      !texto_contem_portugues(erro.mensagem),
+                  "temporary symbol diagnostics are English");
+
         resultado = sef_runtime_avaliar_texto(runtime, "*standard-input*", &erro);
         char *impresso =
             resultado == NULL ? NULL : sef_valor_para_texto(runtime, resultado, true, &erro);

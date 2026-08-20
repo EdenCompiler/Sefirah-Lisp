@@ -50,7 +50,7 @@ faz parte do formato público.
 | sequências | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | números | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=` e `/=` |
 | funções | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
-| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `MAKE-SYMBOL`, `COPY-SYMBOL`, `GENSYM`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
+| símbolos e valores | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `MAKE-SYMBOL`, `COPY-SYMBOL`, `GENSYM`, `GENTEMP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Símbolos possuem células separadas de valor e função. Portanto, uma variável e
 uma função podem compartilhar o mesmo nome:
@@ -107,6 +107,15 @@ string ou sufixo inteiro não negativo padrão e, nos demais casos, usa o
 Identidades não internadas, células copiadas, metadados e o contador gensym
 permanecem após restaurar a imagem do mundo. O inspetor vivo expõe `PACKAGE`
 como `NIL` e uma aresta `PROPERTIES` nesses símbolos.
+
+`GENTEMP` usa o mesmo contador persistente para internar um nome novo no
+package selecionado (ou no package atual). A forma aceita um prefixo string
+opcional e um designador de package, ignora toda colisão acessível local ou
+herdada e devolve um símbolo interno:
+
+```lisp
+(gentemp "TEMP-" "CALCULATIONS") ; => CALCULATIONS::|TEMP-43|
+```
 
 ## Listas
 

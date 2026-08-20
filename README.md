@@ -63,6 +63,7 @@ the roadmap.
   generalized `SETF` places;
 - fresh uninterned symbols through `MAKE-SYMBOL`, `COPY-SYMBOL`, and `GENSYM`,
   including world-image persistence;
+- collision-free interned temporary symbols through `GENTEMP`;
 - package import/unintern operations with preserved symbol identity and status;
 - persistent package shadowing with explicit inherited-conflict resolution;
 - declarative package construction with phased shadow, use, import, intern, and
@@ -402,6 +403,7 @@ nativa permanecem no roteiro.
   lugares generalizados de `SETF`;
 - símbolos novos e não internados por `MAKE-SYMBOL`, `COPY-SYMBOL` e `GENSYM`,
   incluindo persistência na imagem do mundo;
+- símbolos temporários internados sem colisão por `GENTEMP`;
 - importação/uninterning em packages com identidade e estado preservados;
 - shadowing persistente de packages com resolução explícita de conflitos herdados;
 - construção declarativa de packages com opções em fases para shadow, use,

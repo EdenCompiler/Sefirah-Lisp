@@ -1803,6 +1803,77 @@ static SefValor primitiva_gensym(SefRuntime *runtime, SefValor argumentos, SefEr
                : NULL;
 }
 
+static SefValor primitiva_gentemp(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
+    if (!quantidade(runtime, argumentos, 0, 2, "GENTEMP", erro))
+        return NULL;
+    const char *prefixo = "T";
+    size_t tamanho_prefixo = 1;
+    if (argumentos != runtime->nulo) {
+        SefValor valor_prefixo = car(argumentos);
+        if (valor_prefixo->tipo != SEF_TIPO_TEXTO) {
+            sef_erro_definir(erro, 0, 0, "GENTEMP prefix must be a string");
+            return NULL;
+        }
+        prefixo = valor_prefixo->como.texto.dados;
+        tamanho_prefixo = valor_prefixo->como.texto.tamanho;
+    }
+    SefValor pacote = cdr(argumentos) == runtime->nulo
+                          ? runtime->pacote_atual
+                          : pacote_designador(runtime, car(cdr(argumentos)), erro);
+    if (pacote == NULL)
+        return NULL;
+    static const char nome_contador[] = "*GENSYM-COUNTER*";
+    SefValor simbolo_contador = sef_pacote_localizar_simbolo(
+        runtime->pacote_common_lisp, nome_contador, sizeof(nome_contador) - 1, false);
+    SefValor contador = NULL;
+    if (simbolo_contador == NULL ||
+        !sef_ambiente_obter(runtime->ambiente_global, simbolo_contador, &contador)) {
+        sef_erro_definir(erro, 0, 0, "GENTEMP counter is unbound");
+        return NULL;
+    }
+    if (contador->tipo != SEF_TIPO_INTEIRO || contador->como.inteiro < 0) {
+        sef_erro_definir(erro, 0, 0, "*GENSYM-COUNTER* must be a non-negative integer");
+        return NULL;
+    }
+    int64_t sufixo = contador->como.inteiro;
+    for (;;) {
+        if (sufixo == INT64_MAX) {
+            sef_erro_definir(erro, 0, 0, "*GENSYM-COUNTER* exceeded its maximum value");
+            return NULL;
+        }
+        char texto_sufixo[32];
+        int escritos = snprintf(texto_sufixo, sizeof(texto_sufixo), "%lld", (long long)sufixo);
+        if (escritos < 0 || (size_t)escritos >= sizeof(texto_sufixo) ||
+            tamanho_prefixo > SIZE_MAX - (size_t)escritos) {
+            sef_erro_definir(erro, 0, 0, "GENTEMP name is too large");
+            return NULL;
+        }
+        size_t tamanho = tamanho_prefixo + (size_t)escritos;
+        char *nome = malloc(tamanho == 0 ? 1 : tamanho);
+        if (nome == NULL) {
+            sef_erro_definir(erro, 0, 0, "not enough memory for GENTEMP name");
+            return NULL;
+        }
+        memcpy(nome, prefixo, tamanho_prefixo);
+        memcpy(nome + tamanho_prefixo, texto_sufixo, (size_t)escritos);
+        SefValor existente = sef_pacote_localizar_simbolo(pacote, nome, tamanho, true);
+        if (existente != NULL) {
+            free(nome);
+            sufixo++;
+            continue;
+        }
+        SefValor simbolo = sef_simbolo_internar_em(runtime, pacote, nome, tamanho, erro);
+        free(nome);
+        if (simbolo == NULL)
+            return NULL;
+        SefValor proximo = sef_inteiro_novo(runtime, sufixo + 1, erro);
+        return proximo != NULL &&
+                       sef_ambiente_atribuir(runtime->ambiente_global, simbolo_contador, proximo)
+                   ? simbolo
+                   : NULL;
+    }
+}
+
 static SefValor primitiva_symbol_plist(SefRuntime *runtime, SefValor argumentos, SefErro *erro) {
     if (!quantidade(runtime, argumentos, 1, 1, "SYMBOL-PLIST", erro))
         return NULL;
@@ -2232,6 +2303,7 @@ static const struct {
                   {"MAKE-SYMBOL", primitiva_make_symbol},
                   {"COPY-SYMBOL", primitiva_copy_symbol},
                   {"GENSYM", primitiva_gensym},
+                  {"GENTEMP", primitiva_gentemp},
                   {"SYMBOL-PLIST", primitiva_symbol_plist},
                   {"GET", primitiva_get},
                   {"REMPROP", primitiva_remprop},

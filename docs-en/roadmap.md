@@ -82,6 +82,7 @@ not mean the entire milestone is complete.
   `DO-ALL-SYMBOLS`, including implicit `NIL` blocks and image reconciliation.
 - [x] Global registered-package name lookup through `FIND-ALL-SYMBOLS`, with
   `NIL`, uninterned/deleted filtering, and image reconciliation.
+- [x] Persistent counter-based `GENTEMP` with package-aware collision skipping.
 
 ### Compiler
 

@@ -85,6 +85,8 @@ não significa que o marco inteiro esteja concluído.
   reconciliação da imagem.
 - [x] Consulta global de nomes de packages registrados por `FIND-ALL-SYMBOLS`,
   com `NIL`, filtragem de não internados/removidos e reconciliação de imagem.
+- [x] `GENTEMP` persistente baseado em contador, com salto de colisões por
+  package.
 
 ### Compilador
 

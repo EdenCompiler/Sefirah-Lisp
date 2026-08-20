@@ -49,7 +49,7 @@ not part of the public format.
 | sequences | `LENGTH`, `ELT`, `CHAR`, `SCHAR`, `COPY-SEQ`, `REVERSE`, `SUBSEQ`, `FILL` |
 | numbers | `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `=`, and `/=` |
 | functions | `FUNCALL`, `APPLY`, `FUNCTIONP`, `FBOUNDP`, `SYMBOL-FUNCTION`, `FDEFINITION`, `FMAKUNBOUND` |
-| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `MAKE-SYMBOL`, `COPY-SYMBOL`, `GENSYM`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
+| symbols and values | `SYMBOLP`, `KEYWORDP`, `CONSTANTP`, `MAKE-SYMBOL`, `COPY-SYMBOL`, `GENSYM`, `GENTEMP`, `SYMBOL-NAME`, `SYMBOL-PACKAGE`, `SYMBOL-PLIST`, `GET`, `REMPROP`, `BOUNDP`, `SYMBOL-VALUE`, `SET`, `MAKUNBOUND`, `EQ`, `NOT`, `TYPE-OF` |
 
 Symbols have separate value and function cells, so a variable and a function
 can share a name:
@@ -105,6 +105,15 @@ non-negative integer suffix and uses the mutable `*GENSYM-COUNTER*` otherwise:
 Uninterned identities, copied cells, property metadata, and the gensym counter
 survive world-image restoration. The live inspector exposes `PACKAGE` as `NIL`
 and a `PROPERTIES` edge for such symbols.
+
+`GENTEMP` uses the same persistent counter to intern a fresh name in the
+selected package (or the current package). It accepts an optional string prefix
+and package designator, skips every locally or inherited accessible collision,
+and returns an internal symbol:
+
+```lisp
+(gentemp "TEMP-" "CALCULATIONS") ; => CALCULATIONS::|TEMP-43|
+```
 
 ## Lists
 
