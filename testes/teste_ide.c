@@ -275,8 +275,16 @@ int main(void) {
                   strcmp(sef_sessao_ide_caminho(sessao), "teste-espaco/main.lisp") == 0 &&
                   strstr(sef_sessao_ide_estado(sessao), "Workspace reference 1/1") != NULL,
               "workspace reference search excluded the definition and opened its cross-file use");
+    verificar(sef_sessao_ide_ir_para_definicao_espaco_trabalho(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_caminho(sessao), "teste-espaco/sub/helper.lisp") == 0 &&
+                  sef_sessao_ide_cursor_editor(sessao) ==
+                      (size_t)(strstr(sef_sessao_ide_editor(sessao), "MixedHelper") -
+                               sef_sessao_ide_editor(sessao)) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Workspace definition:") != NULL,
+              "F11-style navigation resolved a definition in another workspace file");
     verificar(sef_sessao_ide_navegar_referencia_espaco_trabalho(
                   sessao, SEF_REFERENCIA_PROXIMA, &erro) &&
+                  strcmp(sef_sessao_ide_caminho(sessao), "teste-espaco/main.lisp") == 0 &&
                   strstr(sef_sessao_ide_estado(sessao), "Workspace reference 1/1") != NULL,
               "F12-style workspace reference navigation wrapped around its result set");
     verificar(sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "fakehelper", &erro) &&

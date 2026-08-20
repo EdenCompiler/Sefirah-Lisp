@@ -256,7 +256,7 @@ F7 runs only forms changed since their last successful installation; F8 and
 Shift+F8 navigate named definitions; F9/F10 save and restore the live Lisp
 world beside the current source as `.imagem`; Shift+F9/Shift+F10 navigate the
 bounded history of unhandled conditions; F11 jumps to the definition of
-the symbol at the cursor; and F12/Shift+F12 cycle its structural references
+the symbol at the cursor across project files; and F12/Shift+F12 cycle its structural references
 across the workspace (or the current buffer when no folder is open). Reference
 results include unsaved tabs and exclude strings, comments, and definition
 sites. Ctrl+Z/Ctrl+Y
@@ -608,7 +608,8 @@ forma completa para substituição ou remoção estrutural; F7 executa somente a
 formas alteradas desde a última instalação bem-sucedida; F8 e Shift+F8 navegam
 pelas definições nomeadas; F9/F10 salvam e restauram o mundo Lisp ao lado do
 fonte como `.imagem`; Shift+F9/Shift+F10 navegam pelo histórico limitado de
-condições não tratadas; F11 vai à definição do símbolo no cursor; e
+condições não tratadas; F11 vai à definição do símbolo no cursor mesmo quando
+ela está em outro arquivo do projeto; e
 F12/Shift+F12 percorrem suas referências estruturais em todo o workspace (ou no
 buffer atual quando nenhuma pasta está aberta). Os resultados incluem abas não
 gravadas e excluem strings, comentários e locais de definição. Ctrl+Z/Ctrl+Y desfazem e refazem;

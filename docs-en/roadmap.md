@@ -194,6 +194,8 @@ not mean the entire milestone is complete.
   symbol results.
 - [x] Cross-file structural reference navigation with live unsaved buffers,
   exact source opening, F12/Shift+F12, and a toolbar action.
+- [x] Symbol-at-point F11 definition lookup across workspace files with a
+  buffer-local fallback.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and full desktop-session restoration.

@@ -1091,6 +1091,21 @@ static bool texto_contem_sem_diferenciar_caixa(const char *texto, const char *co
     return false;
 }
 
+static bool nomes_simbolos_iguais(const char *primeiro_nome, const char *segundo_nome) {
+    size_t tamanho = strlen(primeiro_nome);
+    if (strlen(segundo_nome) != tamanho)
+        return false;
+    bool exato = strchr(primeiro_nome, '|') != NULL || strchr(primeiro_nome, '\\') != NULL ||
+                 strchr(segundo_nome, '|') != NULL || strchr(segundo_nome, '\\') != NULL;
+    for (size_t i = 0; i < tamanho; i++) {
+        unsigned char primeiro = (unsigned char)primeiro_nome[i];
+        unsigned char segundo = (unsigned char)segundo_nome[i];
+        if (exato ? primeiro != segundo : toupper(primeiro) != toupper(segundo))
+            return false;
+    }
+    return true;
+}
+
 static const char *fonte_aberta_no_editor(const SefSessaoIde *sessao, const char *caminho) {
     for (size_t i = 0; i < sessao->quantidade_documentos; i++) {
         const char *caminho_documento = documento_caminho(sessao, i);
@@ -1341,6 +1356,42 @@ bool sef_sessao_ide_simbolo_espaco_trabalho_abrir(SefSessaoIde *sessao, size_t i
     return abriu;
 }
 
+bool sef_sessao_ide_ir_para_definicao_espaco_trabalho(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session");
+        return false;
+    }
+    if (sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho)[0] == '\0')
+        return sef_sessao_ide_ir_para_definicao(sessao, erro);
+    size_t inicio = 0;
+    size_t fim = 0;
+    if (!sef_ide_atomo_no_cursor(sessao->editor.dados, sessao->cursor_editor, &inicio, &fim))
+        return texto_definir(&sessao->estado, "No symbol at cursor", erro);
+    TextoIde nome = {0};
+    if (!texto_definir_n(&nome, sessao->editor.dados + inicio, fim - inicio, erro))
+        return false;
+    bool buscou = sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, nome.dados, erro);
+    size_t escolhida = SIZE_MAX;
+    for (size_t i = 0; buscou && i < sessao->quantidade_simbolos_espaco_trabalho; i++)
+        if (nomes_simbolos_iguais(sessao->simbolos_espaco_trabalho[i].nome, nome.dados)) {
+            escolhida = i;
+            break;
+        }
+    if (!buscou) {
+        texto_liberar(&nome);
+        return false;
+    }
+    if (escolhida == SIZE_MAX) {
+        bool informou = texto_formatar(&sessao->estado, erro,
+                                       "Workspace definition not found: %s", nome.dados);
+        texto_liberar(&nome);
+        return informou;
+    }
+    texto_liberar(&nome);
+    return sef_sessao_ide_simbolo_espaco_trabalho_abrir(sessao, escolhida, erro);
+}
+
 static bool referencias_espaco_trabalho_reservar(SefSessaoIde *sessao, size_t quantidade,
                                                  SefErro *erro) {
     if (quantidade <= sessao->capacidade_referencias_espaco_trabalho)
@@ -1552,18 +1603,7 @@ bool sef_sessao_ide_referencia_espaco_trabalho_abrir(SefSessaoIde *sessao, size_
 }
 
 static bool nome_referencias_igual(const TextoIde *armazenado, const char *nome) {
-    size_t tamanho = strlen(nome);
-    if (armazenado->tamanho != tamanho)
-        return false;
-    bool exato = strchr(nome, '|') != NULL || strchr(nome, '\\') != NULL ||
-                 strchr(armazenado->dados, '|') != NULL || strchr(armazenado->dados, '\\') != NULL;
-    for (size_t i = 0; i < tamanho; i++) {
-        unsigned char primeiro = (unsigned char)armazenado->dados[i];
-        unsigned char segundo = (unsigned char)nome[i];
-        if (exato ? primeiro != segundo : toupper(primeiro) != toupper(segundo))
-            return false;
-    }
-    return true;
+    return armazenado->dados != NULL && nomes_simbolos_iguais(armazenado->dados, nome);
 }
 
 bool sef_sessao_ide_navegar_referencia_espaco_trabalho(

@@ -198,6 +198,8 @@ não significa que o marco inteiro esteja concluído.
   leitura nos resultados de símbolos do workspace.
 - [x] Navegação estrutural de referências entre arquivos com buffers vivos não
   gravados, abertura exata, F12/Shift+F12 e ação na barra.
+- [x] Localização F11 da definição do símbolo no cursor entre arquivos do
+  workspace, com fallback para o buffer local.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração completa da sessão de desktop.

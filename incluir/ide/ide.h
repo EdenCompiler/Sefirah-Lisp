@@ -122,6 +122,7 @@ bool sef_sessao_ide_executar_alteracoes(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_navegar_definicao(SefSessaoIde *sessao, SefMovimentoDefinicaoIde movimento,
                                       SefErro *erro);
 bool sef_sessao_ide_ir_para_definicao(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_ir_para_definicao_espaco_trabalho(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_navegar_referencia(SefSessaoIde *sessao, SefMovimentoReferenciaIde movimento,
                                        SefErro *erro);
 bool sef_sessao_ide_navegar_condicao(SefSessaoIde *sessao, SefMovimentoCondicaoIde movimento,

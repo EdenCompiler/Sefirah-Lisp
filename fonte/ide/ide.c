@@ -757,7 +757,7 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
         break;
     case COMANDO_IR_DEFINICAO:
         estado->foco = FOCO_EDITOR;
-        sef_sessao_ide_ir_para_definicao(estado->sessao, erro);
+        sef_sessao_ide_ir_para_definicao_espaco_trabalho(estado->sessao, erro);
         break;
     case COMANDO_NAVEGAR_REFERENCIA:
         estado->foco = FOCO_EDITOR;
@@ -970,7 +970,7 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_IR_PARA_DEFINICAO:
         estado->foco = FOCO_EDITOR;
-        sef_sessao_ide_ir_para_definicao(estado->sessao, &erro);
+        sef_sessao_ide_ir_para_definicao_espaco_trabalho(estado->sessao, &erro);
         break;
     case SEF_EVENTO_NAVEGAR_REFERENCIA:
         estado->foco = FOCO_EDITOR;
