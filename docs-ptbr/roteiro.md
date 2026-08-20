@@ -194,6 +194,8 @@ não significa que o marco inteiro esteja concluído.
   distintos para letras maiúsculas e minúsculas.
 - [x] Find no editor ativo com Ctrl+F, acesso pela barra/paleta, consulta iniciada
   pela seleção, seleção UTF-8 segura anterior/próxima, contagem e retorno circular.
+- [x] Go to Line com Ctrl+G, acesso pela barra/paleta, feedback validado em inglês
+  e indicador persistente de linha/coluna UTF-8 iniciado em um.
 - [x] Ciclo de criação/fechamento de abas com Ctrl+N/Ctrl+W, acesso pela
   barra/paleta, confirmação explícita para descartar alterações, seleção
   determinística da aba vizinha e invariante permanente de um editor.

@@ -201,6 +201,9 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
     } else if (comando && texto_igual_ascii(atalho, 'f')) {
         evento.tipo = SEF_EVENTO_BUSCAR_EDITOR;
         reconhecido = true;
+    } else if (comando && texto_igual_ascii(atalho, 'g')) {
+        evento.tipo = SEF_EVENTO_IR_PARA_LINHA;
+        reconhecido = true;
     } else if (comando && texto_igual_ascii(atalho, 'n')) {
         evento.tipo = SEF_EVENTO_NOVO_DOCUMENTO;
         reconhecido = true;

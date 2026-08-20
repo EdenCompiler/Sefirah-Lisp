@@ -616,7 +616,8 @@ primeiro fonte reutiliza uma aba vazia ainda intocada.
 
 A barra de comandos fornece botões para Run, Run Form, Run Changes, Save, Auto
 Save, Snapshot, Restore, Commands, Symbols, References, New Tab, Close Tab, Open
-File, Open Folder, New File, New Folder, Find, Source Control, Profile e Refresh. A barra passa para
+File, Open Folder, New File, New Folder, Find, Go to Line, Source Control, Profile
+e Refresh. A barra passa para
 uma segunda linha em vez de ocultar ações quando a janela fica estreita. Os
 controles de arquivos e pastas usam um prompt de caminho interno à IDE e exibem falhas em
 inglês nesse prompt. A criação é exclusiva — não
@@ -674,13 +675,20 @@ próximo resultado, Shift+Enter seleciona o anterior, as duas direções retorna
 circularmente, e a sobreposição informa em inglês o resultado atual e o total.
 Escape fecha Find sem alterar o texto-fonte.
 
+Ctrl+G, o botão `GO LINE` ou `Go to Line` na paleta de comandos abre um prompt
+numérico de linha. Enter move o cursor ao início dessa linha iniciada em um e
+fecha o prompt. Zero, entradas não numéricas e linhas fora do documento ativo
+permanecem no prompt com erro em inglês; Escape cancela. A barra de estado
+informa continuamente o cursor como `LN n, COL n`; a coluna iniciada em um conta
+pontos de código UTF-8, não os bytes da codificação.
+
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
 envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
 F6 encontra e executa somente a forma completa de nível superior no cursor,
 enquanto Shift+F6 seleciona essa forma para substituição ou remoção estrutural.
 Ctrl+Z e Ctrl+Y percorrem a linha do tempo linear e limitada do editor. Ctrl+S
-salva e Ctrl+O abre o prompt de caminho. F7 avalia somente as formas de topo
+salva, Ctrl+G abre Go to Line e Ctrl+O abre o prompt de caminho. F7 avalia somente as formas de topo
 cujo conteúdo mudou desde a última avaliação bem-sucedida. F8 visita a próxima
 definição nomeada e Shift+F8 visita a anterior; o navegador reconhece funções,
 macros, variáveis, parâmetros, constantes, packages e formas `DEFINE`, ignorando

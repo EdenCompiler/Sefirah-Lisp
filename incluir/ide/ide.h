@@ -92,6 +92,8 @@ bool sef_sessao_ide_salvamento_automatico_definir(SefSessaoIde *sessao, bool ati
                                                   SefErro *erro);
 size_t sef_sessao_ide_cursor_editor(const SefSessaoIde *sessao);
 bool sef_sessao_ide_selecao_editor(const SefSessaoIde *sessao, size_t *inicio, size_t *fim);
+void sef_sessao_ide_editor_linha_coluna(const SefSessaoIde *sessao, size_t *linha,
+                                        size_t *coluna);
 
 bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, SefErro *erro);
 bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro);
@@ -105,6 +107,7 @@ bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_buscar(SefSessaoIde *sessao, const char *consulta,
                                   SefMovimentoBuscaIde movimento, SefErro *erro);
+bool sef_sessao_ide_editor_ir_para_linha(SefSessaoIde *sessao, size_t linha, SefErro *erro);
 
 bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro);

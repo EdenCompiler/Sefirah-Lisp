@@ -606,8 +606,8 @@ reuses an untouched empty tab.
 
 The command toolbar provides pointer buttons for Run, Run Form, Run Changes,
 Save, Auto Save, Snapshot, Restore, Commands, Symbols, References, New Tab,
-Close Tab, Open File, Open Folder, New File, New Folder, Find, Source Control,
-Profile, and Refresh.
+Close Tab, Open File, Open Folder, New File, New Folder, Find, Go to Line,
+Source Control, Profile, and Refresh.
 The toolbar wraps onto a second row instead of hiding actions when the window
 is narrow. File and folder controls use an in-IDE path prompt and report
 failures in English inside that prompt. Creation is exclusive—it does not
@@ -662,6 +662,13 @@ Shift+Enter selects the previous one, both directions wrap, and the overlay
 reports the current/total match count in English. Escape closes Find without
 changing source text.
 
+Ctrl+G, the `GO LINE` toolbar button, or `Go to Line` in the command palette
+opens a numeric line prompt. Enter moves the cursor to the start of that
+one-based line and closes the prompt. Zero, non-numeric input, and lines outside
+the active document stay in the prompt with an English error; Escape cancels.
+The status bar continuously reports the cursor as `LN n, COL n`, where the
+one-based column counts UTF-8 code points rather than encoded bytes.
+
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector
 component or debugger condition, or submits a complete form in the listener.
@@ -675,7 +682,8 @@ parameters, constants, packages, and `DEFINE` forms while ignoring comments and
 strings. F11 jumps from the symbol at the cursor to its named definition. F12
 visits the next structural reference and Shift+F12 the previous one, wrapping
 at either end; references inside strings and comments are excluded. Ctrl+S
-saves and Ctrl+O opens the file path prompt. Arrow, Home, and End move the
+saves, Ctrl+G opens Go to Line, and Ctrl+O opens the file path prompt. Arrow,
+Home, and End move the
 UTF-8-aware editor cursor; holding Shift extends a range by code point. Typing
 or Backspace replaces or removes the selected range as one undoable edit. In
 the listener, Up and Down recover up to 128 submitted events, including

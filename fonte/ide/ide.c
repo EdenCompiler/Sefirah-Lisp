@@ -4,6 +4,8 @@
 #include "sefirah/janela.h"
 
 #include <ctype.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,6 +39,7 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_SIMBOLOS,
     ACAO_BOTAO_REFERENCIAS,
     ACAO_BOTAO_BUSCAR_EDITOR,
+    ACAO_BOTAO_IR_PARA_LINHA,
     ACAO_BOTAO_NOVA_ABA,
     ACAO_BOTAO_FECHAR_ABA,
     ACAO_BOTAO_CONTROLE_VERSAO,
@@ -53,6 +56,7 @@ typedef enum ModoSobreposicaoIde {
     SOBREPOSICAO_ABRIR_RAPIDO,
     SOBREPOSICAO_SIMBOLOS,
     SOBREPOSICAO_BUSCAR_EDITOR,
+    SOBREPOSICAO_IR_PARA_LINHA,
     SOBREPOSICAO_CONFIRMAR_FECHAMENTO,
     SOBREPOSICAO_COMANDOS,
     SOBREPOSICAO_ABRIR_ARQUIVO,
@@ -65,6 +69,7 @@ typedef enum AcaoComandoIde {
     COMANDO_ABRIR_RAPIDO,
     COMANDO_BUSCAR_SIMBOLOS,
     COMANDO_BUSCAR_EDITOR,
+    COMANDO_IR_PARA_LINHA,
     COMANDO_NOVA_ABA,
     COMANDO_FECHAR_ABA,
     COMANDO_ABRIR_ARQUIVO,
@@ -112,7 +117,7 @@ typedef struct EstadoIde {
     SefComponente ouvinte;
     FerramentaIde ferramenta;
     SefRetangulo abas_ferramentas[FERRAMENTA_QUANTIDADE];
-    BotaoIde botoes[20];
+    BotaoIde botoes[21];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
     char ultima_busca[1024];
@@ -128,6 +133,7 @@ static const ComandoIde comandos[] = {
     {"Quick Open File", COMANDO_ABRIR_RAPIDO},
     {"Go to Symbol in Workspace", COMANDO_BUSCAR_SIMBOLOS},
     {"Find in Active Editor", COMANDO_BUSCAR_EDITOR},
+    {"Go to Line", COMANDO_IR_PARA_LINHA},
     {"New Untitled Tab", COMANDO_NOVA_ABA},
     {"Close Active Tab", COMANDO_FECHAR_ABA},
     {"Open File by Path", COMANDO_ABRIR_ARQUIVO},
@@ -178,15 +184,16 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[8] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
     estado->botoes[9] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
     estado->botoes[10] = (BotaoIde){"FIND", ACAO_BOTAO_BUSCAR_EDITOR, {0}};
-    estado->botoes[11] = (BotaoIde){"NEW TAB", ACAO_BOTAO_NOVA_ABA, {0}};
-    estado->botoes[12] = (BotaoIde){"CLOSE TAB", ACAO_BOTAO_FECHAR_ABA, {0}};
-    estado->botoes[13] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
-    estado->botoes[14] = (BotaoIde){"PROFILE", ACAO_BOTAO_PERFIL, {0}};
-    estado->botoes[15] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[16] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[17] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[18] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[19] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[11] = (BotaoIde){"GO LINE", ACAO_BOTAO_IR_PARA_LINHA, {0}};
+    estado->botoes[12] = (BotaoIde){"NEW TAB", ACAO_BOTAO_NOVA_ABA, {0}};
+    estado->botoes[13] = (BotaoIde){"CLOSE TAB", ACAO_BOTAO_FECHAR_ABA, {0}};
+    estado->botoes[14] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
+    estado->botoes[15] = (BotaoIde){"PROFILE", ACAO_BOTAO_PERFIL, {0}};
+    estado->botoes[16] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[17] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[18] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[19] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[20] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -443,6 +450,9 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
     case ACAO_BOTAO_BUSCAR_EDITOR:
         abrir_sobreposicao_busca_editor(estado);
         break;
+    case ACAO_BOTAO_IR_PARA_LINHA:
+        abrir_sobreposicao(estado, SOBREPOSICAO_IR_PARA_LINHA);
+        break;
     case ACAO_BOTAO_NOVA_ABA:
         if (sef_sessao_ide_documento_novo(estado->sessao, erro))
             estado->foco = FOCO_EDITOR;
@@ -683,6 +693,8 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
         titulo = "WORKSPACE SYMBOLS  CTRL+T";
     else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
         titulo = "FIND IN ACTIVE EDITOR  CTRL+F";
+    else if (estado->sobreposicao == SOBREPOSICAO_IR_PARA_LINHA)
+        titulo = "GO TO LINE  CTRL+G";
     else if (estado->sobreposicao == SOBREPOSICAO_CONFIRMAR_FECHAMENTO)
         titulo = "UNSAVED CHANGES";
     else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_ARQUIVO)
@@ -713,6 +725,18 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
         sef_superficie_texto(superficie, x + 22, y + 92,
                              "This discards the unsaved editor changes.", 2,
                              SEF_COR(143, 65, 45));
+        estado->primeiro_item_sobreposicao = 0;
+        estado->quantidade_itens_visiveis = 0;
+    } else if (estado->sobreposicao == SOBREPOSICAO_IR_PARA_LINHA) {
+        const char *mensagem = estado->mensagem_sobreposicao[0] == '\0'
+                                   ? "TYPE A LINE NUMBER AND PRESS ENTER"
+                                   : estado->mensagem_sobreposicao;
+        char linha_mensagem[128];
+        snprintf(linha_mensagem, sizeof(linha_mensagem), "%.127s", mensagem);
+        limitar_linha(linha_mensagem, largura > 48 ? (size_t)(largura - 48) / 12u : 0);
+        sef_superficie_texto(superficie, x + 22, y + 92, linha_mensagem, 2,
+                             estado->mensagem_sobreposicao[0] == '\0' ? SEF_COR(75, 84, 67)
+                                                                      : SEF_COR(143, 65, 45));
         estado->primeiro_item_sobreposicao = 0;
         estado->quantidade_itens_visiveis = 0;
     } else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR) {
@@ -778,6 +802,8 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
         ajuda = "ENTER CONFIRM   ESC CLOSE";
     else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
         ajuda = "ENTER NEXT   SHIFT+ENTER PREVIOUS   ESC CLOSE";
+    else if (estado->sobreposicao == SOBREPOSICAO_IR_PARA_LINHA)
+        ajuda = "ENTER GO TO LINE   ESC CLOSE";
     else if (estado->sobreposicao == SOBREPOSICAO_CONFIRMAR_FECHAMENTO)
         ajuda = "ENTER DISCARD AND CLOSE   ESC CANCEL";
     sef_superficie_texto(superficie, x + 12, y + altura - 18, ajuda, 1, SEF_COR(75, 84, 67));
@@ -890,9 +916,13 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
 
     sef_superficie_retangulo(superficie, 0, superficie->altura - 34, superficie->largura, 34,
                              SEF_COR(177, 196, 154));
+    size_t linha_cursor = 1;
+    size_t coluna_cursor = 1;
+    sef_sessao_ide_editor_linha_coluna(estado->sessao, &linha_cursor, &coluna_cursor);
     char estado_barra[768];
-    snprintf(estado_barra, sizeof(estado_barra), "%s  |  AUTO SAVE: %s  |  %s  |  CTRL+S SAVE",
-             sef_sessao_ide_caminho(estado->sessao),
+    snprintf(estado_barra, sizeof(estado_barra),
+             "LN %zu, COL %zu  |  %s  |  AUTO SAVE: %s  |  %s  |  CTRL+S SAVE", linha_cursor,
+             coluna_cursor, sef_sessao_ide_caminho(estado->sessao),
              sef_sessao_ide_salvamento_automatico(estado->sessao) ? "ON" : "OFF",
              sef_sessao_ide_estado(estado->sessao));
     size_t colunas_estado = superficie->largura > 20 ? (size_t)(superficie->largura - 20) / 12u : 0;
@@ -911,6 +941,9 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
         break;
     case COMANDO_BUSCAR_EDITOR:
         abrir_sobreposicao_busca_editor(estado);
+        break;
+    case COMANDO_IR_PARA_LINHA:
+        abrir_sobreposicao(estado, SOBREPOSICAO_IR_PARA_LINHA);
         break;
     case COMANDO_NOVA_ABA:
         if (sef_sessao_ide_documento_novo(estado->sessao, erro))
@@ -1053,6 +1086,27 @@ static void executar_busca_sobreposicao(EstadoIde *estado, bool anterior, SefErr
     estado->foco = FOCO_EDITOR;
 }
 
+static void executar_linha_sobreposicao(EstadoIde *estado, SefErro *erro) {
+    errno = 0;
+    char *fim = NULL;
+    unsigned long long valor = strtoull(estado->consulta, &fim, 10);
+    while (fim != NULL && isspace((unsigned char)*fim))
+        fim++;
+    if (estado->consulta[0] == '\0' || fim == estado->consulta || fim == NULL || *fim != '\0' ||
+        errno == ERANGE || valor == 0 || valor > (unsigned long long)SIZE_MAX) {
+        snprintf(estado->mensagem_sobreposicao, sizeof(estado->mensagem_sobreposicao),
+                 "Enter a valid line number greater than zero");
+        return;
+    }
+    if (sef_sessao_ide_editor_ir_para_linha(estado->sessao, (size_t)valor, erro)) {
+        estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+        estado->foco = FOCO_EDITOR;
+    } else {
+        snprintf(estado->mensagem_sobreposicao, sizeof(estado->mensagem_sobreposicao), "%.255s",
+                 erro->mensagem);
+    }
+}
+
 static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela *evento,
                                        SefErro *erro) {
     if (evento->tipo == SEF_EVENTO_CANCELAR) {
@@ -1109,7 +1163,9 @@ static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela 
         return true;
     }
     if (evento->tipo == SEF_EVENTO_ENTER) {
-        if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
+        if (estado->sobreposicao == SOBREPOSICAO_IR_PARA_LINHA)
+            executar_linha_sobreposicao(estado, erro);
+        else if (estado->sobreposicao == SOBREPOSICAO_BUSCAR_EDITOR)
             executar_busca_sobreposicao(estado, evento->modificador_shift, erro);
         else if (sobreposicao_e_caminho(estado->sobreposicao))
             executar_caminho_sobreposicao(estado, erro);
@@ -1156,6 +1212,10 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     }
     if (evento->tipo == SEF_EVENTO_BUSCAR_EDITOR) {
         abrir_sobreposicao_busca_editor(estado);
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_IR_PARA_LINHA) {
+        abrir_sobreposicao(estado, SOBREPOSICAO_IR_PARA_LINHA);
         return true;
     }
     if (evento->tipo == SEF_EVENTO_NOVO_DOCUMENTO) {

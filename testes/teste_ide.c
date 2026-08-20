@@ -544,6 +544,27 @@ int main(void) {
                   strstr(erro.mensagem, "invalid editor search direction") != NULL,
               "busca do editor informou consultas ausentes/vazias e direcao invalida em ingles");
 
+    size_t linha_cursor = 0;
+    size_t coluna_cursor = 0;
+    verificar(sef_sessao_ide_editor_definir(sessao, "first\nábc\nthird", &erro) &&
+                  sef_sessao_ide_editor_ir_para_linha(sessao, 2, &erro) &&
+                  sef_sessao_ide_cursor_editor(sessao) == strlen("first\n") &&
+                  strstr(sef_sessao_ide_estado(sessao), "Went to line 2 of 3") != NULL,
+              "ir para linha posicionou o cursor no inicio da linha solicitada");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_DIREITA);
+    sef_sessao_ide_editor_linha_coluna(sessao, &linha_cursor, &coluna_cursor);
+    verificar(linha_cursor == 2 && coluna_cursor == 2,
+              "linha e coluna do status contaram ponto de codigo UTF-8");
+    verificar(!sef_sessao_ide_editor_ir_para_linha(sessao, 4, &erro) &&
+                  strstr(erro.mensagem, "line 4 does not exist (document has 3 line(s))") != NULL &&
+                  !sef_sessao_ide_editor_ir_para_linha(sessao, 0, &erro) &&
+                  strstr(erro.mensagem, "line number must be 1 or greater") != NULL,
+              "ir para linha rejeitou numeros fora do documento em ingles");
+    verificar(sef_sessao_ide_editor_definir(sessao, "one\n", &erro) &&
+                  sef_sessao_ide_editor_ir_para_linha(sessao, 2, &erro) &&
+                  sef_sessao_ide_cursor_editor(sessao) == strlen("one\n"),
+              "ir para linha reconheceu a linha vazia depois da quebra final");
+
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),
               "editor avaliou somente a forma completa no cursor");

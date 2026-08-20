@@ -242,7 +242,7 @@ Opening a project directory enables the recursive Explorer sidebar, which
 indexes `.lisp` sources in deterministic order. Up/Down selects a source and
 Enter or a pointer click opens it. A command toolbar exposes Run, Run Form, Run
 Changes, Save, Snapshot, Restore, New Tab, Close Tab, file/folder creation and
-opening, Explorer refresh, Find, Symbols, References, Source Control, Profile,
+opening, Explorer refresh, Find, Go to Line, Symbols, References, Source Control, Profile,
 Auto Save, and Commands as pointer-accessible buttons. The toolbar wraps instead
 of hiding actions at the default width. Ctrl+P opens a filtered
 workspace file picker; Ctrl+Shift+P opens a searchable command palette whose
@@ -274,7 +274,9 @@ sites. Ctrl+N creates an untitled tab and Ctrl+W closes the active tab; modified
 tabs require explicit discard confirmation, and one fresh tab always remains.
 Ctrl+F opens case-insensitive Find for the active editor; Enter and
 Shift+Enter select the next or previous match with wraparound. Ctrl+Z/Ctrl+Y
-undo and redo; Ctrl+S saves; and Ctrl+O opens the path prompt. Arrow, Home,
+undo and redo; Ctrl+G opens Go to Line; Ctrl+S saves; and Ctrl+O opens the path
+prompt. The status bar reports the cursor's one-based line and UTF-8 code-point
+column. Arrow, Home,
 and End move the editor cursor; holding Shift extends a UTF-8-safe selection,
 and typing or Backspace replaces or removes it as one undoable edit. The toolbar
 and command palette can toggle Auto Save for immediate writes of named buffers
@@ -611,7 +613,7 @@ Abrir um diretório de projeto ativa a barra lateral Explorer recursiva, que
 indexa fontes `.lisp` em ordem determinística. Cima/Baixo selecionam um fonte e
 Enter ou clique o abre. Uma barra de comandos expõe Run, Run Form, Run Changes,
 Save, Snapshot, Restore, New Tab, Close Tab, criação/abertura de arquivos e
-pastas, atualização do Explorer, Find, Symbols, References, Source Control,
+pastas, atualização do Explorer, Find, Go to Line, Symbols, References, Source Control,
 Profile, Auto Save e Commands como botões acessíveis pelo ponteiro. A barra
 passa para outra linha em vez de ocultar ações na largura padrão. Ctrl+P abre o seletor
 filtrado de fontes do workspace; Ctrl+Shift+P abre uma paleta pesquisável cujas
@@ -649,7 +651,9 @@ aba sem nome e Ctrl+W fecha a aba ativa; abas alteradas exigem confirmação
 explícita de descarte, e uma aba nova sempre permanece. Ctrl+F abre Find
 sem diferenciar caixa no editor ativo; Enter e Shift+Enter selecionam o próximo
 resultado ou o anterior com retorno circular. Ctrl+Z/Ctrl+Y desfazem e refazem;
-Ctrl+S salva; e Ctrl+O abre o prompt de caminho. Setas, Home e End movem o
+Ctrl+G abre Go to Line; Ctrl+S salva; e Ctrl+O abre o prompt de caminho. A barra
+de estado mostra a linha do cursor e sua coluna por ponto de código UTF-8, ambas
+iniciadas em um. Setas, Home e End movem o
 cursor do editor; com Shift, estendem uma seleção segura para UTF-8, e digitar
 ou usar Backspace a substitui ou remove como uma única edição reversível. O
 botão e a paleta de comandos podem alternar Auto Save para gravar imediatamente

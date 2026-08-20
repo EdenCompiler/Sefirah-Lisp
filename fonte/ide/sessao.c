@@ -142,6 +142,7 @@ struct SefSessaoIde {
 };
 
 static void selecao_editor_limpar(SefSessaoIde *sessao);
+static size_t coluna_utf8(const TextoIde *texto, size_t inicio, size_t posicao);
 static bool texto_acrescentar_n(TextoIde *texto, const char *dados, size_t tamanho, SefErro *erro);
 static bool texto_acrescentar(TextoIde *texto, const char *dados, SefErro *erro);
 static bool texto_formatar(TextoIde *texto, SefErro *erro, const char *formato, ...);
@@ -1287,6 +1288,28 @@ bool sef_sessao_ide_selecao_editor(const SefSessaoIde *sessao, size_t *inicio, s
     return true;
 }
 
+void sef_sessao_ide_editor_linha_coluna(const SefSessaoIde *sessao, size_t *linha,
+                                        size_t *coluna) {
+    if (linha != NULL)
+        *linha = 1;
+    if (coluna != NULL)
+        *coluna = 1;
+    if (sessao == NULL)
+        return;
+    size_t linha_atual = 1;
+    size_t inicio_atual = 0;
+    for (size_t i = 0; i < sessao->cursor_editor; i++) {
+        if (sessao->editor.dados[i] == '\n') {
+            linha_atual++;
+            inicio_atual = i + 1;
+        }
+    }
+    if (linha != NULL)
+        *linha = linha_atual;
+    if (coluna != NULL)
+        *coluna = coluna_utf8(&sessao->editor, inicio_atual, sessao->cursor_editor) + 1;
+}
+
 bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho,
                                           SefErro *erro) {
     sef_erro_limpar(erro);
@@ -2350,6 +2373,37 @@ bool sef_sessao_ide_editor_buscar(SefSessaoIde *sessao, const char *consulta,
     sessao->selecao_editor_ativa = true;
     return texto_formatar(&sessao->estado, erro, "Find %zu/%zu%s: %s", indice, quantidade,
                           retornou_ao_inicio ? " (wrapped)" : "", consulta);
+}
+
+bool sef_sessao_ide_editor_ir_para_linha(SefSessaoIde *sessao, size_t linha, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while going to a line");
+        return false;
+    }
+    if (linha == 0) {
+        sef_erro_definir(erro, 0, 0, "line number must be 1 or greater");
+        return false;
+    }
+    size_t linha_atual = 1;
+    size_t posicao = 0;
+    while (linha_atual < linha && posicao < sessao->editor.tamanho) {
+        if (sessao->editor.dados[posicao++] == '\n')
+            linha_atual++;
+    }
+    size_t quantidade_linhas = linha_atual;
+    for (size_t i = posicao; i < sessao->editor.tamanho; i++)
+        if (sessao->editor.dados[i] == '\n')
+            quantidade_linhas++;
+    if (linha_atual != linha) {
+        sef_erro_definir(erro, 0, 0, "line %zu does not exist (document has %zu line(s))", linha,
+                         quantidade_linhas);
+        return false;
+    }
+    sessao->cursor_editor = posicao;
+    selecao_editor_limpar(sessao);
+    return texto_formatar(&sessao->estado, erro, "Went to line %zu of %zu", linha,
+                          quantidade_linhas);
 }
 
 bool sef_sessao_ide_ouvinte_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {
