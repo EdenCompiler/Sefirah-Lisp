@@ -388,23 +388,31 @@ static bool atomo_possui_escape(const char *codigo, size_t inicio, size_t fim) {
     return false;
 }
 
-bool sef_ide_atomos_iguais(const char *codigo, size_t primeiro_inicio, size_t primeiro_fim,
-                           size_t segundo_inicio, size_t segundo_fim) {
-    if (codigo == NULL || primeiro_fim < primeiro_inicio || segundo_fim < segundo_inicio)
+static bool atomos_iguais_entre(const char *primeiro_codigo, size_t primeiro_inicio,
+                                size_t primeiro_fim, const char *segundo_codigo,
+                                size_t segundo_inicio, size_t segundo_fim) {
+    if (primeiro_codigo == NULL || segundo_codigo == NULL || primeiro_fim < primeiro_inicio ||
+        segundo_fim < segundo_inicio)
         return false;
     size_t primeiro_tamanho = primeiro_fim - primeiro_inicio;
     size_t segundo_tamanho = segundo_fim - segundo_inicio;
     if (primeiro_tamanho != segundo_tamanho)
         return false;
-    bool exato = atomo_possui_escape(codigo, primeiro_inicio, primeiro_fim) ||
-                 atomo_possui_escape(codigo, segundo_inicio, segundo_fim);
+    bool exato = atomo_possui_escape(primeiro_codigo, primeiro_inicio, primeiro_fim) ||
+                 atomo_possui_escape(segundo_codigo, segundo_inicio, segundo_fim);
     for (size_t i = 0; i < primeiro_tamanho; i++) {
-        unsigned char primeiro = (unsigned char)codigo[primeiro_inicio + i];
-        unsigned char segundo = (unsigned char)codigo[segundo_inicio + i];
+        unsigned char primeiro = (unsigned char)primeiro_codigo[primeiro_inicio + i];
+        unsigned char segundo = (unsigned char)segundo_codigo[segundo_inicio + i];
         if (exato ? primeiro != segundo : toupper(primeiro) != toupper(segundo))
             return false;
     }
     return true;
+}
+
+bool sef_ide_atomos_iguais(const char *codigo, size_t primeiro_inicio, size_t primeiro_fim,
+                           size_t segundo_inicio, size_t segundo_fim) {
+    return atomos_iguais_entre(codigo, primeiro_inicio, primeiro_fim, codigo, segundo_inicio,
+                               segundo_fim);
 }
 
 static bool nome_de_definicao(const SefFormaEstruturalIde *formas, size_t quantidade, size_t inicio,
@@ -423,13 +431,15 @@ static size_t forma_que_contem(const SefFormaEstruturalIde *formas, size_t quant
     return SIZE_MAX;
 }
 
-bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_t nome_fim,
-                                   const SefFormaEstruturalIde *formas, size_t quantidade_formas,
-                                   SefReferenciaEstruturalIde **referencias,
-                                   size_t *quantidade_referencias, SefErro *erro) {
-    sef_erro_limpar(erro);
+static bool catalogar_referencias_entre(const char *codigo, const char *codigo_nome,
+                                        size_t nome_inicio, size_t nome_fim,
+                                        const SefFormaEstruturalIde *formas,
+                                        size_t quantidade_formas,
+                                        SefReferenciaEstruturalIde **referencias,
+                                        size_t *quantidade_referencias, SefErro *erro) {
     if (codigo == NULL || referencias == NULL || quantidade_referencias == NULL ||
-        (quantidade_formas > 0 && formas == NULL) || nome_fim <= nome_inicio) {
+        codigo_nome == NULL || (quantidade_formas > 0 && formas == NULL) ||
+        nome_fim <= nome_inicio) {
         sef_erro_definir(erro, 0, 0, "invalid structural reference query");
         return false;
     }
@@ -437,10 +447,6 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
     *quantidade_referencias = 0;
     size_t capacidade = 0;
     size_t tamanho = strlen(codigo);
-    if (nome_fim > tamanho) {
-        sef_erro_definir(erro, 0, 0, "queried symbol is outside the buffer");
-        return false;
-    }
     size_t posicao = 0;
     size_t contado_ate = 0;
     size_t linha = 1;
@@ -451,7 +457,7 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
             if (codigo[i] == '\n')
                 linha++;
         contado_ate = inicio;
-        if (!sef_ide_atomos_iguais(codigo, nome_inicio, nome_fim, inicio, fim) ||
+        if (!atomos_iguais_entre(codigo_nome, nome_inicio, nome_fim, codigo, inicio, fim) ||
             nome_de_definicao(formas, quantidade_formas, inicio, fim))
             continue;
         if (*quantidade_referencias == capacidade) {
@@ -480,6 +486,34 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
             inicio, fim, linha, forma_que_contem(formas, quantidade_formas, inicio)};
     }
     return true;
+}
+
+bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_t nome_fim,
+                                   const SefFormaEstruturalIde *formas, size_t quantidade_formas,
+                                   SefReferenciaEstruturalIde **referencias,
+                                   size_t *quantidade_referencias, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (codigo == NULL || nome_fim > strlen(codigo)) {
+        sef_erro_definir(erro, 0, 0, "queried symbol is outside the buffer");
+        return false;
+    }
+    return catalogar_referencias_entre(codigo, codigo, nome_inicio, nome_fim, formas,
+                                       quantidade_formas, referencias, quantidade_referencias,
+                                       erro);
+}
+
+bool sef_ide_catalogar_referencias_nome(const char *codigo, const char *nome,
+                                        const SefFormaEstruturalIde *formas,
+                                        size_t quantidade_formas,
+                                        SefReferenciaEstruturalIde **referencias,
+                                        size_t *quantidade_referencias, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (nome == NULL || nome[0] == '\0') {
+        sef_erro_definir(erro, 0, 0, "workspace reference query requires a symbol name");
+        return false;
+    }
+    return catalogar_referencias_entre(codigo, nome, 0, strlen(nome), formas, quantidade_formas,
+                                       referencias, quantidade_referencias, erro);
 }
 
 void sef_ide_referencias_liberar(SefReferenciaEstruturalIde *referencias) { free(referencias); }

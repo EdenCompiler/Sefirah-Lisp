@@ -192,7 +192,8 @@ not mean the entire milestone is complete.
   live unsaved buffers, exact source navigation, toolbar access, and Ctrl+T.
 - [x] Read-only runtime-backed value/function binding metadata in workspace
   symbol results.
-- [ ] Cross-file reference navigation.
+- [x] Cross-file structural reference navigation with live unsaved buffers,
+  exact source opening, F12/Shift+F12, and a toolbar action.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and full desktop-session restoration.

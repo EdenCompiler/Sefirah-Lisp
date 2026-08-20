@@ -224,7 +224,9 @@ int main(void) {
     remove("teste-aba-2.lisp");
 
     verificar(criar_diretorio("teste-espaco") && criar_diretorio("teste-espaco/sub") &&
-                  gravar_arquivo("teste-espaco/main.lisp", "(define main 1)\n") &&
+                  gravar_arquivo("teste-espaco/main.lisp",
+                                 "(define main 1)\n"
+                                 "(defun UseMixed () (MixedHelper))\n") &&
                   gravar_arquivo("teste-espaco/sub/helper.lisp",
                                  "; (defun FakeHelper () 0)\n"
                                  "(defun MixedHelper () 2)\n") &&
@@ -262,6 +264,21 @@ int main(void) {
                   strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0),
                          "[LIVE FUNCTION]") != NULL,
               "workspace symbol search reported definitions installed in the live world");
+    verificar(sef_sessao_ide_referencias_espaco_trabalho_buscar(sessao, "mixedhelper", &erro) &&
+                  sef_sessao_ide_referencias_espaco_trabalho_quantidade(sessao) == 1 &&
+                  strstr(sef_sessao_ide_referencia_espaco_trabalho(sessao, 0), "main.lisp:2") !=
+                      NULL &&
+                  strstr(sef_sessao_ide_referencia_espaco_trabalho(sessao, 0), "UseMixed") !=
+                      NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "WORKSPACE REFERENCES: 1") != NULL &&
+                  sef_sessao_ide_referencia_espaco_trabalho_abrir(sessao, 0, &erro) &&
+                  strcmp(sef_sessao_ide_caminho(sessao), "teste-espaco/main.lisp") == 0 &&
+                  strstr(sef_sessao_ide_estado(sessao), "Workspace reference 1/1") != NULL,
+              "workspace reference search excluded the definition and opened its cross-file use");
+    verificar(sef_sessao_ide_navegar_referencia_espaco_trabalho(
+                  sessao, SEF_REFERENCIA_PROXIMA, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Workspace reference 1/1") != NULL,
+              "F12-style workspace reference navigation wrapped around its result set");
     verificar(sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "fakehelper", &erro) &&
                   sef_sessao_ide_simbolos_espaco_trabalho_quantidade(sessao) == 0,
               "workspace symbol search ignored definitions inside comments");
@@ -273,16 +290,36 @@ int main(void) {
             strstr(sef_sessao_ide_explorador(sessao), "Mixed-Folder/NewFile.lisp") != NULL,
         "file and folder actions preserved mixed-case paths inside the workspace");
     verificar(
-        sef_sessao_ide_editor_definir(sessao, "(defun CamelCaseDefinition () 42)\n", &erro) &&
+        sef_sessao_ide_editor_definir(sessao,
+                                      "(defun CamelCaseDefinition () (MixedHelper))\n", &erro) &&
             sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "camelcasedefinition", &erro) &&
             sef_sessao_ide_simbolos_espaco_trabalho_quantidade(sessao) == 1 &&
             strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0),
                    "Mixed-Folder/NewFile.lisp:1") != NULL &&
             sef_sessao_ide_simbolo_espaco_trabalho_abrir(sessao, 0, &erro) &&
-            strcmp(sef_sessao_ide_editor(sessao), "(defun CamelCaseDefinition () 42)\n") == 0 &&
+            strcmp(sef_sessao_ide_editor(sessao),
+                   "(defun CamelCaseDefinition () (MixedHelper))\n") == 0 &&
             sef_sessao_ide_cursor_editor(sessao) == strlen("(defun ") &&
             strstr(sef_sessao_ide_estado(sessao), "Workspace definition:") != NULL,
         "workspace symbols used unsaved live buffers and preserved mixed-case paths and names");
+    verificar(sef_sessao_ide_referencias_espaco_trabalho_buscar(sessao, "MixedHelper", &erro) &&
+                  sef_sessao_ide_referencias_espaco_trabalho_quantidade(sessao) == 2,
+              "workspace references found saved and unsaved callers");
+    const char *primeira_referencia_nova =
+        sef_sessao_ide_referencia_espaco_trabalho(sessao, 0);
+    size_t referencia_nova =
+        primeira_referencia_nova != NULL &&
+                strstr(primeira_referencia_nova, "Mixed-Folder/NewFile.lisp:1") != NULL
+            ? 0
+            : 1;
+    const char *rotulo_referencia_nova =
+        sef_sessao_ide_referencia_espaco_trabalho(sessao, referencia_nova);
+    verificar(rotulo_referencia_nova != NULL &&
+                  strstr(rotulo_referencia_nova, "Mixed-Folder/NewFile.lisp:1") != NULL &&
+                  sef_sessao_ide_referencia_espaco_trabalho_abrir(sessao, referencia_nova,
+                                                                 &erro) &&
+                  strstr(sef_sessao_ide_editor(sessao), "CamelCaseDefinition") != NULL,
+              "workspace references included unsaved callers and preserved their exact path");
     verificar(gravar_arquivo("teste-espaco/refreshed.lisp", "(define refreshed 3)\n") &&
                   sef_sessao_ide_espaco_trabalho_atualizar(sessao, &erro) &&
                   sef_sessao_ide_espaco_trabalho_quantidade(sessao) == 4 &&

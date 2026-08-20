@@ -59,6 +59,11 @@ bool sef_ide_catalogar_referencias(const char *codigo, size_t nome_inicio, size_
                                    const SefFormaEstruturalIde *formas, size_t quantidade_formas,
                                    SefReferenciaEstruturalIde **referencias,
                                    size_t *quantidade_referencias, SefErro *erro);
+bool sef_ide_catalogar_referencias_nome(const char *codigo, const char *nome,
+                                        const SefFormaEstruturalIde *formas,
+                                        size_t quantidade_formas,
+                                        SefReferenciaEstruturalIde **referencias,
+                                        size_t *quantidade_referencias, SefErro *erro);
 void sef_ide_referencias_liberar(SefReferenciaEstruturalIde *referencias);
 
 #endif

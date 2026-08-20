@@ -196,7 +196,8 @@ não significa que o marco inteiro esteja concluído.
   definições, buffers vivos não gravados, navegação exata, botão e Ctrl+T.
 - [x] Metadados de binding de valor/função ligados ao runtime e somente de
   leitura nos resultados de símbolos do workspace.
-- [ ] Navegação de referências entre arquivos.
+- [x] Navegação estrutural de referências entre arquivos com buffers vivos não
+  gravados, abertura exata, F12/Shift+F12 e ação na barra.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração completa da sessão de desktop.

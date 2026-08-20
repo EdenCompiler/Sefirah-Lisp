@@ -70,6 +70,8 @@ size_t sef_sessao_ide_espaco_trabalho_selecionado(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_espaco_trabalho_arquivo(const SefSessaoIde *sessao, size_t indice);
 size_t sef_sessao_ide_simbolos_espaco_trabalho_quantidade(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_simbolo_espaco_trabalho(const SefSessaoIde *sessao, size_t indice);
+size_t sef_sessao_ide_referencias_espaco_trabalho_quantidade(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_referencia_espaco_trabalho(const SefSessaoIde *sessao, size_t indice);
 size_t sef_sessao_ide_quantidade_documentos(const SefSessaoIde *sessao);
 size_t sef_sessao_ide_documento_ativo(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_documento_caminho(const SefSessaoIde *sessao, size_t indice);
@@ -99,6 +101,12 @@ bool sef_sessao_ide_simbolos_espaco_trabalho_buscar(SefSessaoIde *sessao, const 
                                                     SefErro *erro);
 bool sef_sessao_ide_simbolo_espaco_trabalho_abrir(SefSessaoIde *sessao, size_t indice,
                                                   SefErro *erro);
+bool sef_sessao_ide_referencias_espaco_trabalho_buscar(SefSessaoIde *sessao, const char *nome,
+                                                       SefErro *erro);
+bool sef_sessao_ide_referencia_espaco_trabalho_abrir(SefSessaoIde *sessao, size_t indice,
+                                                     SefErro *erro);
+bool sef_sessao_ide_navegar_referencia_espaco_trabalho(
+    SefSessaoIde *sessao, SefMovimentoReferenciaIde movimento, SefErro *erro);
 bool sef_sessao_ide_arquivo_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 bool sef_sessao_ide_diretorio_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 

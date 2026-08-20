@@ -25,6 +25,7 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_RESTAURAR,
     ACAO_BOTAO_COMANDOS,
     ACAO_BOTAO_SIMBOLOS,
+    ACAO_BOTAO_REFERENCIAS,
     ACAO_BOTAO_ABRIR_ARQUIVO,
     ACAO_BOTAO_ABRIR_PASTA,
     ACAO_BOTAO_CRIAR_ARQUIVO,
@@ -89,7 +90,7 @@ typedef struct EstadoIde {
     SefComponente navegador;
     SefComponente depurador;
     SefComponente ouvinte;
-    BotaoIde botoes[13];
+    BotaoIde botoes[14];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
     char mensagem_sobreposicao[256];
@@ -148,11 +149,12 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[5] = (BotaoIde){"RESTORE", ACAO_BOTAO_RESTAURAR, {0}};
     estado->botoes[6] = (BotaoIde){"COMMANDS", ACAO_BOTAO_COMANDOS, {0}};
     estado->botoes[7] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
-    estado->botoes[8] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[9] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[10] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[11] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[12] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[8] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
+    estado->botoes[9] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[10] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[11] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[12] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[13] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -304,6 +306,11 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         break;
     case ACAO_BOTAO_SIMBOLOS:
         abrir_sobreposicao_simbolos(estado);
+        break;
+    case ACAO_BOTAO_REFERENCIAS:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_navegar_referencia_espaco_trabalho(
+            estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
         break;
     case ACAO_BOTAO_ABRIR_ARQUIVO:
         abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
@@ -657,7 +664,8 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                     estado->foco == FOCO_EDITOR);
     desenhar_painel(superficie, estado->inspetor.limites, "INSPECTOR [ENTER] [BACK]",
                     estado->foco == FOCO_INSPETOR);
-    desenhar_painel(superficie, estado->navegador.limites, "BROWSER [F11] [F12]", false);
+    desenhar_painel(superficie, estado->navegador.limites,
+                    "BROWSER [F11 DEFINITION] [F12 REFERENCES]", false);
     desenhar_painel(superficie, estado->depurador.limites, "DEBUGGER [ENTER]",
                     estado->foco == FOCO_DEPURADOR);
     desenhar_painel(superficie, estado->ouvinte.limites, "LISTENER / REPL  [ENTER] [UP HISTORY]",
@@ -753,7 +761,8 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
         break;
     case COMANDO_NAVEGAR_REFERENCIA:
         estado->foco = FOCO_EDITOR;
-        sef_sessao_ide_navegar_referencia(estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
+        sef_sessao_ide_navegar_referencia_espaco_trabalho(
+            estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
         break;
     case COMANDO_FOCAR_EXPLORADOR:
         estado->foco = FOCO_EXPLORADOR;
@@ -965,7 +974,7 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_NAVEGAR_REFERENCIA:
         estado->foco = FOCO_EDITOR;
-        sef_sessao_ide_navegar_referencia(
+        sef_sessao_ide_navegar_referencia_espaco_trabalho(
             estado->sessao,
             evento->modificador_shift ? SEF_REFERENCIA_ANTERIOR : SEF_REFERENCIA_PROXIMA, &erro);
         break;

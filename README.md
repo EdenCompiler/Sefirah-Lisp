@@ -239,7 +239,7 @@ Opening a project directory enables the recursive Explorer sidebar, which
 indexes `.lisp` sources in deterministic order. Up/Down selects a source and
 Enter or a pointer click opens it. A command toolbar exposes Run, Run Form, Run
 Changes, Save, Snapshot, Restore, file/folder creation and opening, Explorer
-refresh, and Commands as pointer-accessible buttons. Ctrl+P opens a filtered
+refresh, Symbols, References, and Commands as pointer-accessible buttons. Ctrl+P opens a filtered
 workspace file picker; Ctrl+Shift+P opens a searchable command palette whose
 actions operate on the live Lisp world. Ctrl+T or the Symbols toolbar button
 opens a case-insensitive workspace symbol picker. It indexes real top-level
@@ -256,7 +256,10 @@ F7 runs only forms changed since their last successful installation; F8 and
 Shift+F8 navigate named definitions; F9/F10 save and restore the live Lisp
 world beside the current source as `.imagem`; Shift+F9/Shift+F10 navigate the
 bounded history of unhandled conditions; F11 jumps to the definition of
-the symbol at the cursor; and F12/Shift+F12 cycle its references. Ctrl+Z/Ctrl+Y
+the symbol at the cursor; and F12/Shift+F12 cycle its structural references
+across the workspace (or the current buffer when no folder is open). Reference
+results include unsaved tabs and exclude strings, comments, and definition
+sites. Ctrl+Z/Ctrl+Y
 undo and redo; Ctrl+S saves; and Ctrl+O opens the path prompt. Arrow, Home,
 and End move the editor cursor; holding Shift extends a UTF-8-safe selection,
 and typing or Backspace replaces or removes it as one undoable edit. In the
@@ -585,7 +588,7 @@ Abrir um diretório de projeto ativa a barra lateral Explorer recursiva, que
 indexa fontes `.lisp` em ordem determinística. Cima/Baixo selecionam um fonte e
 Enter ou clique o abre. Uma barra de comandos expõe Run, Run Form, Run Changes,
 Save, Snapshot, Restore, criação/abertura de arquivos e pastas, atualização do
-Explorer e Commands como botões acessíveis pelo ponteiro. Ctrl+P abre o seletor
+Explorer, Symbols, References e Commands como botões acessíveis pelo ponteiro. Ctrl+P abre o seletor
 filtrado de fontes do workspace; Ctrl+Shift+P abre uma paleta pesquisável cujas
 ações operam sobre o mundo Lisp vivo. Ctrl+T ou o botão Symbols abre um seletor
 de símbolos do workspace sem diferenciar caixa. Ele indexa definições reais de
@@ -606,7 +609,9 @@ formas alteradas desde a última instalação bem-sucedida; F8 e Shift+F8 navega
 pelas definições nomeadas; F9/F10 salvam e restauram o mundo Lisp ao lado do
 fonte como `.imagem`; Shift+F9/Shift+F10 navegam pelo histórico limitado de
 condições não tratadas; F11 vai à definição do símbolo no cursor; e
-F12/Shift+F12 percorrem suas referências. Ctrl+Z/Ctrl+Y desfazem e refazem;
+F12/Shift+F12 percorrem suas referências estruturais em todo o workspace (ou no
+buffer atual quando nenhuma pasta está aberta). Os resultados incluem abas não
+gravadas e excluem strings, comentários e locais de definição. Ctrl+Z/Ctrl+Y desfazem e refazem;
 Ctrl+S salva; e Ctrl+O abre o prompt de caminho. Setas, Home e End movem o
 cursor do editor; com Shift, estendem uma seleção segura para UTF-8, e digitar
 ou usar Backspace a substitui ou remove como uma única edição reversível. No

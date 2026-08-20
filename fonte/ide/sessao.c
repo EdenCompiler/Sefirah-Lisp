@@ -14,6 +14,7 @@
 #define SEF_LIMITE_ARQUIVO_IDE (64L * 1024L * 1024L)
 #define SEF_LIMITE_CONDICOES_IDE 32u
 #define SEF_LIMITE_SIMBOLOS_ESPACO_TRABALHO 4096u
+#define SEF_LIMITE_REFERENCIAS_ESPACO_TRABALHO 4096u
 
 typedef struct TextoIde {
     char *dados;
@@ -57,6 +58,13 @@ typedef struct ResultadoSimboloEspacoTrabalhoIde {
     char *rotulo;
 } ResultadoSimboloEspacoTrabalhoIde;
 
+typedef struct ResultadoReferenciaEspacoTrabalhoIde {
+    size_t indice_arquivo;
+    size_t linha;
+    size_t inicio;
+    char *rotulo;
+} ResultadoReferenciaEspacoTrabalhoIde;
+
 struct SefSessaoIde {
     SefRuntime *runtime;
     TextoIde editor;
@@ -95,6 +103,12 @@ struct SefSessaoIde {
     ResultadoSimboloEspacoTrabalhoIde *simbolos_espaco_trabalho;
     size_t quantidade_simbolos_espaco_trabalho;
     size_t capacidade_simbolos_espaco_trabalho;
+    ResultadoReferenciaEspacoTrabalhoIde *referencias_espaco_trabalho;
+    size_t quantidade_referencias_espaco_trabalho;
+    size_t capacidade_referencias_espaco_trabalho;
+    TextoIde nome_referencias_espaco_trabalho;
+    size_t arquivos_ignorados_referencias_espaco_trabalho;
+    bool referencias_espaco_trabalho_truncadas;
     DiagnosticoIde diagnosticos[SEF_LIMITE_CONDICOES_IDE];
     size_t quantidade_diagnosticos;
     size_t diagnostico_selecionado;
@@ -228,6 +242,18 @@ static void simbolos_espaco_trabalho_limpar(SefSessaoIde *sessao) {
     for (size_t i = 0; i < sessao->quantidade_simbolos_espaco_trabalho; i++)
         free(sessao->simbolos_espaco_trabalho[i].rotulo);
     sessao->quantidade_simbolos_espaco_trabalho = 0;
+}
+
+static void referencias_espaco_trabalho_limpar(SefSessaoIde *sessao) {
+    for (size_t i = 0; i < sessao->quantidade_referencias_espaco_trabalho; i++)
+        free(sessao->referencias_espaco_trabalho[i].rotulo);
+    sessao->quantidade_referencias_espaco_trabalho = 0;
+    sessao->arquivos_ignorados_referencias_espaco_trabalho = 0;
+    sessao->referencias_espaco_trabalho_truncadas = false;
+    if (sessao->nome_referencias_espaco_trabalho.dados != NULL) {
+        sessao->nome_referencias_espaco_trabalho.dados[0] = '\0';
+        sessao->nome_referencias_espaco_trabalho.tamanho = 0;
+    }
 }
 
 static const char *nome_base(const char *caminho) {
@@ -841,6 +867,9 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     texto_liberar(&sessao->explorador);
     simbolos_espaco_trabalho_limpar(sessao);
     free(sessao->simbolos_espaco_trabalho);
+    referencias_espaco_trabalho_limpar(sessao);
+    free(sessao->referencias_espaco_trabalho);
+    texto_liberar(&sessao->nome_referencias_espaco_trabalho);
     for (size_t i = 0; i < sessao->quantidade_documentos; i++)
         documento_liberar(&sessao->documentos[i]);
     free(sessao->documentos);
@@ -885,6 +914,14 @@ const char *sef_sessao_ide_simbolo_espaco_trabalho(const SefSessaoIde *sessao, s
     return sessao == NULL || indice >= sessao->quantidade_simbolos_espaco_trabalho
                ? NULL
                : sessao->simbolos_espaco_trabalho[indice].rotulo;
+}
+size_t sef_sessao_ide_referencias_espaco_trabalho_quantidade(const SefSessaoIde *sessao) {
+    return sessao == NULL ? 0 : sessao->quantidade_referencias_espaco_trabalho;
+}
+const char *sef_sessao_ide_referencia_espaco_trabalho(const SefSessaoIde *sessao, size_t indice) {
+    return sessao == NULL || indice >= sessao->quantidade_referencias_espaco_trabalho
+               ? NULL
+               : sessao->referencias_espaco_trabalho[indice].rotulo;
 }
 size_t sef_sessao_ide_quantidade_documentos(const SefSessaoIde *sessao) {
     return sessao == NULL ? 0 : sessao->quantidade_documentos;
@@ -940,6 +977,7 @@ bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *cami
     if (!sef_espaco_trabalho_ide_abrir(sessao->espaco_trabalho, caminho, erro))
         return false;
     simbolos_espaco_trabalho_limpar(sessao);
+    referencias_espaco_trabalho_limpar(sessao);
     sessao->arquivo_espaco_trabalho_selecionado = 0;
     return atualizar_explorador(sessao, erro) &&
            texto_formatar(&sessao->estado, erro, "Workspace opened: %s (%zu Lisp file(s))", caminho,
@@ -967,6 +1005,7 @@ bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *err
     bool atualizou = sef_espaco_trabalho_ide_abrir(sessao->espaco_trabalho, raiz.dados, erro);
     if (atualizou) {
         simbolos_espaco_trabalho_limpar(sessao);
+        referencias_espaco_trabalho_limpar(sessao);
         sessao->arquivo_espaco_trabalho_selecionado = 0;
         for (size_t i = 0; i < sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho); i++) {
             if (strcmp(sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, i),
@@ -1302,6 +1341,282 @@ bool sef_sessao_ide_simbolo_espaco_trabalho_abrir(SefSessaoIde *sessao, size_t i
     return abriu;
 }
 
+static bool referencias_espaco_trabalho_reservar(SefSessaoIde *sessao, size_t quantidade,
+                                                 SefErro *erro) {
+    if (quantidade <= sessao->capacidade_referencias_espaco_trabalho)
+        return true;
+    size_t capacidade = sessao->capacidade_referencias_espaco_trabalho == 0
+                            ? 64
+                            : sessao->capacidade_referencias_espaco_trabalho * 2;
+    while (capacidade < quantidade)
+        capacidade *= 2;
+    ResultadoReferenciaEspacoTrabalhoIde *resultados =
+        realloc(sessao->referencias_espaco_trabalho, capacidade * sizeof(*resultados));
+    if (resultados == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for workspace reference results");
+        return false;
+    }
+    sessao->referencias_espaco_trabalho = resultados;
+    sessao->capacidade_referencias_espaco_trabalho = capacidade;
+    return true;
+}
+
+static bool referencia_espaco_trabalho_adicionar(
+    SefSessaoIde *sessao, size_t indice_arquivo, const char *arquivo_relativo,
+    const SefReferenciaEstruturalIde *referencia, const SefFormaEstruturalIde *formas,
+    size_t quantidade_formas, SefErro *erro) {
+    if (sessao->quantidade_referencias_espaco_trabalho >=
+        SEF_LIMITE_REFERENCIAS_ESPACO_TRABALHO)
+        return true;
+    const char *categoria = "TOP LEVEL";
+    const char *contexto = "anonymous form";
+    if (referencia->indice_forma < quantidade_formas &&
+        formas[referencia->indice_forma].definicao) {
+        categoria = formas[referencia->indice_forma].categoria;
+        contexto = formas[referencia->indice_forma].nome;
+    }
+    if (!referencias_espaco_trabalho_reservar(
+            sessao, sessao->quantidade_referencias_espaco_trabalho + 1, erro))
+        return false;
+    int tamanho = snprintf(NULL, 0, "%s:%zu  %-10s %s", arquivo_relativo, referencia->linha,
+                           categoria, contexto);
+    if (tamanho < 0) {
+        sef_erro_definir(erro, 0, 0, "could not format a workspace reference result");
+        return false;
+    }
+    char *rotulo = malloc((size_t)tamanho + 1);
+    if (rotulo == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for workspace reference results");
+        return false;
+    }
+    snprintf(rotulo, (size_t)tamanho + 1, "%s:%zu  %-10s %s", arquivo_relativo,
+             referencia->linha, categoria, contexto);
+    ResultadoReferenciaEspacoTrabalhoIde *resultado =
+        &sessao->referencias_espaco_trabalho[sessao->quantidade_referencias_espaco_trabalho++];
+    resultado->indice_arquivo = indice_arquivo;
+    resultado->linha = referencia->linha;
+    resultado->inicio = referencia->inicio;
+    resultado->rotulo = rotulo;
+    return true;
+}
+
+static bool navegador_mostrar_referencias_espaco_trabalho(SefSessaoIde *sessao,
+                                                          size_t selecionada, SefErro *erro) {
+    if (!texto_formatar(&sessao->navegador, erro,
+                        "WORKSPACE REFERENCES: %zu\nSYMBOL: %s\nSKIPPED FILES: %zu\n",
+                        sessao->quantidade_referencias_espaco_trabalho,
+                        sessao->nome_referencias_espaco_trabalho.dados,
+                        sessao->arquivos_ignorados_referencias_espaco_trabalho))
+        return false;
+    if (sessao->quantidade_referencias_espaco_trabalho == 0)
+        return texto_acrescentar(&sessao->navegador, "\n(no workspace references)", erro);
+    for (size_t i = 0; i < sessao->quantidade_referencias_espaco_trabalho; i++) {
+        if (!texto_acrescentar(&sessao->navegador, i == selecionada ? "\n> " : "\n  ", erro) ||
+            !texto_acrescentar(&sessao->navegador,
+                               sessao->referencias_espaco_trabalho[i].rotulo, erro))
+            return false;
+    }
+    return !sessao->referencias_espaco_trabalho_truncadas ||
+           texto_acrescentar(&sessao->navegador,
+                             "\n\n(result limit reached; narrow the symbol)", erro);
+}
+
+bool sef_sessao_ide_referencias_espaco_trabalho_buscar(SefSessaoIde *sessao, const char *nome,
+                                                       SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || nome == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session or workspace reference query");
+        return false;
+    }
+    if (sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho)[0] == '\0') {
+        sef_erro_definir(erro, 0, 0, "no workspace is open for reference search");
+        return false;
+    }
+    size_t inicio_nome = 0;
+    size_t fim_nome = 0;
+    size_t tamanho_nome = strlen(nome);
+    if (tamanho_nome == 0 || !sef_ide_atomo_no_cursor(nome, 0, &inicio_nome, &fim_nome) ||
+        inicio_nome != 0 || fim_nome != tamanho_nome) {
+        sef_erro_definir(erro, 0, 0, "workspace reference query requires one Lisp symbol");
+        return false;
+    }
+    referencias_espaco_trabalho_limpar(sessao);
+    if (!texto_definir(&sessao->nome_referencias_espaco_trabalho, nome, erro))
+        return false;
+    size_t ignorados = 0;
+    size_t total_encontrado = 0;
+    size_t quantidade_arquivos = sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho);
+    for (size_t i = 0; i < quantidade_arquivos; i++) {
+        const char *absoluto =
+            sef_espaco_trabalho_ide_arquivo_absoluto(sessao->espaco_trabalho, i);
+        const char *relativo =
+            sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, i);
+        const char *codigo = fonte_aberta_no_editor(sessao, absoluto);
+        char *codigo_alocado = NULL;
+        if (codigo == NULL) {
+            codigo_alocado = arquivo_ler_para_indice(absoluto, erro);
+            codigo = codigo_alocado;
+        }
+        SefFormaEstruturalIde *formas = NULL;
+        size_t quantidade_formas = 0;
+        if (codigo == NULL ||
+            !sef_ide_catalogar_formas(codigo, &formas, &quantidade_formas, erro)) {
+            free(codigo_alocado);
+            if (erro_e_falta_memoria(erro)) {
+                referencias_espaco_trabalho_limpar(sessao);
+                return false;
+            }
+            ignorados++;
+            sef_erro_limpar(erro);
+            continue;
+        }
+        SefReferenciaEstruturalIde *referencias = NULL;
+        size_t quantidade_referencias = 0;
+        bool catalogou = sef_ide_catalogar_referencias_nome(
+            codigo, nome, formas, quantidade_formas, &referencias, &quantidade_referencias, erro);
+        bool adicionou = catalogou;
+        for (size_t j = 0; adicionou && j < quantidade_referencias; j++) {
+            total_encontrado++;
+            adicionou = referencia_espaco_trabalho_adicionar(
+                sessao, i, relativo, &referencias[j], formas, quantidade_formas, erro);
+        }
+        sef_ide_referencias_liberar(referencias);
+        sef_ide_catalogo_liberar(formas);
+        free(codigo_alocado);
+        if (!adicionou) {
+            referencias_espaco_trabalho_limpar(sessao);
+            return false;
+        }
+    }
+    bool truncado = total_encontrado > sessao->quantidade_referencias_espaco_trabalho;
+    sessao->arquivos_ignorados_referencias_espaco_trabalho = ignorados;
+    sessao->referencias_espaco_trabalho_truncadas = truncado;
+    if (!navegador_mostrar_referencias_espaco_trabalho(sessao, SIZE_MAX, erro))
+        return false;
+    return texto_formatar(&sessao->estado, erro, "Workspace references: %zu match(es)%s",
+                          total_encontrado, truncado ? " (showing first 4096)" : "");
+}
+
+bool sef_sessao_ide_referencia_espaco_trabalho_abrir(SefSessaoIde *sessao, size_t indice,
+                                                     SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || indice >= sessao->quantidade_referencias_espaco_trabalho) {
+        sef_erro_definir(erro, 0, 0, "invalid workspace reference selection");
+        return false;
+    }
+    ResultadoReferenciaEspacoTrabalhoIde resultado = sessao->referencias_espaco_trabalho[indice];
+    const char *caminho = sef_espaco_trabalho_ide_arquivo_absoluto(
+        sessao->espaco_trabalho, resultado.indice_arquivo);
+    const char *relativo = sef_espaco_trabalho_ide_arquivo_relativo(
+        sessao->espaco_trabalho, resultado.indice_arquivo);
+    if (caminho == NULL || relativo == NULL) {
+        sef_erro_definir(erro, 0, 0, "workspace reference file is no longer available");
+        return false;
+    }
+    bool ja_ativo = strcmp(sessao->caminho.dados, caminho) == 0;
+    if (!sef_sessao_ide_espaco_trabalho_selecionar(sessao, resultado.indice_arquivo, erro) ||
+        (!ja_ativo && !sef_sessao_ide_abrir(sessao, caminho, erro)))
+        return false;
+    SefFormaEstruturalIde *formas = NULL;
+    size_t quantidade_formas = 0;
+    if (!sef_ide_catalogar_formas(sessao->editor.dados, &formas, &quantidade_formas, erro))
+        return false;
+    SefReferenciaEstruturalIde *referencias = NULL;
+    size_t quantidade_referencias = 0;
+    if (!sef_ide_catalogar_referencias_nome(
+            sessao->editor.dados, sessao->nome_referencias_espaco_trabalho.dados, formas,
+            quantidade_formas, &referencias, &quantidade_referencias, erro)) {
+        sef_ide_catalogo_liberar(formas);
+        return false;
+    }
+    bool ainda_existe = false;
+    for (size_t i = 0; i < quantidade_referencias; i++)
+        if (referencias[i].inicio == resultado.inicio) {
+            ainda_existe = true;
+            break;
+        }
+    sef_ide_referencias_liberar(referencias);
+    sef_ide_catalogo_liberar(formas);
+    if (!ainda_existe) {
+        sef_erro_definir(erro, 0, 0, "workspace reference location is stale; search again");
+        return false;
+    }
+    sessao->cursor_editor = resultado.inicio;
+    selecao_editor_limpar(sessao);
+    return navegador_mostrar_referencias_espaco_trabalho(sessao, indice, erro) &&
+           texto_formatar(&sessao->estado, erro,
+                          "Workspace reference %zu/%zu: %s (%s:%zu)", indice + 1,
+                          sessao->quantidade_referencias_espaco_trabalho,
+                          sessao->nome_referencias_espaco_trabalho.dados, relativo,
+                          resultado.linha);
+}
+
+static bool nome_referencias_igual(const TextoIde *armazenado, const char *nome) {
+    size_t tamanho = strlen(nome);
+    if (armazenado->tamanho != tamanho)
+        return false;
+    bool exato = strchr(nome, '|') != NULL || strchr(nome, '\\') != NULL ||
+                 strchr(armazenado->dados, '|') != NULL || strchr(armazenado->dados, '\\') != NULL;
+    for (size_t i = 0; i < tamanho; i++) {
+        unsigned char primeiro = (unsigned char)armazenado->dados[i];
+        unsigned char segundo = (unsigned char)nome[i];
+        if (exato ? primeiro != segundo : toupper(primeiro) != toupper(segundo))
+            return false;
+    }
+    return true;
+}
+
+bool sef_sessao_ide_navegar_referencia_espaco_trabalho(
+    SefSessaoIde *sessao, SefMovimentoReferenciaIde movimento, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session");
+        return false;
+    }
+    if (sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho)[0] == '\0')
+        return sef_sessao_ide_navegar_referencia(sessao, movimento, erro);
+    size_t inicio = 0;
+    size_t fim = 0;
+    if (!sef_ide_atomo_no_cursor(sessao->editor.dados, sessao->cursor_editor, &inicio, &fim))
+        return texto_definir(&sessao->estado, "No symbol at cursor", erro);
+    TextoIde nome = {0};
+    if (!texto_definir_n(&nome, sessao->editor.dados + inicio, fim - inicio, erro))
+        return false;
+    bool buscou = nome_referencias_igual(&sessao->nome_referencias_espaco_trabalho, nome.dados) ||
+                  sef_sessao_ide_referencias_espaco_trabalho_buscar(sessao, nome.dados, erro);
+    texto_liberar(&nome);
+    if (!buscou)
+        return false;
+    size_t quantidade = sessao->quantidade_referencias_espaco_trabalho;
+    if (quantidade == 0)
+        return true;
+    size_t arquivo_atual = SIZE_MAX;
+    for (size_t i = 0; i < sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho); i++)
+        if (strcmp(sef_espaco_trabalho_ide_arquivo_absoluto(sessao->espaco_trabalho, i),
+                   sessao->caminho.dados) == 0) {
+            arquivo_atual = i;
+            break;
+        }
+    size_t escolhida = SIZE_MAX;
+    for (size_t i = 0; i < quantidade; i++) {
+        ResultadoReferenciaEspacoTrabalhoIde *resultado = &sessao->referencias_espaco_trabalho[i];
+        bool depois = arquivo_atual == SIZE_MAX || resultado->indice_arquivo > arquivo_atual ||
+                      (resultado->indice_arquivo == arquivo_atual &&
+                       resultado->inicio > sessao->cursor_editor);
+        bool antes = arquivo_atual != SIZE_MAX &&
+                     (resultado->indice_arquivo < arquivo_atual ||
+                      (resultado->indice_arquivo == arquivo_atual &&
+                       resultado->inicio < sessao->cursor_editor));
+        if (movimento == SEF_REFERENCIA_PROXIMA && escolhida == SIZE_MAX && depois)
+            escolhida = i;
+        if (movimento == SEF_REFERENCIA_ANTERIOR && antes)
+            escolhida = i;
+    }
+    if (escolhida == SIZE_MAX)
+        escolhida = movimento == SEF_REFERENCIA_PROXIMA ? 0 : quantidade - 1;
+    return sef_sessao_ide_referencia_espaco_trabalho_abrir(sessao, escolhida, erro);
+}
+
 bool sef_sessao_ide_arquivo_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL) {
@@ -1346,6 +1661,7 @@ bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, Sef
     sessao->cursor_editor = sessao->editor.tamanho;
     selecao_editor_limpar(sessao);
     sessao->documento_modificado = true;
+    referencias_espaco_trabalho_limpar(sessao);
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                           sessao->cursor_editor, erro) &&
            atualizar_abas(sessao, erro);
@@ -1366,6 +1682,7 @@ bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefE
     sessao->cursor_editor = inicio + tamanho;
     selecao_editor_limpar(sessao);
     sessao->documento_modificado = true;
+    referencias_espaco_trabalho_limpar(sessao);
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                           sessao->cursor_editor, erro) &&
            atualizar_abas(sessao, erro);
@@ -1392,6 +1709,7 @@ void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
     sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                    sessao->cursor_editor, &descarte);
     sessao->documento_modificado = true;
+    referencias_espaco_trabalho_limpar(sessao);
     atualizar_abas(sessao, &descarte);
 }
 
@@ -1525,6 +1843,7 @@ static bool restaurar_editor(SefSessaoIde *sessao, bool desfazer, SefErro *erro)
     sessao->cursor_editor = cursor;
     selecao_editor_limpar(sessao);
     sessao->documento_modificado = true;
+    referencias_espaco_trabalho_limpar(sessao);
     return atualizar_abas(sessao, erro) &&
            texto_definir(&sessao->estado, desfazer ? "Edit undone" : "Edit redone", erro);
 }
