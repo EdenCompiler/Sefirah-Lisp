@@ -614,10 +614,10 @@ Explorer, Cima/Baixo percorrem circularmente o índice e Enter abre o fonte
 selecionado em uma aba; um clique seleciona e abre uma entrada visível. O
 primeiro fonte reutiliza uma aba vazia ainda intocada.
 
-A barra de comandos fornece botões para Run, Run Form, Run Changes, Save,
-Snapshot, Restore, Commands, Open File, Open Folder, New File, New Folder e
-Refresh. Os controles de arquivos e pastas usam um prompt de caminho interno à
-IDE e exibem falhas em inglês nesse prompt. A criação é exclusiva — não
+A barra de comandos fornece botões para Run, Run Form, Run Changes, Save, Auto
+Save, Snapshot, Restore, Commands, Symbols, References, Open File, Open Folder,
+New File, New Folder e Refresh. Os controles de arquivos e pastas usam um prompt
+de caminho interno à IDE e exibem falhas em inglês nesse prompt. A criação é exclusiva — não
 sobrescreve um caminho existente — e Refresh preserva o fonte selecionado
 quando ele ainda existe. Os botões de avaliação e snapshot acionam as mesmas
 operações sobre o mundo vivo que F5/F6/F7, Ctrl+S e F9/F10; a barra não cria um
@@ -625,6 +625,15 @@ fluxo batch separado. A entrada de caminho preserva exatamente as letras
 maiúsculas e minúsculas digitadas, e a fonte bitmap desenha as duas caixas de
 modo distinto, mantendo caminhos válidos em sistemas de arquivos sensíveis a
 caixa.
+
+Auto Save começa desligado. O botão `AUTO ON/OFF` ou o comando pesquisável
+`Toggle Auto Save` muda o modo da sessão atual, e a barra de estado sempre o
+mostra. Quando ligado, cada edição de conteúdo, remoção, undo ou redo
+bem-sucedido grava imediatamente uma aba nomeada no caminho exato e remove seu
+marcador de alteração. Buffers sem nome continuam modificados até o usuário lhes
+dar um caminho com Save. A API headless da sessão oferece o mesmo comportamento
+por `sef_sessao_ide_salvamento_automatico` e
+`sef_sessao_ide_salvamento_automatico_definir`.
 
 Ctrl+P abre Quick Open e filtra o índice do workspace sem diferenciar caixa.
 Ctrl+Shift+P ou o botão Commands abre uma paleta pesquisável com operações de

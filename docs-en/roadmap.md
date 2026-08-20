@@ -201,7 +201,9 @@ not mean the entire milestone is complete.
   inspector.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
-- [ ] Git integration, autosave, and full desktop-session restoration.
+- [x] Session-level Auto Save toggle with toolbar, command-palette, status-bar,
+  named-buffer persistence, and exact mixed-case paths.
+- [ ] Git integration and full desktop-session restoration.
 - [ ] IDE recompiles the compiler and itself.
 
 ### Distribution

@@ -262,8 +262,11 @@ results include unsaved tabs and exclude strings, comments, and definition
 sites. Ctrl+Z/Ctrl+Y
 undo and redo; Ctrl+S saves; and Ctrl+O opens the path prompt. Arrow, Home,
 and End move the editor cursor; holding Shift extends a UTF-8-safe selection,
-and typing or Backspace replaces or removes it as one undoable edit. In the
-listener, Up and Down browse submitted events. In the inspector, Up/Down select an object component, Enter opens it,
+and typing or Backspace replaces or removes it as one undoable edit. The toolbar
+and command palette can toggle Auto Save for immediate writes of named buffers
+while preserving exact mixed-case paths; untitled buffers remain unsaved until
+given a path. In the listener, Up and Down browse submitted events. In the
+inspector, Up/Down select an object component, Enter opens it,
 Backspace returns to its parent, and Left/Right switch between returned roots.
 The complete navigation path remains rooted in the garbage collector. Clicking
 the definition browser advances to the next definition. In the debugger,
@@ -618,8 +621,11 @@ buffer atual quando nenhuma pasta está aberta). Os resultados incluem abas não
 gravadas e excluem strings, comentários e locais de definição. Ctrl+Z/Ctrl+Y desfazem e refazem;
 Ctrl+S salva; e Ctrl+O abre o prompt de caminho. Setas, Home e End movem o
 cursor do editor; com Shift, estendem uma seleção segura para UTF-8, e digitar
-ou usar Backspace a substitui ou remove como uma única edição reversível. No
-ouvinte, Cima e Baixo percorrem os eventos enviados. No
+ou usar Backspace a substitui ou remove como uma única edição reversível. O
+botão e a paleta de comandos podem alternar Auto Save para gravar imediatamente
+buffers nomeados, preservando caminhos com caixa mista; buffers sem nome
+continuam sem gravar até receberem um caminho. No ouvinte, Cima e Baixo
+percorrem os eventos enviados. No
 inspetor, Cima/Baixo selecionam um componente, Enter o abre, Backspace volta ao
 pai e Esquerda/Direita alternam entre as raízes devolvidas. O caminho completo
 permanece enraizado no coletor de lixo. Clicar no navegador avança para a

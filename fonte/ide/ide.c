@@ -21,6 +21,7 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_EXECUTAR_FORMA,
     ACAO_BOTAO_EXECUTAR_ALTERACOES,
     ACAO_BOTAO_SALVAR,
+    ACAO_BOTAO_SALVAMENTO_AUTOMATICO,
     ACAO_BOTAO_SNAPSHOT,
     ACAO_BOTAO_RESTAURAR,
     ACAO_BOTAO_COMANDOS,
@@ -56,6 +57,7 @@ typedef enum AcaoComandoIde {
     COMANDO_EXECUTAR_FORMA,
     COMANDO_EXECUTAR_ALTERACOES,
     COMANDO_SALVAR,
+    COMANDO_ALTERNAR_SALVAMENTO_AUTOMATICO,
     COMANDO_SNAPSHOT,
     COMANDO_RESTAURAR,
     COMANDO_IR_DEFINICAO,
@@ -90,7 +92,7 @@ typedef struct EstadoIde {
     SefComponente navegador;
     SefComponente depurador;
     SefComponente ouvinte;
-    BotaoIde botoes[14];
+    BotaoIde botoes[15];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
     char mensagem_sobreposicao[256];
@@ -113,6 +115,7 @@ static const ComandoIde comandos[] = {
     {"Run Form at Cursor", COMANDO_EXECUTAR_FORMA},
     {"Run Changed Top-Level Forms", COMANDO_EXECUTAR_ALTERACOES},
     {"Save Current File", COMANDO_SALVAR},
+    {"Toggle Auto Save", COMANDO_ALTERNAR_SALVAMENTO_AUTOMATICO},
     {"Save Live World Snapshot", COMANDO_SNAPSHOT},
     {"Restore Live World Snapshot", COMANDO_RESTAURAR},
     {"Go to Definition at Cursor", COMANDO_IR_DEFINICAO},
@@ -141,20 +144,21 @@ static bool iniciar_componentes(EstadoIde *estado) {
     sef_componente_iniciar(&estado->navegador, SEF_COMPONENTE_PAINEL, "BROWSER");
     sef_componente_iniciar(&estado->depurador, SEF_COMPONENTE_PAINEL, "DEBUGGER");
     sef_componente_iniciar(&estado->ouvinte, SEF_COMPONENTE_PAINEL, "REPL");
-    estado->botoes[0] = (BotaoIde){"RUN  F5", ACAO_BOTAO_EXECUTAR, {0}};
+    estado->botoes[0] = (BotaoIde){"RUN", ACAO_BOTAO_EXECUTAR, {0}};
     estado->botoes[1] = (BotaoIde){"FORM  F6", ACAO_BOTAO_EXECUTAR_FORMA, {0}};
     estado->botoes[2] = (BotaoIde){"CHANGES  F7", ACAO_BOTAO_EXECUTAR_ALTERACOES, {0}};
     estado->botoes[3] = (BotaoIde){"SAVE", ACAO_BOTAO_SALVAR, {0}};
-    estado->botoes[4] = (BotaoIde){"SNAPSHOT", ACAO_BOTAO_SNAPSHOT, {0}};
-    estado->botoes[5] = (BotaoIde){"RESTORE", ACAO_BOTAO_RESTAURAR, {0}};
-    estado->botoes[6] = (BotaoIde){"COMMANDS", ACAO_BOTAO_COMANDOS, {0}};
-    estado->botoes[7] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
-    estado->botoes[8] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
-    estado->botoes[9] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[10] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[11] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[12] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[13] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[4] = (BotaoIde){"AUTO OFF", ACAO_BOTAO_SALVAMENTO_AUTOMATICO, {0}};
+    estado->botoes[5] = (BotaoIde){"SNAPSHOT", ACAO_BOTAO_SNAPSHOT, {0}};
+    estado->botoes[6] = (BotaoIde){"RESTORE", ACAO_BOTAO_RESTAURAR, {0}};
+    estado->botoes[7] = (BotaoIde){"COMMANDS", ACAO_BOTAO_COMANDOS, {0}};
+    estado->botoes[8] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
+    estado->botoes[9] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
+    estado->botoes[10] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[11] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[12] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[13] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[14] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -218,6 +222,9 @@ static void desenhar_barra_comandos(SefSuperficie *superficie, EstadoIde *estado
         estado->botoes[i].limites = (SefRetangulo){0};
     for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++) {
         BotaoIde *botao = &estado->botoes[i];
+        if (botao->acao == ACAO_BOTAO_SALVAMENTO_AUTOMATICO)
+            botao->rotulo = sef_sessao_ide_salvamento_automatico(estado->sessao) ? "AUTO ON"
+                                                                               : "AUTO OFF";
         int largura = (int)strlen(botao->rotulo) * 6 + 20;
         if (x + largura > superficie->largura - 10)
             break;
@@ -294,6 +301,10 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         break;
     case ACAO_BOTAO_SALVAR:
         sef_sessao_ide_salvar(estado->sessao, sef_sessao_ide_caminho(estado->sessao), erro);
+        break;
+    case ACAO_BOTAO_SALVAMENTO_AUTOMATICO:
+        sef_sessao_ide_salvamento_automatico_definir(
+            estado->sessao, !sef_sessao_ide_salvamento_automatico(estado->sessao), erro);
         break;
     case ACAO_BOTAO_SNAPSHOT:
         sef_sessao_ide_imagem_salvar(estado->sessao, erro);
@@ -706,8 +717,10 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     sef_superficie_retangulo(superficie, 0, superficie->altura - 34, superficie->largura, 34,
                              SEF_COR(177, 196, 154));
     char estado_barra[768];
-    snprintf(estado_barra, sizeof(estado_barra), "%s  |  %s  |  CTRL+S SAVE  CTRL+O OPEN",
-             sef_sessao_ide_caminho(estado->sessao), sef_sessao_ide_estado(estado->sessao));
+    snprintf(estado_barra, sizeof(estado_barra), "%s  |  AUTO SAVE: %s  |  %s  |  CTRL+S SAVE",
+             sef_sessao_ide_caminho(estado->sessao),
+             sef_sessao_ide_salvamento_automatico(estado->sessao) ? "ON" : "OFF",
+             sef_sessao_ide_estado(estado->sessao));
     size_t colunas_estado = superficie->largura > 20 ? (size_t)(superficie->largura - 20) / 12u : 0;
     limitar_linha(estado_barra, colunas_estado);
     sef_superficie_texto(superficie, 10, superficie->altura - 25, estado_barra, 2, tinta);
@@ -748,6 +761,9 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
         break;
     case COMANDO_SALVAR:
         acionar_botao(estado, ACAO_BOTAO_SALVAR, erro);
+        break;
+    case COMANDO_ALTERNAR_SALVAMENTO_AUTOMATICO:
+        acionar_botao(estado, ACAO_BOTAO_SALVAMENTO_AUTOMATICO, erro);
         break;
     case COMANDO_SNAPSHOT:
         acionar_botao(estado, ACAO_BOTAO_SNAPSHOT, erro);

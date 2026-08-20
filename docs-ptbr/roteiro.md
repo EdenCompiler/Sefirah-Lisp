@@ -205,7 +205,9 @@ não significa que o marco inteiro esteja concluído.
   inspetor.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
-- [ ] Integração Git, autosave e restauração completa da sessão de desktop.
+- [x] Alternância de Auto Save por sessão com botão, paleta de comandos, barra
+  de estado, persistência de buffers nomeados e caminhos exatos com caixa mista.
+- [ ] Integração Git e restauração completa da sessão de desktop.
 - [ ] IDE recompila o compilador e a si própria.
 
 ### Distribuição

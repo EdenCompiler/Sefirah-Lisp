@@ -30,6 +30,7 @@ typedef struct DocumentoIde {
     size_t ancora_selecao_editor;
     bool selecao_editor_ativa;
     bool modificado;
+    bool caminho_persistente;
     SefHistoricoEditorIde *historico_editor;
     uint64_t *formas_executadas;
     size_t quantidade_formas_executadas;
@@ -96,6 +97,8 @@ struct SefSessaoIde {
     size_t quantidade_formas_executadas;
     size_t capacidade_formas_executadas;
     bool documento_modificado;
+    bool caminho_persistente;
+    bool salvamento_automatico;
     DocumentoIde *documentos;
     size_t quantidade_documentos;
     size_t capacidade_documentos;
@@ -117,6 +120,23 @@ struct SefSessaoIde {
 };
 
 static void selecao_editor_limpar(SefSessaoIde *sessao);
+static bool texto_formatar(TextoIde *texto, SefErro *erro, const char *formato, ...);
+static bool salvar_documento_ativo(SefSessaoIde *sessao, const char *caminho, bool automatico,
+                                   SefErro *erro);
+
+static bool autosalvar_se_necessario(SefSessaoIde *sessao, SefErro *erro) {
+    if (!sessao->salvamento_automatico || !sessao->documento_modificado ||
+        !sessao->caminho_persistente)
+        return true;
+    if (salvar_documento_ativo(sessao, sessao->caminho.dados, true, erro))
+        return true;
+    SefErro causa = *erro;
+    SefErro descarte;
+    sef_erro_limpar(&descarte);
+    texto_formatar(&sessao->estado, &descarte, "Auto Save failed: %s", causa.mensagem);
+    *erro = causa;
+    return false;
+}
 
 static bool texto_reservar(TextoIde *texto, size_t necessario, SefErro *erro) {
     if (necessario <= texto->capacidade)
@@ -347,6 +367,7 @@ static void guardar_documento_ativo(SefSessaoIde *sessao) {
     documento->ancora_selecao_editor = sessao->ancora_selecao_editor;
     documento->selecao_editor_ativa = sessao->selecao_editor_ativa;
     documento->modificado = sessao->documento_modificado;
+    documento->caminho_persistente = sessao->caminho_persistente;
     documento->historico_editor = sessao->historico_editor;
     documento->formas_executadas = sessao->formas_executadas;
     documento->quantidade_formas_executadas = sessao->quantidade_formas_executadas;
@@ -369,6 +390,7 @@ static void carregar_documento(SefSessaoIde *sessao, size_t indice) {
     sessao->ancora_selecao_editor = documento->ancora_selecao_editor;
     sessao->selecao_editor_ativa = documento->selecao_editor_ativa;
     sessao->documento_modificado = documento->modificado;
+    sessao->caminho_persistente = documento->caminho_persistente;
     sessao->historico_editor = documento->historico_editor;
     sessao->formas_executadas = documento->formas_executadas;
     sessao->quantidade_formas_executadas = documento->quantidade_formas_executadas;
@@ -992,6 +1014,22 @@ const char *sef_sessao_ide_documento_caminho(const SefSessaoIde *sessao, size_t 
 bool sef_sessao_ide_documento_modificado(const SefSessaoIde *sessao, size_t indice) {
     return sessao != NULL && indice < sessao->quantidade_documentos &&
            documento_modificado(sessao, indice);
+}
+bool sef_sessao_ide_salvamento_automatico(const SefSessaoIde *sessao) {
+    return sessao != NULL && sessao->salvamento_automatico;
+}
+
+bool sef_sessao_ide_salvamento_automatico_definir(SefSessaoIde *sessao, bool ativo,
+                                                  SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while configuring Auto Save");
+        return false;
+    }
+    sessao->salvamento_automatico = ativo;
+    if (ativo && !autosalvar_se_necessario(sessao, erro))
+        return false;
+    return texto_formatar(&sessao->estado, erro, "Auto Save: %s", ativo ? "ON" : "OFF");
 }
 
 bool sef_sessao_ide_documento_ativar(SefSessaoIde *sessao, size_t indice, SefErro *erro) {
@@ -1761,7 +1799,7 @@ bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, Sef
     referencias_espaco_trabalho_limpar(sessao);
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                           sessao->cursor_editor, erro) &&
-           atualizar_abas(sessao, erro);
+           atualizar_abas(sessao, erro) && autosalvar_se_necessario(sessao, erro);
 }
 
 bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {
@@ -1782,7 +1820,7 @@ bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefE
     referencias_espaco_trabalho_limpar(sessao);
     return sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                           sessao->cursor_editor, erro) &&
-           atualizar_abas(sessao, erro);
+           atualizar_abas(sessao, erro) && autosalvar_se_necessario(sessao, erro);
 }
 
 void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
@@ -1808,6 +1846,7 @@ void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
     sessao->documento_modificado = true;
     referencias_espaco_trabalho_limpar(sessao);
     atualizar_abas(sessao, &descarte);
+    autosalvar_se_necessario(sessao, &descarte);
 }
 
 static size_t inicio_linha(const TextoIde *texto, size_t posicao) {
@@ -1942,7 +1981,8 @@ static bool restaurar_editor(SefSessaoIde *sessao, bool desfazer, SefErro *erro)
     sessao->documento_modificado = true;
     referencias_espaco_trabalho_limpar(sessao);
     return atualizar_abas(sessao, erro) &&
-           texto_definir(&sessao->estado, desfazer ? "Edit undone" : "Edit redone", erro);
+           texto_definir(&sessao->estado, desfazer ? "Edit undone" : "Edit redone", erro) &&
+           autosalvar_se_necessario(sessao, erro);
 }
 
 bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro) {
@@ -2406,7 +2446,8 @@ bool sef_sessao_ide_inspetor_voltar(SefSessaoIde *sessao, SefErro *erro) {
                           sessao->profundidade_inspecao);
 }
 
-bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {
+static bool salvar_documento_ativo(SefSessaoIde *sessao, const char *caminho, bool automatico,
+                                   SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL || caminho == NULL || caminho[0] == '\0') {
         sef_erro_definir(erro, 0, 0, "missing path while saving");
@@ -2427,9 +2468,15 @@ bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *e
     }
     if (!texto_definir(&sessao->caminho, caminho, erro) || !atualizar_caminho_imagem(sessao, erro))
         return false;
+    sessao->caminho_persistente = true;
     sessao->documento_modificado = false;
     return atualizar_abas(sessao, erro) &&
-           texto_formatar(&sessao->estado, erro, "Saved: %s", caminho);
+           texto_formatar(&sessao->estado, erro, automatico ? "Auto saved: %s" : "Saved: %s",
+                          caminho);
+}
+
+bool sef_sessao_ide_salvar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {
+    return salvar_documento_ativo(sessao, caminho, false, erro);
 }
 
 static void tentar_abrir_espaco_trabalho_pai(SefSessaoIde *sessao, const char *caminho) {
@@ -2516,6 +2563,7 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
             sessao->cursor_editor = lidos;
             selecao_editor_limpar(sessao);
             sessao->documento_modificado = false;
+            sessao->caminho_persistente = true;
             sessao->quantidade_formas_executadas = 0;
             abriu = sef_historico_editor_registrar(sessao->historico_editor, sessao->editor.dados,
                                                    sessao->cursor_editor, erro);
@@ -2523,6 +2571,7 @@ bool sef_sessao_ide_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *er
     } else {
         DocumentoIde novo = {0};
         novo.cursor_editor = lidos;
+        novo.caminho_persistente = true;
         novo.historico_editor = sef_historico_editor_criar(dados, lidos, erro);
         abriu = novo.historico_editor != NULL &&
                 texto_definir_n(&novo.editor, dados, lidos, erro) &&

@@ -605,8 +605,9 @@ tab; a pointer click selects and opens a visible entry. The initial source file
 reuses an untouched empty tab.
 
 The command toolbar provides pointer buttons for Run, Run Form, Run Changes,
-Save, Snapshot, Restore, Commands, Open File, Open Folder, New File, New Folder,
-and Refresh. File and folder controls use an in-IDE path prompt and report
+Save, Auto Save, Snapshot, Restore, Commands, Symbols, References, Open File,
+Open Folder, New File, New Folder, and Refresh. File and folder controls use an
+in-IDE path prompt and report
 failures in English inside that prompt. Creation is exclusive—it does not
 overwrite an existing path—and Refresh preserves the selected source when it
 still exists. The evaluation and snapshot buttons invoke the same live-world
@@ -614,6 +615,15 @@ operations as F5/F6/F7, Ctrl+S, and F9/F10; the toolbar does not create a
 separate batch-mode workflow. Path input preserves the exact uppercase and
 lowercase letters typed by the user, and the bitmap font renders both cases
 distinctly, which keeps paths usable on case-sensitive file systems.
+
+Auto Save is off by default. The `AUTO ON/OFF` button or the searchable
+`Toggle Auto Save` command changes it for the current session, and the status
+bar always shows the active mode. When enabled, every successful content edit,
+deletion, undo, or redo immediately writes a named tab to its exact path and
+clears the unsaved marker. Untitled buffers remain modified until the user gives
+them a path with Save. The headless session API exposes the same behavior with
+`sef_sessao_ide_salvamento_automatico` and
+`sef_sessao_ide_salvamento_automatico_definir`.
 
 Ctrl+P opens Quick Open and filters the workspace index without case
 sensitivity. Ctrl+Shift+P or the Commands button opens a searchable command

@@ -28,6 +28,17 @@ static bool gravar_arquivo(const char *caminho, const char *texto) {
     return fclose(arquivo) == 0 && gravou;
 }
 
+static bool arquivo_igual(const char *caminho, const char *esperado) {
+    FILE *arquivo = fopen(caminho, "rb");
+    if (arquivo == NULL)
+        return false;
+    char dados[1024];
+    size_t lidos = fread(dados, 1, sizeof(dados) - 1, arquivo);
+    bool terminou = feof(arquivo) != 0;
+    dados[lidos] = '\0';
+    return fclose(arquivo) == 0 && terminou && strcmp(dados, esperado) == 0;
+}
+
 static bool criar_diretorio(const char *caminho) {
 #ifdef _WIN32
     return _mkdir(caminho) == 0;
@@ -50,6 +61,14 @@ int main(void) {
     verificar(sessao != NULL, "sessao da IDE foi criada");
     if (sessao == NULL)
         return 1;
+
+    SefSessaoIde *sessao_sem_nome = sef_sessao_ide_criar(&erro);
+    verificar(sessao_sem_nome != NULL &&
+                  sef_sessao_ide_salvamento_automatico_definir(sessao_sem_nome, true, &erro) &&
+                  sef_sessao_ide_editor_definir(sessao_sem_nome, "(+ 1 1)", &erro) &&
+                  sef_sessao_ide_documento_modificado(sessao_sem_nome, 0),
+              "Auto Save manteve buffer sem nome pendente ate receber um caminho");
+    sef_sessao_ide_destruir(sessao_sem_nome);
 
     verificar(sef_sessao_ide_editor_definir(
                   sessao, "(defun resposta (x)\n  (+ x 2))\n(resposta 40)\n", &erro),
@@ -344,6 +363,30 @@ int main(void) {
                   sef_sessao_ide_espaco_trabalho_quantidade(sessao) == 4 &&
                   strstr(sef_sessao_ide_estado(sessao), "Explorer refreshed") != NULL,
               "refresh action detected a source created outside the IDE");
+    const char *codigo_autosalvo = "(defun AutoSavedMixedCase () 42)\n";
+    verificar(sef_sessao_ide_salvamento_automatico_definir(sessao, true, &erro) &&
+                  sef_sessao_ide_salvamento_automatico(sessao) &&
+                  sef_sessao_ide_editor_definir(sessao, codigo_autosalvo, &erro) &&
+                  !sef_sessao_ide_documento_modificado(
+                      sessao, sef_sessao_ide_documento_ativo(sessao)) &&
+                  arquivo_igual("teste-espaco/Mixed-Folder/NewFile.lisp", codigo_autosalvo) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Auto saved:") != NULL,
+              "Auto Save gravou imediatamente uma aba nomeada em caminho com caixa mista");
+    verificar(sef_sessao_ide_editor_inserir(sessao, "; autosaved", &erro) &&
+                  arquivo_igual("teste-espaco/Mixed-Folder/NewFile.lisp",
+                                "(defun AutoSavedMixedCase () 42)\n; autosaved") &&
+                  sef_sessao_ide_editor_desfazer(sessao, &erro) &&
+                  arquivo_igual("teste-espaco/Mixed-Folder/NewFile.lisp", codigo_autosalvo) &&
+                  !sef_sessao_ide_documento_modificado(
+                      sessao, sef_sessao_ide_documento_ativo(sessao)),
+              "Auto Save acompanhou insercao e undo na linha do tempo do editor");
+    verificar(sef_sessao_ide_salvamento_automatico_definir(sessao, false, &erro) &&
+                  !sef_sessao_ide_salvamento_automatico(sessao) &&
+                  sef_sessao_ide_editor_inserir(sessao, "; pending", &erro) &&
+                  sef_sessao_ide_documento_modificado(
+                      sessao, sef_sessao_ide_documento_ativo(sessao)) &&
+                  arquivo_igual("teste-espaco/Mixed-Folder/NewFile.lisp", codigo_autosalvo),
+              "Auto Save desligado preservou a edicao pendente sem alterar o arquivo");
     remove("teste-espaco/main.lisp");
     remove("teste-espaco/sub/helper.lisp");
     remove("teste-espaco/ignored.txt");
