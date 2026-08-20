@@ -276,7 +276,9 @@ Ctrl+F opens case-insensitive Find for the active editor; Enter and
 Shift+Enter select the next or previous match with wraparound. Ctrl+Z/Ctrl+Y
 undo and redo; Ctrl+G opens Go to Line; Ctrl+S saves; and Ctrl+O opens the path
 prompt. The status bar reports the cursor's one-based line and UTF-8 code-point
-column. Arrow, Home,
+column. A fixed editor gutter numbers visible lines, expands for larger
+documents, and marks the active line in the historical workstation palette.
+Arrow, Home,
 and End move the editor cursor; holding Shift extends a UTF-8-safe selection,
 and typing or Backspace replaces or removes it as one undoable edit. The toolbar
 and command palette can toggle Auto Save for immediate writes of named buffers
@@ -653,7 +655,9 @@ sem diferenciar caixa no editor ativo; Enter e Shift+Enter selecionam o próximo
 resultado ou o anterior com retorno circular. Ctrl+Z/Ctrl+Y desfazem e refazem;
 Ctrl+G abre Go to Line; Ctrl+S salva; e Ctrl+O abre o prompt de caminho. A barra
 de estado mostra a linha do cursor e sua coluna por ponto de código UTF-8, ambas
-iniciadas em um. Setas, Home e End movem o
+iniciadas em um. Um gutter fixo numera as linhas visíveis, expande para
+documentos maiores e marca a linha ativa na paleta histórica da estação. Setas,
+Home e End movem o
 cursor do editor; com Shift, estendem uma seleção segura para UTF-8, e digitar
 ou usar Backspace a substitui ou remove como uma única edição reversível. O
 botão e a paleta de comandos podem alternar Auto Save para gravar imediatamente

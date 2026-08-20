@@ -192,6 +192,8 @@ not mean the entire milestone is complete.
   queries, UTF-8-safe next/previous selection, counts, and wraparound.
 - [x] Go to Line with Ctrl+G, toolbar/command access, validated English feedback,
   and a persistent one-based UTF-8 line/column status indicator.
+- [x] Adaptive editor line-number gutter with active-row highlighting and
+  cursor-centered scrolling in the warm Lisp-workstation palette.
 - [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
   explicit unsaved-discard confirmation, deterministic neighbor selection, and
   a permanent one-editor invariant.

@@ -116,6 +116,10 @@ Quick Open, command palette, active-editor Find, Go to Line, and unsaved-close
 confirmation overlays;
 text matching, document ownership, file discovery, exclusive file/folder
 creation, refresh, and opening remain in the testable session layer.
+The editor presentation derives its numbered gutter and active-row highlight
+from the session's one-based UTF-8 cursor location. Its cursor-centered visible
+range keeps the gutter and source rows synchronized without storing duplicate
+scroll state.
 The session can execute, load, save, snapshot, and restore without a window,
 which makes behavior testable on CI. `sefirah_ide`
 only lays out the panels,

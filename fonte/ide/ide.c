@@ -842,7 +842,63 @@ static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
     size_t linhas = limites.altura > 44 ? (size_t)(limites.altura - 44) / 18u : 1;
     size_t linhas_anteriores = cursor == tamanho ? linhas : linhas / 2u + 1u;
     const char *inicio = inicio_antes_da_posicao(com_cursor, cursor_visual, linhas_anteriores);
-    desenhar_texto_limitado(superficie, limites, inicio, false);
+
+    size_t quantidade_linhas = 1;
+    for (const char *caractere = codigo; *caractere != '\0'; caractere++)
+        if (*caractere == '\n')
+            quantidade_linhas++;
+    size_t primeira_linha = 1;
+    for (const char *caractere = com_cursor; caractere < inicio; caractere++)
+        if (*caractere == '\n')
+            primeira_linha++;
+    size_t linha_cursor = 1;
+    sef_sessao_ide_editor_linha_coluna(sessao, &linha_cursor, NULL);
+
+    size_t digitos = 1;
+    for (size_t valor = quantidade_linhas; valor >= 10; valor /= 10)
+        digitos++;
+    int largura_glifo = 12;
+    int altura_linha = 18;
+    int largura_marcador = (int)(digitos + 2u) * largura_glifo;
+    int x_marcador = limites.x + 12;
+    int x_codigo = x_marcador + largura_marcador;
+    int y = limites.y + 36;
+    int largura_codigo = limites.largura - 24 - largura_marcador;
+    size_t colunas = largura_codigo > 0 ? (size_t)largura_codigo / (size_t)largura_glifo : 0;
+    if (colunas > 511)
+        colunas = 511;
+
+    int y_inicial = y;
+    const char *caractere = inicio;
+    char linha_texto[512];
+    for (size_t indice = 0;
+         indice < linhas && primeira_linha + indice <= quantidade_linhas; indice++) {
+        size_t numero_linha = primeira_linha + indice;
+        if (numero_linha == linha_cursor)
+            sef_superficie_retangulo(superficie, x_marcador - 6, y - 4,
+                                     limites.largura - 18, altura_linha,
+                                     SEF_COR(235, 229, 199));
+
+        char marcador[32];
+        snprintf(marcador, sizeof(marcador), "%*zu", (int)digitos, numero_linha);
+        sef_superficie_texto(superficie, x_marcador, y, marcador, 2,
+                             numero_linha == linha_cursor ? SEF_COR(143, 65, 45)
+                                                          : SEF_COR(101, 112, 86));
+
+        size_t escrito_linha = 0;
+        while (*caractere != '\0' && *caractere != '\n') {
+            if (escrito_linha < colunas)
+                linha_texto[escrito_linha++] = *caractere;
+            caractere++;
+        }
+        if (*caractere == '\n')
+            caractere++;
+        linha_texto[escrito_linha] = '\0';
+        sef_superficie_texto(superficie, x_codigo, y, linha_texto, 2, SEF_COR(43, 54, 45));
+        y += altura_linha;
+    }
+    sef_superficie_retangulo(superficie, x_codigo - 7, y_inicial - 5, 1,
+                             (int)linhas * altura_linha, SEF_COR(177, 196, 154));
     free(com_cursor);
 }
 

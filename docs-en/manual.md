@@ -668,6 +668,9 @@ one-based line and closes the prompt. Zero, non-numeric input, and lines outside
 the active document stay in the prompt with an English error; Escape cancels.
 The status bar continuously reports the cursor as `LN n, COL n`, where the
 one-based column counts UTF-8 code points rather than encoded bytes.
+The editor gutter numbers every visible source row, grows automatically when
+line numbers gain digits, and highlights the active row. Long documents keep
+the cursor and surrounding numbered lines centered until the final screenful.
 
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector

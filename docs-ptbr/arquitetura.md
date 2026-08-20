@@ -121,7 +121,10 @@ Ctrl+W e Escape em eventos portáveis. A apresentação mantém as sobreposiçõ
 Quick Open, paleta de comandos, Find do editor ativo, Go to Line e confirmação de fechamento sem
 gravação; correspondência de texto, propriedade dos documentos, descoberta,
 criação exclusiva de arquivo/pasta, atualização e abertura permanecem na camada
-de sessão testável. A sessão
+de sessão testável. A apresentação do editor deriva seu gutter numerado e o
+destaque da linha ativa da localização UTF-8 iniciada em um fornecida pela
+sessão. O intervalo visível centrado no cursor mantém gutter e linhas do fonte
+sincronizados sem armazenar um segundo estado de rolagem. A sessão
 executa, abre, grava, captura e restaura sem uma janela, o
 que torna seu comportamento testável na CI. `sefirah_ide` apenas organiza os
 painéis, desenha o estado e converte eventos X11/Win32/Cocoa em ações da sessão.

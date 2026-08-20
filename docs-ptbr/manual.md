@@ -681,6 +681,9 @@ fecha o prompt. Zero, entradas não numéricas e linhas fora do documento ativo
 permanecem no prompt com erro em inglês; Escape cancela. A barra de estado
 informa continuamente o cursor como `LN n, COL n`; a coluna iniciada em um conta
 pontos de código UTF-8, não os bytes da codificação.
+O gutter do editor numera cada linha visível, cresce automaticamente quando os
+números ganham dígitos e destaca a linha ativa. Em documentos longos, o cursor
+e as linhas numeradas próximas permanecem centralizados até a tela final.
 
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
