@@ -21,6 +21,7 @@ typedef enum FerramentaIde {
     FERRAMENTA_NAVEGADOR,
     FERRAMENTA_DEPURADOR,
     FERRAMENTA_CONTROLE_VERSAO,
+    FERRAMENTA_PERFIL,
     FERRAMENTA_QUANTIDADE
 } FerramentaIde;
 
@@ -36,6 +37,7 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_SIMBOLOS,
     ACAO_BOTAO_REFERENCIAS,
     ACAO_BOTAO_CONTROLE_VERSAO,
+    ACAO_BOTAO_PERFIL,
     ACAO_BOTAO_ABRIR_ARQUIVO,
     ACAO_BOTAO_ABRIR_PASTA,
     ACAO_BOTAO_CRIAR_ARQUIVO,
@@ -72,6 +74,7 @@ typedef enum AcaoComandoIde {
     COMANDO_IR_DEFINICAO,
     COMANDO_NAVEGAR_REFERENCIA,
     COMANDO_ATUALIZAR_CONTROLE_VERSAO,
+    COMANDO_LIMPAR_PERFIL,
     COMANDO_FOCAR_EXPLORADOR,
     COMANDO_FOCAR_OUVINTE,
     COMANDO_DESFAZER,
@@ -101,7 +104,7 @@ typedef struct EstadoIde {
     SefComponente ouvinte;
     FerramentaIde ferramenta;
     SefRetangulo abas_ferramentas[FERRAMENTA_QUANTIDADE];
-    BotaoIde botoes[16];
+    BotaoIde botoes[17];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
     char mensagem_sobreposicao[256];
@@ -130,6 +133,7 @@ static const ComandoIde comandos[] = {
     {"Go to Definition at Cursor", COMANDO_IR_DEFINICAO},
     {"Find Next Reference at Cursor", COMANDO_NAVEGAR_REFERENCIA},
     {"Refresh Source Control", COMANDO_ATUALIZAR_CONTROLE_VERSAO},
+    {"Clear Evaluation Profile", COMANDO_LIMPAR_PERFIL},
     {"Focus Workspace Explorer", COMANDO_FOCAR_EXPLORADOR},
     {"Focus Listener / REPL", COMANDO_FOCAR_OUVINTE},
     {"Undo Editor Change", COMANDO_DESFAZER},
@@ -162,11 +166,12 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[8] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
     estado->botoes[9] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
     estado->botoes[10] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
-    estado->botoes[11] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[12] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[13] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[14] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[15] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[11] = (BotaoIde){"PROFILE", ACAO_BOTAO_PERFIL, {0}};
+    estado->botoes[12] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[13] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[14] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[15] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[16] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -221,7 +226,7 @@ static void desenhar_painel(SefSuperficie *superficie, SefRetangulo limites, con
 }
 
 static const char *nome_ferramenta(FerramentaIde ferramenta) {
-    static const char *nomes[] = {"INSPECTOR", "BROWSER", "DEBUGGER", "SOURCE"};
+    static const char *nomes[] = {"INSPECTOR", "BROWSER", "DEBUGGER", "SOURCE", "PROFILE"};
     return ferramenta < FERRAMENTA_QUANTIDADE ? nomes[ferramenta] : "TOOLS";
 }
 
@@ -393,6 +398,9 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
     case ACAO_BOTAO_CONTROLE_VERSAO:
         estado->ferramenta = FERRAMENTA_CONTROLE_VERSAO;
         sef_sessao_ide_controle_versao_atualizar(estado->sessao, erro);
+        break;
+    case ACAO_BOTAO_PERFIL:
+        estado->ferramenta = FERRAMENTA_PERFIL;
         break;
     case ACAO_BOTAO_ABRIR_ARQUIVO:
         abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
@@ -771,9 +779,12 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     else if (estado->ferramenta == FERRAMENTA_DEPURADOR)
         desenhar_texto_limitado(superficie, conteudo_ferramenta,
                                 sef_sessao_ide_depurador(estado->sessao), false);
-    else
+    else if (estado->ferramenta == FERRAMENTA_CONTROLE_VERSAO)
         desenhar_texto_limitado_escala(superficie, conteudo_ferramenta,
                                        sef_sessao_ide_controle_versao(estado->sessao), false, 1);
+    else
+        desenhar_texto_limitado_escala(superficie, conteudo_ferramenta,
+                                       sef_sessao_ide_perfil(estado->sessao), false, 1);
 
     SefRetangulo transcricao = estado->ouvinte.limites;
     transcricao.altura -= 40;
@@ -865,6 +876,10 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
     case COMANDO_ATUALIZAR_CONTROLE_VERSAO:
         estado->ferramenta = FERRAMENTA_CONTROLE_VERSAO;
         sef_sessao_ide_controle_versao_atualizar(estado->sessao, erro);
+        break;
+    case COMANDO_LIMPAR_PERFIL:
+        estado->ferramenta = FERRAMENTA_PERFIL;
+        sef_sessao_ide_perfil_limpar(estado->sessao, erro);
         break;
     case COMANDO_FOCAR_EXPLORADOR:
         estado->foco = FOCO_EXPLORADOR;
@@ -1212,7 +1227,7 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
                 if (estado->foco == FOCO_DEPURADOR)
                     sef_sessao_ide_navegar_condicao(estado->sessao, SEF_CONDICAO_PROXIMA, &erro);
                 estado->foco = FOCO_DEPURADOR;
-            } else {
+            } else if (estado->ferramenta == FERRAMENTA_CONTROLE_VERSAO) {
                 sef_sessao_ide_controle_versao_atualizar(estado->sessao, &erro);
             }
         } else if (ponto_dentro(estado->ouvinte.limites, evento->x, evento->y))

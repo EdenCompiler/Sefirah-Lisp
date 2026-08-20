@@ -199,7 +199,9 @@ not mean the entire milestone is complete.
 - [x] GC-rooted historical snapshots of restart objects available at an
   unhandled `ERROR`, retained with debugger history and navigable in the
   inspector.
-- [ ] Suspendable debugger, profiler, and interactive restart navigation.
+- [x] Bounded elapsed-time evaluation profiler with origin, success/error,
+  totals/average, Profile tab/button, and a command-palette reset action.
+- [ ] Suspendable debugger and interactive restart invocation/navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [x] Session-level Auto Save toggle with toolbar, command-palette, status-bar,
   named-buffer persistence, and exact mixed-case paths.
@@ -207,7 +209,8 @@ not mean the entire milestone is complete.
   direct non-shell process execution, toolbar and command refresh, bounded
   output, and exact mixed-case paths.
 - [x] VS Code-style tabbed tool dock that gives Inspector, Browser, Debugger,
-  and Source Control the full tool area and follows evaluation/navigation state.
+  Source Control, and Profile the full tool area and follows
+  evaluation/navigation state.
 - [ ] Mutating Git workflows and full desktop-session restoration.
 - [ ] IDE recompiles the compiler and itself.
 

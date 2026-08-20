@@ -157,6 +157,16 @@ limitada de `--porcelain=v1 --branch` entra no estado de apresentação, mantend
 o relato de branch/alterações determinístico e a caixa dos caminhos intacta
 entre plataformas.
 
+A sessão também possui um perfil de avaliações limitado. Ele mede o intervalo
+monotônico decorrido imediatamente ao redor de cada avaliação do runtime,
+registra sua origem no editor/ouvinte e o resultado de sucesso, retém no máximo
+64 eventos e formata os 16 mais novos para a ferramenta Profile. Falhas da
+verificação sintática e de arquivos externos ficam de fora porque não entram no
+avaliador. Essas medições locais da sessão não contêm referências a objetos Lisp
+e, portanto, não adicionam raízes ao coletor de lixo. Trata-se de um cronômetro
+de avaliações, ainda não de um profiler por amostragem ou grafo de chamadas por
+função.
+
 ## Fluxo do compilador
 
 `COMPILE` baixa uma função compatível para uma IR SSA de inteiros de 64 bits. A

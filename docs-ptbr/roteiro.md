@@ -203,7 +203,9 @@ não significa que o marco inteiro esteja concluído.
 - [x] Snapshots históricos enraizados no GC dos objetos restart disponíveis em
   um `ERROR` não tratado, retidos com o histórico do depurador e navegáveis no
   inspetor.
-- [ ] Debugger suspensível, profiler e navegação interativa por restarts.
+- [x] Profiler limitado de avaliações por tempo decorrido, com origem,
+  sucesso/erro, total/média, aba/botão Profile e limpeza pela paleta de comandos.
+- [ ] Debugger suspensível e invocação/navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [x] Alternância de Auto Save por sessão com botão, paleta de comandos, barra
   de estado, persistência de buffers nomeados e caminhos exatos com caixa mista.
@@ -211,7 +213,8 @@ não significa que o marco inteiro esteja concluído.
   e índice, execução direta sem shell, atualização por botão/comando, saída
   limitada e caminhos exatos com caixa mista.
 - [x] Dock de ferramentas em abas ao estilo VS Code que entrega toda a área a
-  Inspector, Browser, Debugger ou Source Control e acompanha avaliação/navegação.
+  Inspector, Browser, Debugger, Source Control ou Profile e acompanha
+  avaliação/navegação.
 - [ ] Fluxos mutáveis de Git e restauração completa da sessão de desktop.
 - [ ] IDE recompila o compilador e a si própria.
 

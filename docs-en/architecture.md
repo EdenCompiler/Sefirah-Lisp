@@ -149,6 +149,15 @@ process argument, never as shell syntax. Only bounded
 `--porcelain=v1 --branch` output enters presentation state, which keeps
 branch/change reporting deterministic and path case intact across platforms.
 
+The session also owns a bounded evaluation profile. It measures the monotonic
+elapsed interval immediately around each runtime evaluation, records its
+editor/listener origin and success state, retains at most 64 events, and formats
+the newest 16 for the Profile tool. Syntax preflight and external file failures
+are excluded because they do not enter the evaluator. These session-local
+measurements contain no Lisp object references and therefore add no
+garbage-collector roots. This is an evaluation timer, not yet a sampling or
+per-function call-graph profiler.
+
 ## Compiler flow
 
 `COMPILE` lowers a compatible function to a 64-bit integer SSA IR. The IR is

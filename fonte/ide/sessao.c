@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "ide/ide.h"
 
 #include "apoio.h"
@@ -11,11 +15,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 #define SEF_LIMITE_ARQUIVO_IDE (64L * 1024L * 1024L)
 #define SEF_LIMITE_CONDICOES_IDE 32u
 #define SEF_LIMITE_SIMBOLOS_ESPACO_TRABALHO 4096u
 #define SEF_LIMITE_REFERENCIAS_ESPACO_TRABALHO 4096u
+#define SEF_LIMITE_EVENTOS_PERFIL_IDE 64u
 
 typedef struct TextoIde {
     char *dados;
@@ -53,6 +64,12 @@ typedef struct DiagnosticoIde {
     size_t quantidade_reinicios;
 } DiagnosticoIde;
 
+typedef struct EventoPerfilIde {
+    char origem[64];
+    uint64_t nanossegundos;
+    bool sucesso;
+} EventoPerfilIde;
+
 typedef struct ResultadoSimboloEspacoTrabalhoIde {
     size_t indice_arquivo;
     size_t linha;
@@ -83,6 +100,7 @@ struct SefSessaoIde {
     TextoIde abas;
     TextoIde explorador;
     TextoIde controle_versao;
+    TextoIde perfil;
     size_t cursor_editor;
     size_t ancora_selecao_editor;
     bool selecao_editor_ativa;
@@ -119,9 +137,13 @@ struct SefSessaoIde {
     DiagnosticoIde diagnosticos[SEF_LIMITE_CONDICOES_IDE];
     size_t quantidade_diagnosticos;
     size_t diagnostico_selecionado;
+    EventoPerfilIde eventos_perfil[SEF_LIMITE_EVENTOS_PERFIL_IDE];
+    size_t quantidade_eventos_perfil;
 };
 
 static void selecao_editor_limpar(SefSessaoIde *sessao);
+static bool texto_acrescentar_n(TextoIde *texto, const char *dados, size_t tamanho, SefErro *erro);
+static bool texto_acrescentar(TextoIde *texto, const char *dados, SefErro *erro);
 static bool texto_formatar(TextoIde *texto, SefErro *erro, const char *formato, ...);
 static bool salvar_documento_ativo(SefSessaoIde *sessao, const char *caminho, bool automatico,
                                    SefErro *erro);
@@ -138,6 +160,79 @@ static bool autosalvar_se_necessario(SefSessaoIde *sessao, SefErro *erro) {
     texto_formatar(&sessao->estado, &descarte, "Auto Save failed: %s", causa.mensagem);
     *erro = causa;
     return false;
+}
+
+static uint64_t instante_nanossegundos(void) {
+#ifdef _WIN32
+    LARGE_INTEGER frequencia;
+    LARGE_INTEGER contador;
+    if (!QueryPerformanceFrequency(&frequencia) || frequencia.QuadPart <= 0 ||
+        !QueryPerformanceCounter(&contador) || contador.QuadPart < 0)
+        return 0;
+    uint64_t pulsos = (uint64_t)contador.QuadPart;
+    uint64_t pulsos_por_segundo = (uint64_t)frequencia.QuadPart;
+    uint64_t segundos = pulsos / pulsos_por_segundo;
+    uint64_t resto = pulsos % pulsos_por_segundo;
+    return segundos * UINT64_C(1000000000) +
+           resto * UINT64_C(1000000000) / pulsos_por_segundo;
+#else
+    struct timespec instante;
+    if (clock_gettime(CLOCK_MONOTONIC, &instante) != 0 || instante.tv_sec < 0)
+        return 0;
+    return (uint64_t)instante.tv_sec * UINT64_C(1000000000) + (uint64_t)instante.tv_nsec;
+#endif
+}
+
+static bool atualizar_perfil(SefSessaoIde *sessao, SefErro *erro) {
+    uint64_t total = 0;
+    for (size_t i = 0; i < sessao->quantidade_eventos_perfil; i++)
+        total += sessao->eventos_perfil[i].nanossegundos;
+    uint64_t media = sessao->quantidade_eventos_perfil == 0
+                         ? 0
+                         : total / sessao->quantidade_eventos_perfil;
+    if (!texto_formatar(&sessao->perfil, erro,
+                        "PROFILE EVENTS: %zu/%u\nTOTAL: %llu.%03llu ms\n"
+                        "AVERAGE: %llu.%03llu ms\n\nRECENT EVALUATIONS:",
+                        sessao->quantidade_eventos_perfil, SEF_LIMITE_EVENTOS_PERFIL_IDE,
+                        (unsigned long long)(total / UINT64_C(1000000)),
+                        (unsigned long long)((total / UINT64_C(1000)) % UINT64_C(1000)),
+                        (unsigned long long)(media / UINT64_C(1000000)),
+                        (unsigned long long)((media / UINT64_C(1000)) % UINT64_C(1000))))
+        return false;
+    size_t primeiro = sessao->quantidade_eventos_perfil > 16
+                          ? sessao->quantidade_eventos_perfil - 16
+                          : 0;
+    for (size_t i = sessao->quantidade_eventos_perfil; i > primeiro; i--) {
+        EventoPerfilIde *evento = &sessao->eventos_perfil[i - 1];
+        char linha[160];
+        int tamanho = snprintf(
+            linha, sizeof(linha), "\n%s  %s  %llu.%03llu ms", evento->origem,
+            evento->sucesso ? "OK" : "ERROR",
+            (unsigned long long)(evento->nanossegundos / UINT64_C(1000000)),
+            (unsigned long long)((evento->nanossegundos / UINT64_C(1000)) % UINT64_C(1000)));
+        if (tamanho <= 0 || (size_t)tamanho >= sizeof(linha) ||
+            !texto_acrescentar_n(&sessao->perfil, linha, (size_t)tamanho, erro))
+            return false;
+    }
+    if (sessao->quantidade_eventos_perfil == 0)
+        return texto_acrescentar(&sessao->perfil, "\n(no evaluations recorded)", erro);
+    return true;
+}
+
+static void registrar_evento_perfil(SefSessaoIde *sessao, const char *origem, bool sucesso,
+                                    uint64_t inicio, uint64_t fim) {
+    if (sessao->quantidade_eventos_perfil == SEF_LIMITE_EVENTOS_PERFIL_IDE) {
+        memmove(sessao->eventos_perfil, sessao->eventos_perfil + 1,
+                (SEF_LIMITE_EVENTOS_PERFIL_IDE - 1) * sizeof(sessao->eventos_perfil[0]));
+        sessao->quantidade_eventos_perfil--;
+    }
+    EventoPerfilIde *evento = &sessao->eventos_perfil[sessao->quantidade_eventos_perfil++];
+    snprintf(evento->origem, sizeof(evento->origem), "%s", origem);
+    evento->sucesso = sucesso;
+    evento->nanossegundos = inicio != 0 && fim >= inicio ? fim - inicio : 0;
+    SefErro descarte;
+    sef_erro_limpar(&descarte);
+    atualizar_perfil(sessao, &descarte);
 }
 
 static bool texto_reservar(TextoIde *texto, size_t necessario, SefErro *erro) {
@@ -893,7 +988,10 @@ static bool executar_codigo(SefSessaoIde *sessao, const char *codigo, const char
         return false;
 
     SefErro avaliacao;
+    uint64_t inicio_avaliacao = instante_nanossegundos();
     SefValor valor = sef_runtime_avaliar_texto(sessao->runtime, codigo, &avaliacao);
+    registrar_evento_perfil(sessao, origem, valor != NULL, inicio_avaliacao,
+                            instante_nanossegundos());
     if (valor == NULL) {
         if (!texto_acrescentar(&sessao->transcricao, "ERROR: ", erro) ||
             !texto_acrescentar(&sessao->transcricao, avaliacao.mensagem, erro) ||
@@ -943,6 +1041,10 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
         !texto_definir(&sessao->abas, "", erro) || !texto_definir(&sessao->explorador, "", erro) ||
         !texto_definir(&sessao->controle_versao,
                        "NO WORKSPACE OPEN\n\nOpen a folder to inspect Git status.", erro) ||
+        !texto_definir(&sessao->perfil,
+                       "PROFILE EVENTS: 0/64\nTOTAL: 0.000 ms\nAVERAGE: 0.000 ms\n\n"
+                       "RECENT EVALUATIONS:\n(no evaluations recorded)",
+                       erro) ||
         !atualizar_caminho_imagem(sessao, erro)) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
@@ -983,6 +1085,7 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     texto_liberar(&sessao->abas);
     texto_liberar(&sessao->explorador);
     texto_liberar(&sessao->controle_versao);
+    texto_liberar(&sessao->perfil);
     simbolos_espaco_trabalho_limpar(sessao);
     free(sessao->simbolos_espaco_trabalho);
     referencias_espaco_trabalho_limpar(sessao);
@@ -1013,6 +1116,9 @@ const char *sef_sessao_ide_explorador(const SefSessaoIde *sessao) {
 }
 const char *sef_sessao_ide_controle_versao(const SefSessaoIde *sessao) {
     return sessao == NULL ? "" : sessao->controle_versao.dados;
+}
+const char *sef_sessao_ide_perfil(const SefSessaoIde *sessao) {
+    return sessao == NULL ? "" : sessao->perfil.dados;
 }
 const char *sef_sessao_ide_espaco_trabalho_raiz(const SefSessaoIde *sessao) {
     return sessao == NULL ? "" : sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho);
@@ -1137,6 +1243,18 @@ bool sef_sessao_ide_controle_versao_atualizar(SefSessaoIde *sessao, SefErro *err
     if (!atualizar_controle_versao_painel(sessao, erro))
         return false;
     return texto_definir(&sessao->estado, "Source Control refreshed", erro);
+}
+
+bool sef_sessao_ide_perfil_limpar(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while clearing evaluation profile");
+        return false;
+    }
+    memset(sessao->eventos_perfil, 0, sizeof(sessao->eventos_perfil));
+    sessao->quantidade_eventos_perfil = 0;
+    return atualizar_perfil(sessao, erro) &&
+           texto_definir(&sessao->estado, "Evaluation profile cleared", erro);
 }
 
 bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro) {

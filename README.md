@@ -235,13 +235,14 @@ cream, sage, olive, and amber workstation palette evokes Interlisp and Lisp
 Machines without giving up a modern workbench layout. Files open in persistent
 editor tabs; each tab preserves its own
 cursor, selection, undo/redo timeline, incremental state, and unsaved marker.
-Inspector, Browser, Debugger, and Source Control share a tabbed right-hand dock,
-so the selected Lisp tool receives the full area instead of a compressed stack.
+Inspector, Browser, Debugger, Source Control, and Profile share a tabbed
+right-hand dock, so the selected Lisp tool receives the full area instead of a
+compressed stack.
 Opening a project directory enables the recursive Explorer sidebar, which
 indexes `.lisp` sources in deterministic order. Up/Down selects a source and
 Enter or a pointer click opens it. A command toolbar exposes Run, Run Form, Run
 Changes, Save, Snapshot, Restore, file/folder creation and opening, Explorer
-refresh, Symbols, References, Source Control, Auto Save, and Commands as
+refresh, Symbols, References, Source Control, Profile, Auto Save, and Commands as
 pointer-accessible buttons. The toolbar wraps instead of hiding actions at the
 default width. Ctrl+P opens a filtered
 workspace file picker; Ctrl+Shift+P opens a searchable command palette whose
@@ -254,7 +255,10 @@ exact source position. Each result is marked `SOURCE ONLY`, `INTERNED`,
 against the current Lisp world. A read-only Source Control panel reports Git's
 branch plus staged, modified, deleted, renamed, and untracked paths. Git is
 launched directly without shell interpolation, preserving exact mixed-case
-workspace paths. Clicking a
+workspace paths. The Profile panel keeps the latest 64 actual runtime
+evaluations, labels their origin and success/error result, and reports total and
+average elapsed time; its newest 16 entries remain visible, and the command
+palette can clear the session-local measurements. Clicking a
 tab activates it. Tab or a pointer
 click elsewhere changes focus among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
@@ -347,8 +351,8 @@ X11/Win32/Cocoa, and the compiler keeps its IR independent of object writers.
   integration;
 - Wayland, complete IME composition, and distribution packages remain pending;
 - structural rewriting, arbitrary file dialogs, interactive restart selection,
-  profiler, and
-  selective out-of-order transactional history are not complete.
+  sampling/call-graph profiling, and selective out-of-order transactional
+  history are not complete.
 
 Detailed, verifiable status is in the [implementation roadmap](docs-en/roadmap.md).
 
@@ -597,14 +601,14 @@ abertura/gravação de `.lisp`. A paleta quente em creme, sálvia, oliva e âmba
 evoca Interlisp e Lisp Machines sem abandonar o layout de workbench moderno.
 Arquivos abrem em abas persistentes; cada aba preserva cursor, seleção, linha do tempo de
 desfazer/refazer, estado incremental e indicador de alterações não gravadas.
-Inspector, Browser, Debugger e Source Control compartilham um dock direito em
-abas, entregando toda a área à ferramenta Lisp selecionada em vez de comprimi-las
-numa pilha.
+Inspector, Browser, Debugger, Source Control e Profile compartilham um dock
+direito em abas, entregando toda a área à ferramenta Lisp selecionada em vez de
+comprimi-las numa pilha.
 Abrir um diretório de projeto ativa a barra lateral Explorer recursiva, que
 indexa fontes `.lisp` em ordem determinística. Cima/Baixo selecionam um fonte e
 Enter ou clique o abre. Uma barra de comandos expõe Run, Run Form, Run Changes,
 Save, Snapshot, Restore, criação/abertura de arquivos e pastas, atualização do
-Explorer, Symbols, References, Source Control, Auto Save e Commands como botões
+Explorer, Symbols, References, Source Control, Profile, Auto Save e Commands como botões
 acessíveis pelo ponteiro. A barra passa para outra linha em vez de ocultar ações
 na largura padrão. Ctrl+P abre o seletor
 filtrado de fontes do workspace; Ctrl+Shift+P abre uma paleta pesquisável cujas
@@ -617,7 +621,10 @@ resultado recebe `SOURCE ONLY`, `INTERNED`, `LIVE VALUE`, `LIVE FUNCTION` ou
 Um painel Source Control somente de leitura relata o branch do Git e caminhos
 em stage, modificados, removidos, renomeados e não rastreados. O Git é iniciado
 diretamente, sem interpolação por shell, preservando caminhos exatos do
-workspace com caixa mista.
+workspace com caixa mista. O painel Profile mantém as 64 avaliações reais mais
+recentes do runtime, identifica sua origem e resultado de sucesso/erro e mostra
+tempo de relógio total e médio; as 16 entradas mais novas ficam visíveis, e a
+paleta de comandos pode limpar as medições locais da sessão.
 Os prompts
 preservam exatamente as letras
 maiúsculas e minúsculas digitadas em caminhos, e a fonte bitmap desenha as duas
@@ -716,8 +723,8 @@ compilador mantém a IR independente dos gravadores de objetos.
   integração desktop completa;
 - Wayland, composição IME completa e pacotes de distribuição continuam pendentes;
 - reescrita estrutural, diálogos de arquivo arbitrário, seleção interativa de
-  restarts, profiler e
-  histórico transacional seletivo fora de ordem ainda não estão completos.
+  restarts, profiling por amostragem/grafo de chamadas e histórico transacional
+  seletivo fora de ordem ainda não estão completos.
 
 O estado detalhado e verificável está no
 [roteiro de implementação](docs-ptbr/roteiro.md).

@@ -616,8 +616,8 @@ primeiro fonte reutiliza uma aba vazia ainda intocada.
 
 A barra de comandos fornece botões para Run, Run Form, Run Changes, Save, Auto
 Save, Snapshot, Restore, Commands, Symbols, References, Open File, Open Folder,
-New File, New Folder, Source Control e Refresh. A barra passa para uma segunda
-linha em vez de ocultar ações quando a janela fica estreita. Os controles de
+New File, New Folder, Source Control, Profile e Refresh. A barra passa para uma
+segunda linha em vez de ocultar ações quando a janela fica estreita. Os controles de
 arquivos e pastas usam um prompt de caminho interno à IDE e exibem falhas em
 inglês nesse prompt. A criação é exclusiva — não
 sobrescreve um caminho existente — e Refresh preserva o fonte selecionado
@@ -683,13 +683,24 @@ Recursos locais do processo, como streams abertas e bibliotecas compartilhadas,
 mantêm as restrições do formato de imagem descritas acima. Trata-se de um
 snapshot do mundo, ainda não da restauração completa da sessão de desktop.
 
-O dock de ferramentas à direita entrega toda a sua área a uma de quatro abas:
-Inspector, Browser, Debugger ou Source Control. Clicar em uma aba troca a
-ferramenta sem descartar seu estado vivo de sessão. Avaliações selecionam
+O dock de ferramentas à direita entrega toda a sua área a uma de cinco abas:
+Inspector, Browser, Debugger, Source Control ou Profile. Clicar em uma aba troca
+a ferramenta sem descartar seu estado vivo de sessão. Avaliações selecionam
 Inspector no sucesso e Debugger na falha; comandos de definição/referência
 selecionam Browser, e a ação `SOURCE` seleciona Source Control. Assim, o layout
 segue um workbench moderno sem substituir as ferramentas conectadas de Lisp
 Machine por janelas sem relação.
+
+Cada avaliação do runtime iniciada por Run, Run Form, Run Changes ou pelo
+ouvinte adiciona uma entrada local da sessão à ferramenta Profile. O histórico
+limitado retém as 64 entradas mais recentes e identifica cada uma como `EDITOR`,
+`FORM AT CURSOR`, `CHANGE` ou `REPL`, com resultado `OK`/`ERROR` e tempo
+monotônico decorrido em milissegundos. O painel informa tempo total e médio e
+mostra primeiro seus 16 eventos mais novos. O botão `PROFILE` o abre, enquanto
+`Clear Evaluation Profile` na paleta de comandos zera as medições. Falhas da
+verificação sintática não são cronometradas porque o avaliador do runtime não é
+executado. O recurso ainda não amostra pilhas nem atribui tempo a funções
+individuais.
 
 Cada condição de avaliação não tratada é retida por uma raiz pública do GC em um
 histórico limitado a 32 entradas. Shift+F9/Shift+F10 ou Cima/Baixo com foco no
@@ -775,7 +786,8 @@ funções compiladas, condições e bibliotecas compartilhadas.
 - compilação limitada ao subconjunto i64;
 - FFI sem floats, ponteiros, structs e callbacks gerais;
 - GUI sem fontes vetoriais, HiDPI, IME e acessibilidade;
-- IDE sem seleção, reescrita estrutural, seletor de arquivo, debugger,
-  profiler ou desfazer seletivo/fora de ordem no estilo Interlisp.
+- IDE sem seletor de arquivo nativo, debugger suspensível, profiler por
+  amostragem/grafo de chamadas ou desfazer seletivo/fora de ordem no estilo
+  Interlisp.
 
 Consulte o [roteiro para 1.0](roteiro.md) para os próximos marcos.

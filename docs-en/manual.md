@@ -606,8 +606,8 @@ reuses an untouched empty tab.
 
 The command toolbar provides pointer buttons for Run, Run Form, Run Changes,
 Save, Auto Save, Snapshot, Restore, Commands, Symbols, References, Open File,
-Open Folder, New File, New Folder, Source Control, and Refresh. The toolbar wraps
-onto a second row instead of hiding actions when the window is narrow. File and
+Open Folder, New File, New Folder, Source Control, Profile, and Refresh. The
+toolbar wraps onto a second row instead of hiding actions when the window is narrow. File and
 folder controls use an in-IDE path prompt and report
 failures in English inside that prompt. Creation is exclusive—it does not
 overwrite an existing path—and Refresh preserves the selected source when it
@@ -670,12 +670,22 @@ untouched. Process-local resources such as open streams and shared libraries
 retain the image-format restrictions described above. This is a world snapshot,
 not yet a complete desktop-session restoration facility.
 
-The right-hand tool dock gives its full area to one of four tabs: Inspector,
-Browser, Debugger, or Source Control. Clicking a tab switches tools without
-discarding its live session state. Evaluation selects Inspector on success and
-Debugger on failure; definition/reference commands select Browser, and the
+The right-hand tool dock gives its full area to one of five tabs: Inspector,
+Browser, Debugger, Source Control, or Profile. Clicking a tab switches tools
+without discarding its live session state. Evaluation selects Inspector on
+success and Debugger on failure; definition/reference commands select Browser, and the
 `SOURCE` action selects Source Control. This follows a modern workbench layout
 without replacing the connected Lisp Machine tools with unrelated windows.
+
+Every runtime evaluation started by Run, Run Form, Run Changes, or the listener
+adds one session-local entry to the Profile tool. The bounded history retains
+the latest 64 entries and labels each with `EDITOR`, `FORM AT CURSOR`, `CHANGE`,
+or `REPL`, an `OK`/`ERROR` outcome, and monotonic elapsed milliseconds. The
+panel reports total and average time and displays its newest 16 events first.
+The `PROFILE` toolbar button opens it, while `Clear Evaluation Profile` in the
+command palette resets the measurements. Syntax preflight failures are not
+timed because the runtime evaluator is not entered. This facility does not yet
+sample stacks or attribute time to individual functions.
 
 Every unhandled evaluation condition is retained through a public GC root in a
 bounded 32-entry history. Shift+F9/Shift+F10 or Up/Down while the debugger is
@@ -760,7 +770,7 @@ compiled functions, conditions, hash tables, and shared libraries.
 - compilation limited to the i64 subset;
 - FFI without general floats, pointers, structs, and callbacks;
 - GUI without vector fonts, HiDPI, IME, and accessibility;
-- IDE without selection, structural rewriting, file chooser, debugger,
+- IDE without a native file chooser, suspendable debugger, sampling/call-graph
   profiler, or Interlisp-style selective/out-of-order undo.
 
 See the [1.0 roadmap](roadmap.md) for the next milestones.

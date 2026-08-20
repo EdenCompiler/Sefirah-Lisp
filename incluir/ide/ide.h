@@ -65,6 +65,7 @@ const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_abas(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_explorador(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_controle_versao(const SefSessaoIde *sessao);
+const char *sef_sessao_ide_perfil(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_espaco_trabalho_raiz(const SefSessaoIde *sessao);
 size_t sef_sessao_ide_espaco_trabalho_quantidade(const SefSessaoIde *sessao);
 size_t sef_sessao_ide_espaco_trabalho_selecionado(const SefSessaoIde *sessao);
@@ -98,6 +99,7 @@ bool sef_sessao_ide_editor_refazer(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_controle_versao_atualizar(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_perfil_limpar(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_mover(SefSessaoIde *sessao, SefMovimentoArquivoIde movimento,
                                           SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_selecionar(SefSessaoIde *sessao, size_t indice, SefErro *erro);

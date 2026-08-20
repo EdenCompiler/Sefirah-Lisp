@@ -93,6 +93,12 @@ int main(void) {
                   sessao, "(defun resposta (x)\n  (+ x 2))\n(resposta 40)\n", &erro),
               "editor recebeu programa multilinha");
     verificar(sef_sessao_ide_executar_editor(sessao, &erro), "IDE executou o editor");
+    verificar(strstr(sef_sessao_ide_perfil(sessao), "PROFILE EVENTS: 1/64") != NULL &&
+                  strstr(sef_sessao_ide_perfil(sessao), "EDITOR  OK") != NULL &&
+                  strstr(sef_sessao_ide_perfil(sessao), " ms") != NULL &&
+                  sef_sessao_ide_perfil_limpar(sessao, &erro) &&
+                  strstr(sef_sessao_ide_perfil(sessao), "PROFILE EVENTS: 0/64") != NULL,
+              "profiler registrou duracao/origem e limpou o historico limitado");
     verificar(strstr(sef_sessao_ide_transcricao(sessao), "42\n") != NULL,
               "transcricao recebeu o resultado do editor");
     verificar(strstr(sef_sessao_ide_inspetor(sessao), "VALUE: 42") != NULL,
@@ -209,7 +215,8 @@ int main(void) {
                   strstr(sef_sessao_ide_depurador(sessao), "falha depuravel") != NULL &&
                   strstr(sef_sessao_ide_depurador(sessao), "RESTARTS AT SIGNAL: 2") != NULL &&
                   strstr(sef_sessao_ide_depurador(sessao), "#<RESTART USE-VALUE>") != NULL &&
-                  strstr(sef_sessao_ide_depurador(sessao), "#<RESTART ABORT>") != NULL,
+                  strstr(sef_sessao_ide_depurador(sessao), "#<RESTART ABORT>") != NULL &&
+                  strstr(sef_sessao_ide_perfil(sessao), "REPL  ERROR") != NULL,
               "depurador reteve uma condicao Lisp e seus restarts historicos");
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(+ 20 22)", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
@@ -540,6 +547,13 @@ int main(void) {
                   strstr(sef_sessao_ide_transcricao(sessao), "\n42\n") != NULL,
               "falha ao restaurar preservou o mundo Lisp ativo");
     remove("teste-mundo.lisp");
+
+    bool perfil_limitado = sef_sessao_ide_editor_definir(sessao, "(+ 1 1)", &erro);
+    for (size_t i = 0; i < 65 && perfil_limitado; i++)
+        perfil_limitado = sef_sessao_ide_executar_editor(sessao, &erro);
+    verificar(perfil_limitado &&
+                  strstr(sef_sessao_ide_perfil(sessao), "PROFILE EVENTS: 64/64") != NULL,
+              "profiler descartou eventos antigos acima do limite de 64 avaliacoes");
 
     sef_sessao_ide_destruir(sessao);
     SefSessaoIde *sessao_vazia = sef_sessao_ide_criar(&erro);
