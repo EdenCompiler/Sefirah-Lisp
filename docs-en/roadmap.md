@@ -190,7 +190,9 @@ not mean the entire milestone is complete.
   lowercase bitmap glyphs.
 - [x] Multi-file workspace symbol picker with structural definition indexing,
   live unsaved buffers, exact source navigation, toolbar access, and Ctrl+T.
-- [ ] Runtime-backed symbol metadata and cross-file reference navigation.
+- [x] Read-only runtime-backed value/function binding metadata in workspace
+  symbol results.
+- [ ] Cross-file reference navigation.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and full desktop-session restoration.

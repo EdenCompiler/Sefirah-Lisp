@@ -239,6 +239,8 @@ SefValor sef_texto_caractere_obter(SefRuntime *runtime, SefValor texto, size_t i
 bool sef_texto_caractere_definir(SefRuntime *runtime, SefValor texto, size_t indice,
                                  SefValor caractere, SefErro *erro);
 SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho, SefErro *erro);
+SefValor sef_simbolo_localizar(SefRuntime *runtime, const char *nome, size_t tamanho,
+                               SefErro *erro);
 SefValor sef_simbolo_internar_em(SefRuntime *runtime, SefValor pacote, const char *nome,
                                  size_t tamanho, SefErro *erro);
 SefValor sef_simbolo_novo_nao_internado(SefRuntime *runtime, const char *nome, size_t tamanho,

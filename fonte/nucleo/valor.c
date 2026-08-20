@@ -794,8 +794,8 @@ bool sef_pacote_instalar_nulo(SefRuntime *runtime, SefErro *erro) {
     return true;
 }
 
-SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho,
-                              SefErro *erro) {
+static SefValor simbolo_resolver(SefRuntime *runtime, const char *nome, size_t tamanho, bool criar,
+                                 SefErro *erro) {
     if (runtime->pacote_atual == NULL) {
         sef_erro_definir(erro, 0, 0, "there is no current package");
         return NULL;
@@ -806,8 +806,11 @@ SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tama
     char *normalizado = nome_lido.dados;
     tamanho = nome_lido.tamanho;
     if (nome_lido.separador_pacote == 0 && nome_lido.quantidade_separadores == 1) {
-        SefValor simbolo = sef_simbolo_internar_em(runtime, runtime->pacote_keyword,
-                                                   normalizado + 1, tamanho - 1, erro);
+        SefValor simbolo = criar ? sef_simbolo_internar_em(runtime, runtime->pacote_keyword,
+                                                           normalizado + 1, tamanho - 1, erro)
+                                  : sef_pacote_localizar_simbolo(runtime->pacote_keyword,
+                                                                 normalizado + 1, tamanho - 1,
+                                                                 false);
         free(normalizado);
         return simbolo;
     }
@@ -833,7 +836,7 @@ SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tama
             free(normalizado);
             return simbolo;
         }
-        if (simbolo == NULL)
+        if (simbolo == NULL && criar)
             simbolo = sef_simbolo_internar_em(runtime, pacote, normalizado + inicio_nome,
                                               tamanho - inicio_nome, erro);
         free(normalizado);
@@ -853,11 +856,21 @@ SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tama
         if (candidato != NULL && sef_pacote_simbolo_exportado(usado, candidato))
             encontrado = candidato;
     }
-    if (encontrado == NULL)
+    if (encontrado == NULL && criar)
         encontrado =
             sef_simbolo_internar_em(runtime, runtime->pacote_atual, normalizado, tamanho, erro);
     free(normalizado);
     return encontrado;
+}
+
+SefValor sef_simbolo_internar(SefRuntime *runtime, const char *nome, size_t tamanho,
+                              SefErro *erro) {
+    return simbolo_resolver(runtime, nome, tamanho, true, erro);
+}
+
+SefValor sef_simbolo_localizar(SefRuntime *runtime, const char *nome, size_t tamanho,
+                               SefErro *erro) {
+    return simbolo_resolver(runtime, nome, tamanho, false, erro);
 }
 
 SefValor sef_par_novo(SefRuntime *runtime, SefValor primeiro, SefValor resto, SefErro *erro) {

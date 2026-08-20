@@ -248,6 +248,8 @@ int main(void) {
                          "sub/helper.lisp:2") != NULL &&
                   strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0), "MixedHelper") !=
                       NULL &&
+                  strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0), "[SOURCE ONLY]") !=
+                      NULL &&
                   strstr(sef_sessao_ide_navegador(sessao), "WORKSPACE SYMBOLS: 1") != NULL &&
                   sef_sessao_ide_simbolo_espaco_trabalho_abrir(sessao, 0, &erro) &&
                   strstr(sef_sessao_ide_editor(sessao), "MixedHelper") != NULL &&
@@ -255,6 +257,11 @@ int main(void) {
                       (size_t)(strstr(sef_sessao_ide_editor(sessao), "MixedHelper") -
                                sef_sessao_ide_editor(sessao)),
               "workspace symbol search opened an exact definition across project files");
+    verificar(sef_sessao_ide_executar_editor(sessao, &erro) &&
+                  sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "mixedhelper", &erro) &&
+                  strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0),
+                         "[LIVE FUNCTION]") != NULL,
+              "workspace symbol search reported definitions installed in the live world");
     verificar(sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "fakehelper", &erro) &&
                   sef_sessao_ide_simbolos_espaco_trabalho_quantidade(sessao) == 0,
               "workspace symbol search ignored definitions inside comments");

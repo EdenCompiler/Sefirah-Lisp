@@ -1131,8 +1131,23 @@ static bool simbolo_espaco_trabalho_adicionar(SefSessaoIde *sessao, size_t indic
     if (!simbolos_espaco_trabalho_reservar(
             sessao, sessao->quantidade_simbolos_espaco_trabalho + 1, erro))
         return false;
-    int tamanho = snprintf(NULL, 0, "%s:%zu  %-10s %s", arquivo_relativo, forma->linha,
-                           forma->categoria, forma->nome);
+    SefEstadoVinculosSimbolo estado_runtime = {0};
+    SefErro erro_runtime;
+    bool consultou = sef_runtime_consultar_vinculos_simbolo(sessao->runtime, forma->nome,
+                                                            &estado_runtime, &erro_runtime);
+    const char *situacao = "RUNTIME UNKNOWN";
+    if (consultou && !estado_runtime.encontrado)
+        situacao = "SOURCE ONLY";
+    else if (consultou && estado_runtime.possui_valor && estado_runtime.possui_funcao)
+        situacao = "LIVE VALUE/FUNCTION";
+    else if (consultou && estado_runtime.possui_funcao)
+        situacao = "LIVE FUNCTION";
+    else if (consultou && estado_runtime.possui_valor)
+        situacao = "LIVE VALUE";
+    else if (consultou)
+        situacao = "INTERNED";
+    int tamanho = snprintf(NULL, 0, "%s:%zu  %-10s %s  [%s]", arquivo_relativo, forma->linha,
+                           forma->categoria, forma->nome, situacao);
     if (tamanho < 0) {
         sef_erro_definir(erro, 0, 0, "could not format a workspace symbol result");
         return false;
@@ -1142,8 +1157,8 @@ static bool simbolo_espaco_trabalho_adicionar(SefSessaoIde *sessao, size_t indic
         sef_erro_definir(erro, 0, 0, "not enough memory for workspace symbol results");
         return false;
     }
-    snprintf(rotulo, (size_t)tamanho + 1, "%s:%zu  %-10s %s", arquivo_relativo, forma->linha,
-             forma->categoria, forma->nome);
+    snprintf(rotulo, (size_t)tamanho + 1, "%s:%zu  %-10s %s  [%s]", arquivo_relativo,
+             forma->linha, forma->categoria, forma->nome, situacao);
     ResultadoSimboloEspacoTrabalhoIde *resultado =
         &sessao->simbolos_espaco_trabalho[sessao->quantidade_simbolos_espaco_trabalho++];
     memset(resultado, 0, sizeof(*resultado));

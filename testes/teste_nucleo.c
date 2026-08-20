@@ -122,6 +122,32 @@ int main(int argc, char **argv) {
                     "(list (symbol-name nil) (package-name (symbol-package nil)) "
                     "(boundp nil) (symbol-value nil) (fboundp nil))",
                     "(\"NIL\" \"COMMON-LISP\" T NIL NIL)");
+    SefEstadoVinculosSimbolo estado_vinculos = {0};
+    verificar(sef_runtime_consultar_vinculos_simbolo(runtime, "NIL", &estado_vinculos, &erro) &&
+                  estado_vinculos.encontrado && estado_vinculos.possui_valor &&
+                  !estado_vinculos.possui_funcao,
+              "consulta residente encontrou a celula constante de NIL");
+    verificar(sef_runtime_consultar_vinculos_simbolo(
+                  runtime, "symbol-query-does-not-exist", &estado_vinculos, &erro) &&
+                  !estado_vinculos.encontrado && !estado_vinculos.possui_valor &&
+                  !estado_vinculos.possui_funcao,
+              "consulta residente nao internou simbolo ausente");
+    verificar_texto(runtime,
+                    "(multiple-value-list (find-symbol \"SYMBOL-QUERY-DOES-NOT-EXIST\"))",
+                    "(NIL NIL)");
+    verificar_texto(runtime,
+                    "(progn (define live-query-value 40) "
+                    "(defun live-query-function (x) (+ x 2)) 42)",
+                    "42");
+    verificar(sef_runtime_consultar_vinculos_simbolo(runtime, "live-query-value",
+                                                     &estado_vinculos, &erro) &&
+                  estado_vinculos.encontrado && estado_vinculos.possui_valor &&
+                  !estado_vinculos.possui_funcao &&
+                  sef_runtime_consultar_vinculos_simbolo(runtime, "LIVE-QUERY-FUNCTION",
+                                                         &estado_vinculos, &erro) &&
+                  estado_vinculos.encontrado && !estado_vinculos.possui_valor &&
+                  estado_vinculos.possui_funcao,
+              "consulta residente distinguiu celulas globais de valor e funcao");
     verificar_texto(runtime,
                     "(list (boundp :chave) (eq (symbol-value :chave) :chave) "
                     "(constantp nil) (constantp t) (constantp :chave) "

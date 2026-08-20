@@ -19,6 +19,12 @@ typedef enum SefEstadoCodigo {
     SEF_CODIGO_INVALIDO
 } SefEstadoCodigo;
 
+typedef struct SefEstadoVinculosSimbolo {
+    bool encontrado;
+    bool possui_valor;
+    bool possui_funcao;
+} SefEstadoVinculosSimbolo;
+
 SefRuntime *sef_runtime_criar(SefErro *erro);
 void sef_runtime_destruir(SefRuntime *runtime);
 
@@ -41,6 +47,8 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria);
 size_t sef_runtime_objetos_vivos(const SefRuntime *runtime);
 size_t sef_runtime_quantidade_valores(const SefRuntime *runtime);
 SefValor sef_runtime_valor(const SefRuntime *runtime, size_t indice);
+bool sef_runtime_consultar_vinculos_simbolo(SefRuntime *runtime, const char *nome,
+                                            SefEstadoVinculosSimbolo *estado, SefErro *erro);
 
 SefRaiz *sef_raiz_criar(SefRuntime *runtime, SefValor valor, SefErro *erro);
 SefValor sef_raiz_valor(const SefRaiz *raiz);

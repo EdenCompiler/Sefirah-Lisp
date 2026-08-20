@@ -194,7 +194,9 @@ não significa que o marco inteiro esteja concluído.
   distintos para letras maiúsculas e minúsculas.
 - [x] Seletor multifonte de símbolos do workspace com índice estrutural de
   definições, buffers vivos não gravados, navegação exata, botão e Ctrl+T.
-- [ ] Metadados de símbolos ligados ao runtime e referências entre arquivos.
+- [x] Metadados de binding de valor/função ligados ao runtime e somente de
+  leitura nos resultados de símbolos do workspace.
+- [ ] Navegação de referências entre arquivos.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração completa da sessão de desktop.

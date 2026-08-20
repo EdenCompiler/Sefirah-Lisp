@@ -252,6 +252,27 @@ size_t sef_runtime_objetos_vivos(const SefRuntime *runtime) {
     return runtime == NULL ? 0 : runtime->quantidade_objetos;
 }
 
+bool sef_runtime_consultar_vinculos_simbolo(SefRuntime *runtime, const char *nome,
+                                            SefEstadoVinculosSimbolo *estado, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (estado != NULL)
+        *estado = (SefEstadoVinculosSimbolo){0};
+    if (runtime == NULL || nome == NULL || estado == NULL) {
+        sef_erro_definir(erro, 0, 0, "invalid runtime symbol binding query");
+        return false;
+    }
+    SefValor simbolo = sef_simbolo_localizar(runtime, nome, strlen(nome), erro);
+    if (simbolo == NULL)
+        return !erro->ocorreu;
+    estado->encontrado = true;
+    SefValor ignorado = NULL;
+    estado->possui_valor = sef_simbolo_e_constante(runtime, simbolo) ||
+                           sef_ambiente_obter(runtime->ambiente_global, simbolo, &ignorado);
+    estado->possui_funcao =
+        sef_ambiente_obter_funcao(runtime->ambiente_global, simbolo, &ignorado);
+    return true;
+}
+
 SefRuntime *sef_runtime_criar(SefErro *erro) {
     sef_erro_limpar(erro);
     SefRuntime *runtime = calloc(1, sizeof(*runtime));

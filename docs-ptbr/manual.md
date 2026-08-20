@@ -371,6 +371,14 @@ ser finalizada com `sef_funcao_compilada_preparar_jit`.
 O JIT cria trampolins próximos ao código para alcançar qualquer endereço de 64
 bits sem tornar a página simultaneamente gravável e executável.
 
+Ferramentas residentes podem chamar `sef_runtime_consultar_vinculos_simbolo`
+com um designador de símbolo Lisp. A consulta somente de leitura informa se o
+símbolo está acessível no package atual e se suas células globais de valor e
+função possuem binding. Um nome ausente continua não internado, e a consulta
+não avalia Lisp nem substitui os últimos valores múltiplos do runtime. A IDE usa
+esse contrato para distinguir definições apenas no fonte das instaladas no
+mundo vivo.
+
 ## Packages
 
 O runtime inicia em `COMMON-LISP-USER`, que usa `COMMON-LISP`. Símbolos

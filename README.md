@@ -245,7 +245,9 @@ actions operate on the live Lisp world. Ctrl+T or the Symbols toolbar button
 opens a case-insensitive workspace symbol picker. It indexes real top-level
 definitions across every project source, includes unsaved editor buffers,
 preserves mixed-case names and paths, and opens the selected definition at its
-exact source position. Clicking a
+exact source position. Each result is marked `SOURCE ONLY`, `INTERNED`,
+`LIVE VALUE`, `LIVE FUNCTION`, or `LIVE VALUE/FUNCTION` from a read-only query
+against the current Lisp world. Clicking a
 tab activates it. Tab or a pointer
 click elsewhere changes focus among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
@@ -588,7 +590,10 @@ filtrado de fontes do workspace; Ctrl+Shift+P abre uma paleta pesquisável cujas
 ações operam sobre o mundo Lisp vivo. Ctrl+T ou o botão Symbols abre um seletor
 de símbolos do workspace sem diferenciar caixa. Ele indexa definições reais de
 topo em todos os fontes do projeto, inclui buffers ainda não gravados, preserva
-nomes e caminhos com caixa mista e abre a definição na posição exata. Os prompts
+nomes e caminhos com caixa mista e abre a definição na posição exata. Cada
+resultado recebe `SOURCE ONLY`, `INTERNED`, `LIVE VALUE`, `LIVE FUNCTION` ou
+`LIVE VALUE/FUNCTION` por uma consulta somente de leitura ao mundo Lisp atual.
+Os prompts
 preservam exatamente as letras
 maiúsculas e minúsculas digitadas em caminhos, e a fonte bitmap desenha as duas
 caixas de modo distinto, inclusive em sistemas de arquivos sensíveis a caixa.

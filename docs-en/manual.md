@@ -364,6 +364,14 @@ and be finalized with `sef_funcao_compilada_preparar_jit`.
 The JIT creates nearby trampolines that reach any 64-bit address without ever
 making a page writable and executable at once.
 
+Resident tools can call `sef_runtime_consultar_vinculos_simbolo` with a Lisp
+symbol designator. The read-only query reports whether the symbol is accessible
+in the current package and whether its global value and function cells are
+bound. A missing name remains uninterned, and the query does not evaluate Lisp
+or replace the runtime's last multiple values. The IDE uses this contract to
+distinguish source-only definitions from definitions installed in the live
+world.
+
 ## Packages
 
 The runtime starts in `COMMON-LISP-USER`, which uses `COMMON-LISP`. `:name`
