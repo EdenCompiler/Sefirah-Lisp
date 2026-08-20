@@ -3,6 +3,7 @@
 #include "apoio.h"
 #include "espaco_trabalho.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -12,6 +13,7 @@
 
 #define SEF_LIMITE_ARQUIVO_IDE (64L * 1024L * 1024L)
 #define SEF_LIMITE_CONDICOES_IDE 32u
+#define SEF_LIMITE_SIMBOLOS_ESPACO_TRABALHO 4096u
 
 typedef struct TextoIde {
     char *dados;
@@ -45,6 +47,15 @@ typedef struct DiagnosticoIde {
     size_t coluna;
     SefRaiz *condicao;
 } DiagnosticoIde;
+
+typedef struct ResultadoSimboloEspacoTrabalhoIde {
+    size_t indice_arquivo;
+    size_t linha;
+    size_t inicio_nome;
+    char categoria[20];
+    char nome[96];
+    char *rotulo;
+} ResultadoSimboloEspacoTrabalhoIde;
 
 struct SefSessaoIde {
     SefRuntime *runtime;
@@ -81,10 +92,15 @@ struct SefSessaoIde {
     size_t documento_ativo;
     SefEspacoTrabalhoIde *espaco_trabalho;
     size_t arquivo_espaco_trabalho_selecionado;
+    ResultadoSimboloEspacoTrabalhoIde *simbolos_espaco_trabalho;
+    size_t quantidade_simbolos_espaco_trabalho;
+    size_t capacidade_simbolos_espaco_trabalho;
     DiagnosticoIde diagnosticos[SEF_LIMITE_CONDICOES_IDE];
     size_t quantidade_diagnosticos;
     size_t diagnostico_selecionado;
 };
+
+static void selecao_editor_limpar(SefSessaoIde *sessao);
 
 static bool texto_reservar(TextoIde *texto, size_t necessario, SefErro *erro) {
     if (necessario <= texto->capacidade)
@@ -206,6 +222,12 @@ static void documento_liberar(DocumentoIde *documento) {
     sef_historico_editor_destruir(documento->historico_editor);
     free(documento->formas_executadas);
     memset(documento, 0, sizeof(*documento));
+}
+
+static void simbolos_espaco_trabalho_limpar(SefSessaoIde *sessao) {
+    for (size_t i = 0; i < sessao->quantidade_simbolos_espaco_trabalho; i++)
+        free(sessao->simbolos_espaco_trabalho[i].rotulo);
+    sessao->quantidade_simbolos_espaco_trabalho = 0;
 }
 
 static const char *nome_base(const char *caminho) {
@@ -817,6 +839,8 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     texto_liberar(&sessao->caminho_imagem);
     texto_liberar(&sessao->abas);
     texto_liberar(&sessao->explorador);
+    simbolos_espaco_trabalho_limpar(sessao);
+    free(sessao->simbolos_espaco_trabalho);
     for (size_t i = 0; i < sessao->quantidade_documentos; i++)
         documento_liberar(&sessao->documentos[i]);
     free(sessao->documentos);
@@ -853,6 +877,14 @@ const char *sef_sessao_ide_espaco_trabalho_arquivo(const SefSessaoIde *sessao, s
     return sessao == NULL
                ? NULL
                : sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, indice);
+}
+size_t sef_sessao_ide_simbolos_espaco_trabalho_quantidade(const SefSessaoIde *sessao) {
+    return sessao == NULL ? 0 : sessao->quantidade_simbolos_espaco_trabalho;
+}
+const char *sef_sessao_ide_simbolo_espaco_trabalho(const SefSessaoIde *sessao, size_t indice) {
+    return sessao == NULL || indice >= sessao->quantidade_simbolos_espaco_trabalho
+               ? NULL
+               : sessao->simbolos_espaco_trabalho[indice].rotulo;
 }
 size_t sef_sessao_ide_quantidade_documentos(const SefSessaoIde *sessao) {
     return sessao == NULL ? 0 : sessao->quantidade_documentos;
@@ -907,6 +939,7 @@ bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *cami
     }
     if (!sef_espaco_trabalho_ide_abrir(sessao->espaco_trabalho, caminho, erro))
         return false;
+    simbolos_espaco_trabalho_limpar(sessao);
     sessao->arquivo_espaco_trabalho_selecionado = 0;
     return atualizar_explorador(sessao, erro) &&
            texto_formatar(&sessao->estado, erro, "Workspace opened: %s (%zu Lisp file(s))", caminho,
@@ -933,6 +966,7 @@ bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *err
     }
     bool atualizou = sef_espaco_trabalho_ide_abrir(sessao->espaco_trabalho, raiz.dados, erro);
     if (atualizou) {
+        simbolos_espaco_trabalho_limpar(sessao);
         sessao->arquivo_espaco_trabalho_selecionado = 0;
         for (size_t i = 0; i < sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho); i++) {
             if (strcmp(sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, i),
@@ -1001,6 +1035,256 @@ bool sef_sessao_ide_espaco_trabalho_abrir_selecionado(SefSessaoIde *sessao, SefE
         return false;
     }
     return sef_sessao_ide_abrir(sessao, caminho, erro);
+}
+
+static bool texto_contem_sem_diferenciar_caixa(const char *texto, const char *consulta) {
+    if (consulta[0] == '\0')
+        return true;
+    size_t tamanho_consulta = strlen(consulta);
+    for (const char *inicio = texto; *inicio != '\0'; inicio++) {
+        size_t i = 0;
+        while (i < tamanho_consulta && inicio[i] != '\0' &&
+               tolower((unsigned char)inicio[i]) == tolower((unsigned char)consulta[i]))
+            i++;
+        if (i == tamanho_consulta)
+            return true;
+    }
+    return false;
+}
+
+static const char *fonte_aberta_no_editor(const SefSessaoIde *sessao, const char *caminho) {
+    for (size_t i = 0; i < sessao->quantidade_documentos; i++) {
+        const char *caminho_documento = documento_caminho(sessao, i);
+        if (caminho_documento == NULL || strcmp(caminho_documento, caminho) != 0)
+            continue;
+        return i == sessao->documento_ativo ? sessao->editor.dados
+                                             : sessao->documentos[i].editor.dados;
+    }
+    return NULL;
+}
+
+static char *arquivo_ler_para_indice(const char *caminho, SefErro *erro) {
+    FILE *arquivo = fopen(caminho, "rb");
+    if (arquivo == NULL) {
+        sef_erro_definir(erro, 0, 0, "could not index '%s': %s", caminho, strerror(errno));
+        return NULL;
+    }
+    if (fseek(arquivo, 0, SEEK_END) != 0) {
+        fclose(arquivo);
+        sef_erro_definir(erro, 0, 0, "could not determine the size of '%s'", caminho);
+        return NULL;
+    }
+    long tamanho = ftell(arquivo);
+    if (tamanho < 0 || fseek(arquivo, 0, SEEK_SET) != 0 || tamanho > SEF_LIMITE_ARQUIVO_IDE) {
+        fclose(arquivo);
+        sef_erro_definir(erro, 0, 0, "could not index '%s' within the IDE file limit", caminho);
+        return NULL;
+    }
+    char *dados = malloc((size_t)tamanho + 1);
+    if (dados == NULL) {
+        fclose(arquivo);
+        sef_erro_definir(erro, 0, 0, "not enough memory to index '%s'", caminho);
+        return NULL;
+    }
+    size_t lidos = fread(dados, 1, (size_t)tamanho, arquivo);
+    fclose(arquivo);
+    if (lidos != (size_t)tamanho) {
+        free(dados);
+        sef_erro_definir(erro, 0, 0, "incomplete read while indexing '%s'", caminho);
+        return NULL;
+    }
+    dados[lidos] = '\0';
+    return dados;
+}
+
+static bool erro_e_falta_memoria(const SefErro *erro) {
+    return erro->ocorreu && strstr(erro->mensagem, "not enough memory") != NULL;
+}
+
+static bool simbolos_espaco_trabalho_reservar(SefSessaoIde *sessao, size_t quantidade,
+                                              SefErro *erro) {
+    if (quantidade <= sessao->capacidade_simbolos_espaco_trabalho)
+        return true;
+    size_t capacidade = sessao->capacidade_simbolos_espaco_trabalho == 0
+                            ? 64
+                            : sessao->capacidade_simbolos_espaco_trabalho * 2;
+    while (capacidade < quantidade)
+        capacidade *= 2;
+    ResultadoSimboloEspacoTrabalhoIde *resultados =
+        realloc(sessao->simbolos_espaco_trabalho, capacidade * sizeof(*resultados));
+    if (resultados == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for workspace symbol results");
+        return false;
+    }
+    sessao->simbolos_espaco_trabalho = resultados;
+    sessao->capacidade_simbolos_espaco_trabalho = capacidade;
+    return true;
+}
+
+static bool simbolo_espaco_trabalho_adicionar(SefSessaoIde *sessao, size_t indice_arquivo,
+                                              const char *arquivo_relativo,
+                                              const SefFormaEstruturalIde *forma,
+                                              SefErro *erro) {
+    if (sessao->quantidade_simbolos_espaco_trabalho >=
+        SEF_LIMITE_SIMBOLOS_ESPACO_TRABALHO)
+        return true;
+    if (!simbolos_espaco_trabalho_reservar(
+            sessao, sessao->quantidade_simbolos_espaco_trabalho + 1, erro))
+        return false;
+    int tamanho = snprintf(NULL, 0, "%s:%zu  %-10s %s", arquivo_relativo, forma->linha,
+                           forma->categoria, forma->nome);
+    if (tamanho < 0) {
+        sef_erro_definir(erro, 0, 0, "could not format a workspace symbol result");
+        return false;
+    }
+    char *rotulo = malloc((size_t)tamanho + 1);
+    if (rotulo == NULL) {
+        sef_erro_definir(erro, 0, 0, "not enough memory for workspace symbol results");
+        return false;
+    }
+    snprintf(rotulo, (size_t)tamanho + 1, "%s:%zu  %-10s %s", arquivo_relativo, forma->linha,
+             forma->categoria, forma->nome);
+    ResultadoSimboloEspacoTrabalhoIde *resultado =
+        &sessao->simbolos_espaco_trabalho[sessao->quantidade_simbolos_espaco_trabalho++];
+    memset(resultado, 0, sizeof(*resultado));
+    resultado->indice_arquivo = indice_arquivo;
+    resultado->linha = forma->linha;
+    resultado->inicio_nome = forma->inicio_nome;
+    snprintf(resultado->categoria, sizeof(resultado->categoria), "%s", forma->categoria);
+    snprintf(resultado->nome, sizeof(resultado->nome), "%s", forma->nome);
+    resultado->rotulo = rotulo;
+    return true;
+}
+
+static bool navegador_mostrar_simbolos_espaco_trabalho(SefSessaoIde *sessao,
+                                                       const char *consulta, size_t ignorados,
+                                                       bool truncado, SefErro *erro) {
+    if (!texto_formatar(&sessao->navegador, erro,
+                        "WORKSPACE SYMBOLS: %zu\nQUERY: %s\nSKIPPED FILES: %zu\n",
+                        sessao->quantidade_simbolos_espaco_trabalho,
+                        consulta[0] == '\0' ? "(all definitions)" : consulta, ignorados))
+        return false;
+    for (size_t i = 0; i < sessao->quantidade_simbolos_espaco_trabalho; i++) {
+        if (!texto_acrescentar(&sessao->navegador, "\n  ", erro) ||
+            !texto_acrescentar(&sessao->navegador,
+                               sessao->simbolos_espaco_trabalho[i].rotulo, erro))
+            return false;
+    }
+    return !truncado ||
+           texto_acrescentar(&sessao->navegador,
+                             "\n\n(result limit reached; narrow the query)", erro);
+}
+
+bool sef_sessao_ide_simbolos_espaco_trabalho_buscar(SefSessaoIde *sessao, const char *consulta,
+                                                    SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || consulta == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session or workspace symbol query");
+        return false;
+    }
+    size_t quantidade_arquivos =
+        sessao == NULL ? 0 : sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho);
+    if (sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho)[0] == '\0') {
+        sef_erro_definir(erro, 0, 0, "no workspace is open for symbol search");
+        return false;
+    }
+    simbolos_espaco_trabalho_limpar(sessao);
+    size_t ignorados = 0;
+    size_t total_encontrado = 0;
+    for (size_t i = 0; i < quantidade_arquivos; i++) {
+        const char *absoluto =
+            sef_espaco_trabalho_ide_arquivo_absoluto(sessao->espaco_trabalho, i);
+        const char *relativo =
+            sef_espaco_trabalho_ide_arquivo_relativo(sessao->espaco_trabalho, i);
+        const char *codigo = fonte_aberta_no_editor(sessao, absoluto);
+        char *codigo_alocado = NULL;
+        if (codigo == NULL) {
+            codigo_alocado = arquivo_ler_para_indice(absoluto, erro);
+            codigo = codigo_alocado;
+        }
+        SefFormaEstruturalIde *formas = NULL;
+        size_t quantidade_formas = 0;
+        if (codigo == NULL ||
+            !sef_ide_catalogar_formas(codigo, &formas, &quantidade_formas, erro)) {
+            free(codigo_alocado);
+            if (erro_e_falta_memoria(erro)) {
+                simbolos_espaco_trabalho_limpar(sessao);
+                return false;
+            }
+            ignorados++;
+            sef_erro_limpar(erro);
+            continue;
+        }
+        bool adicionou = true;
+        for (size_t j = 0; adicionou && j < quantidade_formas; j++) {
+            if (!formas[j].definicao ||
+                !texto_contem_sem_diferenciar_caixa(formas[j].nome, consulta))
+                continue;
+            total_encontrado++;
+            adicionou = simbolo_espaco_trabalho_adicionar(sessao, i, relativo, &formas[j], erro);
+        }
+        sef_ide_catalogo_liberar(formas);
+        free(codigo_alocado);
+        if (!adicionou) {
+            simbolos_espaco_trabalho_limpar(sessao);
+            return false;
+        }
+    }
+    bool truncado = total_encontrado > sessao->quantidade_simbolos_espaco_trabalho;
+    if (!navegador_mostrar_simbolos_espaco_trabalho(sessao, consulta, ignorados, truncado, erro))
+        return false;
+    return texto_formatar(&sessao->estado, erro, "Workspace symbols: %zu match(es)%s",
+                          total_encontrado, truncado ? " (showing first 4096)" : "");
+}
+
+bool sef_sessao_ide_simbolo_espaco_trabalho_abrir(SefSessaoIde *sessao, size_t indice,
+                                                  SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || indice >= sessao->quantidade_simbolos_espaco_trabalho) {
+        sef_erro_definir(erro, 0, 0, "invalid workspace symbol selection");
+        return false;
+    }
+    ResultadoSimboloEspacoTrabalhoIde resultado = sessao->simbolos_espaco_trabalho[indice];
+    const char *caminho = sef_espaco_trabalho_ide_arquivo_absoluto(
+        sessao->espaco_trabalho, resultado.indice_arquivo);
+    const char *relativo = sef_espaco_trabalho_ide_arquivo_relativo(
+        sessao->espaco_trabalho, resultado.indice_arquivo);
+    if (caminho == NULL || relativo == NULL) {
+        sef_erro_definir(erro, 0, 0, "workspace symbol file is no longer available");
+        return false;
+    }
+    bool ja_ativo = strcmp(sessao->caminho.dados, caminho) == 0;
+    if (!sef_sessao_ide_espaco_trabalho_selecionar(sessao, resultado.indice_arquivo, erro) ||
+        (!ja_ativo && !sef_sessao_ide_abrir(sessao, caminho, erro)))
+        return false;
+    if (resultado.inicio_nome > sessao->editor.tamanho) {
+        sef_erro_definir(erro, 0, 0, "workspace symbol location is stale; search again");
+        return false;
+    }
+    sessao->cursor_editor = resultado.inicio_nome;
+    selecao_editor_limpar(sessao);
+    SefFormaEstruturalIde *formas = NULL;
+    size_t quantidade_formas = 0;
+    if (!sef_ide_catalogar_formas(sessao->editor.dados, &formas, &quantidade_formas, erro))
+        return false;
+    size_t selecionada = SIZE_MAX;
+    for (size_t i = 0; i < quantidade_formas; i++)
+        if (formas[i].definicao && formas[i].inicio_nome == resultado.inicio_nome &&
+            strcmp(formas[i].nome, resultado.nome) == 0) {
+            selecionada = i;
+            break;
+        }
+    if (selecionada == SIZE_MAX) {
+        sef_ide_catalogo_liberar(formas);
+        sef_erro_definir(erro, 0, 0, "workspace symbol location is stale; search again");
+        return false;
+    }
+    bool abriu = atualizar_navegador(sessao, formas, quantidade_formas, selecionada, erro) &&
+                 texto_formatar(&sessao->estado, erro,
+                                "Workspace definition: %s (%s, %s:%zu)", resultado.nome,
+                                resultado.categoria, relativo, resultado.linha);
+    sef_ide_catalogo_liberar(formas);
+    return abriu;
 }
 
 bool sef_sessao_ide_arquivo_criar(SefSessaoIde *sessao, const char *caminho, SefErro *erro) {

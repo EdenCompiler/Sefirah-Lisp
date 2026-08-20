@@ -56,7 +56,7 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
                 wparam == VK_F9 || wparam == VK_F10 || wparam == VK_F11 || wparam == VK_F12 ||
                 ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
                  (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'P' ||
-                  wparam == 'Z' || wparam == 'Y')))) {
+                  wparam == 'T' || wparam == 'Z' || wparam == 'Y')))) {
         SefEventoJanela evento = {0};
         evento.modificador_shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         if (wparam == 'S')
@@ -66,6 +66,8 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
         else if (wparam == 'P')
             evento.tipo =
                 evento.modificador_shift ? SEF_EVENTO_PALETA_COMANDOS : SEF_EVENTO_ABRIR_RAPIDO;
+        else if (wparam == 'T')
+            evento.tipo = SEF_EVENTO_BUSCAR_SIMBOLOS;
         else if (wparam == 'Z')
             evento.tipo = SEF_EVENTO_DESFAZER;
         else if (wparam == 'Y')

@@ -65,6 +65,8 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                         evento_sefirah.tipo = evento_sefirah.modificador_shift
                                                   ? SEF_EVENTO_PALETA_COMANDOS
                                                   : SEF_EVENTO_ABRIR_RAPIDO;
+                    } else if (controle && (tecla == XK_t || tecla == XK_T)) {
+                        evento_sefirah.tipo = SEF_EVENTO_BUSCAR_SIMBOLOS;
                     } else if (tecla == XK_F5 ||
                                (controle && (tecla == XK_Return || tecla == XK_KP_Enter))) {
                         evento_sefirah.tipo = SEF_EVENTO_EXECUTAR;

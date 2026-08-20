@@ -241,7 +241,11 @@ Enter or a pointer click opens it. A command toolbar exposes Run, Run Form, Run
 Changes, Save, Snapshot, Restore, file/folder creation and opening, Explorer
 refresh, and Commands as pointer-accessible buttons. Ctrl+P opens a filtered
 workspace file picker; Ctrl+Shift+P opens a searchable command palette whose
-actions operate on the live Lisp world. Clicking a
+actions operate on the live Lisp world. Ctrl+T or the Symbols toolbar button
+opens a case-insensitive workspace symbol picker. It indexes real top-level
+definitions across every project source, includes unsaved editor buffers,
+preserves mixed-case names and paths, and opens the selected definition at its
+exact source position. Clicking a
 tab activates it. Tab or a pointer
 click elsewhere changes focus among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
@@ -581,7 +585,11 @@ Enter ou clique o abre. Uma barra de comandos expõe Run, Run Form, Run Changes,
 Save, Snapshot, Restore, criação/abertura de arquivos e pastas, atualização do
 Explorer e Commands como botões acessíveis pelo ponteiro. Ctrl+P abre o seletor
 filtrado de fontes do workspace; Ctrl+Shift+P abre uma paleta pesquisável cujas
-ações operam sobre o mundo Lisp vivo. Os prompts preservam exatamente as letras
+ações operam sobre o mundo Lisp vivo. Ctrl+T ou o botão Symbols abre um seletor
+de símbolos do workspace sem diferenciar caixa. Ele indexa definições reais de
+topo em todos os fontes do projeto, inclui buffers ainda não gravados, preserva
+nomes e caminhos com caixa mista e abre a definição na posição exata. Os prompts
+preservam exatamente as letras
 maiúsculas e minúsculas digitadas em caminhos, e a fonte bitmap desenha as duas
 caixas de modo distinto, inclusive em sistemas de arquivos sensíveis a caixa.
 Clicar em uma

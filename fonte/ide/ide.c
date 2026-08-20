@@ -24,6 +24,7 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_SNAPSHOT,
     ACAO_BOTAO_RESTAURAR,
     ACAO_BOTAO_COMANDOS,
+    ACAO_BOTAO_SIMBOLOS,
     ACAO_BOTAO_ABRIR_ARQUIVO,
     ACAO_BOTAO_ABRIR_PASTA,
     ACAO_BOTAO_CRIAR_ARQUIVO,
@@ -34,6 +35,7 @@ typedef enum AcaoBotaoIde {
 typedef enum ModoSobreposicaoIde {
     SOBREPOSICAO_NENHUMA,
     SOBREPOSICAO_ABRIR_RAPIDO,
+    SOBREPOSICAO_SIMBOLOS,
     SOBREPOSICAO_COMANDOS,
     SOBREPOSICAO_ABRIR_ARQUIVO,
     SOBREPOSICAO_ABRIR_PASTA,
@@ -43,6 +45,7 @@ typedef enum ModoSobreposicaoIde {
 
 typedef enum AcaoComandoIde {
     COMANDO_ABRIR_RAPIDO,
+    COMANDO_BUSCAR_SIMBOLOS,
     COMANDO_ABRIR_ARQUIVO,
     COMANDO_ABRIR_PASTA,
     COMANDO_CRIAR_ARQUIVO,
@@ -86,7 +89,7 @@ typedef struct EstadoIde {
     SefComponente navegador;
     SefComponente depurador;
     SefComponente ouvinte;
-    BotaoIde botoes[12];
+    BotaoIde botoes[13];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
     char mensagem_sobreposicao[256];
@@ -99,6 +102,7 @@ typedef struct EstadoIde {
 
 static const ComandoIde comandos[] = {
     {"Quick Open File", COMANDO_ABRIR_RAPIDO},
+    {"Go to Symbol in Workspace", COMANDO_BUSCAR_SIMBOLOS},
     {"Open File by Path", COMANDO_ABRIR_ARQUIVO},
     {"Open Folder", COMANDO_ABRIR_PASTA},
     {"Create New File", COMANDO_CRIAR_ARQUIVO},
@@ -143,11 +147,12 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[4] = (BotaoIde){"SNAPSHOT", ACAO_BOTAO_SNAPSHOT, {0}};
     estado->botoes[5] = (BotaoIde){"RESTORE", ACAO_BOTAO_RESTAURAR, {0}};
     estado->botoes[6] = (BotaoIde){"COMMANDS", ACAO_BOTAO_COMANDOS, {0}};
-    estado->botoes[7] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[8] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[9] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[10] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[11] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[7] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
+    estado->botoes[8] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[9] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[10] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[11] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[12] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -252,6 +257,25 @@ static void abrir_sobreposicao_caminho(EstadoIde *estado, ModoSobreposicaoIde mo
     }
 }
 
+static void carregar_simbolos_espaco_trabalho(EstadoIde *estado) {
+    SefErro erro;
+    if (sef_sessao_ide_simbolos_espaco_trabalho_buscar(estado->sessao, "", &erro))
+        estado->mensagem_sobreposicao[0] = '\0';
+    else
+        snprintf(estado->mensagem_sobreposicao, sizeof(estado->mensagem_sobreposicao), "%.255s",
+                 erro.mensagem);
+    size_t quantidade = sef_sessao_ide_simbolos_espaco_trabalho_quantidade(estado->sessao);
+    if (quantidade == 0)
+        estado->item_sobreposicao = 0;
+    else if (estado->item_sobreposicao >= quantidade)
+        estado->item_sobreposicao = quantidade - 1;
+}
+
+static void abrir_sobreposicao_simbolos(EstadoIde *estado) {
+    abrir_sobreposicao(estado, SOBREPOSICAO_SIMBOLOS);
+    carregar_simbolos_espaco_trabalho(estado);
+}
+
 static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
     switch (acao) {
     case ACAO_BOTAO_EXECUTAR:
@@ -277,6 +301,9 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         break;
     case ACAO_BOTAO_COMANDOS:
         abrir_sobreposicao(estado, SOBREPOSICAO_COMANDOS);
+        break;
+    case ACAO_BOTAO_SIMBOLOS:
+        abrir_sobreposicao_simbolos(estado);
         break;
     case ACAO_BOTAO_ABRIR_ARQUIVO:
         abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
@@ -427,6 +454,19 @@ static const char *item_sobreposicao(const EstadoIde *estado, size_t indice_filt
                 return arquivo;
             }
         }
+    } else if (estado->sobreposicao == SOBREPOSICAO_SIMBOLOS) {
+        size_t quantidade = sef_sessao_ide_simbolos_espaco_trabalho_quantidade(estado->sessao);
+        for (size_t i = 0; i < quantidade; i++) {
+            const char *simbolo = sef_sessao_ide_simbolo_espaco_trabalho(estado->sessao, i);
+            if (!contem_sem_diferenciar_caixa(simbolo, estado->consulta))
+                continue;
+            if (encontrado++ == indice_filtrado) {
+                if (indice_real != NULL)
+                    *indice_real = i;
+                return simbolo;
+            }
+        }
+        return NULL;
     } else if (estado->sobreposicao == SOBREPOSICAO_COMANDOS) {
         for (size_t i = 0; i < sizeof(comandos) / sizeof(comandos[0]); i++) {
             if (!contem_sem_diferenciar_caixa(comandos[i].rotulo, estado->consulta))
@@ -448,6 +488,12 @@ static size_t quantidade_itens_sobreposicao(const EstadoIde *estado) {
         for (size_t i = 0; i < total; i++)
             if (contem_sem_diferenciar_caixa(
                     sef_sessao_ide_espaco_trabalho_arquivo(estado->sessao, i), estado->consulta))
+                quantidade++;
+    } else if (estado->sobreposicao == SOBREPOSICAO_SIMBOLOS) {
+        size_t total = sef_sessao_ide_simbolos_espaco_trabalho_quantidade(estado->sessao);
+        for (size_t i = 0; i < total; i++)
+            if (contem_sem_diferenciar_caixa(
+                    sef_sessao_ide_simbolo_espaco_trabalho(estado->sessao, i), estado->consulta))
                 quantidade++;
     } else if (estado->sobreposicao == SOBREPOSICAO_COMANDOS) {
         for (size_t i = 0; i < sizeof(comandos) / sizeof(comandos[0]); i++)
@@ -481,6 +527,8 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
     const char *titulo = "COMMAND PALETTE  CTRL+SHIFT+P";
     if (estado->sobreposicao == SOBREPOSICAO_ABRIR_RAPIDO)
         titulo = "QUICK OPEN  CTRL+P";
+    else if (estado->sobreposicao == SOBREPOSICAO_SIMBOLOS)
+        titulo = "WORKSPACE SYMBOLS  CTRL+T";
     else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_ARQUIVO)
         titulo = "OPEN FILE";
     else if (estado->sobreposicao == SOBREPOSICAO_ABRIR_PASTA)
@@ -514,8 +562,14 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
         estado->primeiro_item_sobreposicao = 0;
         estado->quantidade_itens_visiveis = 0;
     } else if (quantidade == 0) {
-        sef_superficie_texto(superficie, x + 22, y + 92, "NO MATCHING ITEMS", 2,
-                             SEF_COR(75, 84, 67));
+        char linha_mensagem[128];
+        snprintf(linha_mensagem, sizeof(linha_mensagem), "%.127s",
+                 estado->mensagem_sobreposicao[0] == '\0' ? "NO MATCHING ITEMS"
+                                                            : estado->mensagem_sobreposicao);
+        limitar_linha(linha_mensagem, largura > 48 ? (size_t)(largura - 48) / 12u : 0);
+        sef_superficie_texto(superficie, x + 22, y + 92, linha_mensagem, 2,
+                             estado->mensagem_sobreposicao[0] == '\0' ? SEF_COR(75, 84, 67)
+                                                                      : SEF_COR(143, 65, 45));
         estado->primeiro_item_sobreposicao = 0;
         estado->quantidade_itens_visiveis = 0;
     } else {
@@ -657,6 +711,9 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
     case COMANDO_ABRIR_RAPIDO:
         abrir_sobreposicao(estado, SOBREPOSICAO_ABRIR_RAPIDO);
         break;
+    case COMANDO_BUSCAR_SIMBOLOS:
+        abrir_sobreposicao_simbolos(estado);
+        break;
     case COMANDO_ABRIR_ARQUIVO:
         abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
         break;
@@ -725,6 +782,9 @@ static void executar_item_sobreposicao(EstadoIde *estado, SefErro *erro) {
         if (sef_sessao_ide_espaco_trabalho_selecionar(estado->sessao, indice_real, erro) &&
             sef_sessao_ide_espaco_trabalho_abrir_selecionado(estado->sessao, erro))
             estado->foco = FOCO_EDITOR;
+    } else if (modo == SOBREPOSICAO_SIMBOLOS) {
+        if (sef_sessao_ide_simbolo_espaco_trabalho_abrir(estado->sessao, indice_real, erro))
+            estado->foco = FOCO_EDITOR;
     } else {
         executar_comando(estado, comandos[indice_real].acao, erro);
     }
@@ -774,7 +834,8 @@ static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela 
             memcpy(estado->consulta + estado->tamanho_consulta, evento->texto_utf8, tamanho + 1);
             estado->tamanho_consulta += tamanho;
             estado->item_sobreposicao = 0;
-            estado->mensagem_sobreposicao[0] = '\0';
+            if (estado->sobreposicao != SOBREPOSICAO_SIMBOLOS)
+                estado->mensagem_sobreposicao[0] = '\0';
         }
         return true;
     }
@@ -786,7 +847,8 @@ static bool tratar_evento_sobreposicao(EstadoIde *estado, const SefEventoJanela 
                 estado->tamanho_consulta--;
             estado->consulta[estado->tamanho_consulta] = '\0';
             estado->item_sobreposicao = 0;
-            estado->mensagem_sobreposicao[0] = '\0';
+            if (estado->sobreposicao != SOBREPOSICAO_SIMBOLOS)
+                estado->mensagem_sobreposicao[0] = '\0';
         }
         return true;
     }
@@ -836,6 +898,10 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     }
     if (evento->tipo == SEF_EVENTO_PALETA_COMANDOS) {
         abrir_sobreposicao(estado, SOBREPOSICAO_COMANDOS);
+        return true;
+    }
+    if (evento->tipo == SEF_EVENTO_BUSCAR_SIMBOLOS) {
+        abrir_sobreposicao_simbolos(estado);
         return true;
     }
     if (estado->sobreposicao != SOBREPOSICAO_NENHUMA)

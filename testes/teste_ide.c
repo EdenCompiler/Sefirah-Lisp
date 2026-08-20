@@ -225,7 +225,9 @@ int main(void) {
 
     verificar(criar_diretorio("teste-espaco") && criar_diretorio("teste-espaco/sub") &&
                   gravar_arquivo("teste-espaco/main.lisp", "(define main 1)\n") &&
-                  gravar_arquivo("teste-espaco/sub/helper.lisp", "(define helper 2)\n") &&
+                  gravar_arquivo("teste-espaco/sub/helper.lisp",
+                                 "; (defun FakeHelper () 0)\n"
+                                 "(defun MixedHelper () 2)\n") &&
                   gravar_arquivo("teste-espaco/ignored.txt", "not Lisp\n") &&
                   sef_sessao_ide_espaco_trabalho_abrir(sessao, "teste-espaco", &erro) &&
                   sef_sessao_ide_espaco_trabalho_quantidade(sessao) == 2 &&
@@ -237,9 +239,25 @@ int main(void) {
     verificar(sef_sessao_ide_espaco_trabalho_mover(sessao, SEF_ARQUIVO_PROXIMO, &erro) &&
                   sef_sessao_ide_espaco_trabalho_selecionado(sessao) == 1 &&
                   sef_sessao_ide_espaco_trabalho_abrir_selecionado(sessao, &erro) &&
-                  strstr(sef_sessao_ide_editor(sessao), "define helper") != NULL &&
+                  strstr(sef_sessao_ide_editor(sessao), "MixedHelper") != NULL &&
                   strstr(sef_sessao_ide_explorador(sessao), "helper.lisp") != NULL,
               "workspace explorer opened the selected file in an editor tab");
+    verificar(sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "mixedhelper", &erro) &&
+                  sef_sessao_ide_simbolos_espaco_trabalho_quantidade(sessao) == 1 &&
+                  strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0),
+                         "sub/helper.lisp:2") != NULL &&
+                  strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0), "MixedHelper") !=
+                      NULL &&
+                  strstr(sef_sessao_ide_navegador(sessao), "WORKSPACE SYMBOLS: 1") != NULL &&
+                  sef_sessao_ide_simbolo_espaco_trabalho_abrir(sessao, 0, &erro) &&
+                  strstr(sef_sessao_ide_editor(sessao), "MixedHelper") != NULL &&
+                  sef_sessao_ide_cursor_editor(sessao) ==
+                      (size_t)(strstr(sef_sessao_ide_editor(sessao), "MixedHelper") -
+                               sef_sessao_ide_editor(sessao)),
+              "workspace symbol search opened an exact definition across project files");
+    verificar(sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "fakehelper", &erro) &&
+                  sef_sessao_ide_simbolos_espaco_trabalho_quantidade(sessao) == 0,
+              "workspace symbol search ignored definitions inside comments");
     verificar(
         sef_sessao_ide_diretorio_criar(sessao, "teste-espaco/Mixed-Folder", &erro) &&
             sef_sessao_ide_arquivo_criar(sessao, "teste-espaco/Mixed-Folder/NewFile.lisp", &erro) &&
@@ -247,6 +265,17 @@ int main(void) {
             strcmp(sef_sessao_ide_caminho(sessao), "teste-espaco/Mixed-Folder/NewFile.lisp") == 0 &&
             strstr(sef_sessao_ide_explorador(sessao), "Mixed-Folder/NewFile.lisp") != NULL,
         "file and folder actions preserved mixed-case paths inside the workspace");
+    verificar(
+        sef_sessao_ide_editor_definir(sessao, "(defun CamelCaseDefinition () 42)\n", &erro) &&
+            sef_sessao_ide_simbolos_espaco_trabalho_buscar(sessao, "camelcasedefinition", &erro) &&
+            sef_sessao_ide_simbolos_espaco_trabalho_quantidade(sessao) == 1 &&
+            strstr(sef_sessao_ide_simbolo_espaco_trabalho(sessao, 0),
+                   "Mixed-Folder/NewFile.lisp:1") != NULL &&
+            sef_sessao_ide_simbolo_espaco_trabalho_abrir(sessao, 0, &erro) &&
+            strcmp(sef_sessao_ide_editor(sessao), "(defun CamelCaseDefinition () 42)\n") == 0 &&
+            sef_sessao_ide_cursor_editor(sessao) == strlen("(defun ") &&
+            strstr(sef_sessao_ide_estado(sessao), "Workspace definition:") != NULL,
+        "workspace symbols used unsaved live buffers and preserved mixed-case paths and names");
     verificar(gravar_arquivo("teste-espaco/refreshed.lisp", "(define refreshed 3)\n") &&
                   sef_sessao_ide_espaco_trabalho_atualizar(sessao, &erro) &&
                   sef_sessao_ide_espaco_trabalho_quantidade(sessao) == 4 &&

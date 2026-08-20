@@ -192,7 +192,9 @@ não significa que o marco inteiro esteja concluído.
   com atualização e feedback de erros dentro do workbench.
 - [x] Prompts de caminho que preservam caixa, com glifos bitmap visualmente
   distintos para letras maiúsculas e minúsculas.
-- [ ] Navegador de código multifonte e consciente do runtime.
+- [x] Seletor multifonte de símbolos do workspace com índice estrutural de
+  definições, buffers vivos não gravados, navegação exata, botão e Ctrl+T.
+- [ ] Metadados de símbolos ligados ao runtime e referências entre arquivos.
 - [ ] Debugger suspensível, profiler e navegação interativa por restarts.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [ ] Integração Git, autosave e restauração completa da sessão de desktop.

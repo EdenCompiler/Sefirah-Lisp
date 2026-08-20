@@ -188,7 +188,9 @@ not mean the entire milestone is complete.
   actions with refresh and in-workbench error feedback.
 - [x] Case-preserving path prompts with visually distinct uppercase and
   lowercase bitmap glyphs.
-- [ ] Multi-file and runtime-aware code browser.
+- [x] Multi-file workspace symbol picker with structural definition indexing,
+  live unsaved buffers, exact source navigation, toolbar access, and Ctrl+T.
+- [ ] Runtime-backed symbol metadata and cross-file reference navigation.
 - [ ] Suspendable debugger, profiler, and interactive restart navigation.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [ ] Git integration, autosave, and full desktop-session restoration.
