@@ -239,7 +239,9 @@ Opening a project directory enables the recursive Explorer sidebar, which
 indexes `.lisp` sources in deterministic order. Up/Down selects a source and
 Enter or a pointer click opens it. A command toolbar exposes Run, Run Form, Run
 Changes, Save, Snapshot, Restore, file/folder creation and opening, Explorer
-refresh, Symbols, References, and Commands as pointer-accessible buttons. Ctrl+P opens a filtered
+refresh, Symbols, References, Source Control, Auto Save, and Commands as
+pointer-accessible buttons. The toolbar wraps instead of hiding actions at the
+default width. Ctrl+P opens a filtered
 workspace file picker; Ctrl+Shift+P opens a searchable command palette whose
 actions operate on the live Lisp world. Ctrl+T or the Symbols toolbar button
 opens a case-insensitive workspace symbol picker. It indexes real top-level
@@ -247,7 +249,10 @@ definitions across every project source, includes unsaved editor buffers,
 preserves mixed-case names and paths, and opens the selected definition at its
 exact source position. Each result is marked `SOURCE ONLY`, `INTERNED`,
 `LIVE VALUE`, `LIVE FUNCTION`, or `LIVE VALUE/FUNCTION` from a read-only query
-against the current Lisp world. Clicking a
+against the current Lisp world. A read-only Source Control panel reports Git's
+branch plus staged, modified, deleted, renamed, and untracked paths. Git is
+launched directly without shell interpolation, preserving exact mixed-case
+workspace paths. Clicking a
 tab activates it. Tab or a pointer
 click elsewhere changes focus among the editor, inspector, debugger, and listener;
 F5 or Ctrl+Enter runs the buffer; F6 runs the complete form at the cursor;
@@ -594,7 +599,9 @@ Abrir um diretório de projeto ativa a barra lateral Explorer recursiva, que
 indexa fontes `.lisp` em ordem determinística. Cima/Baixo selecionam um fonte e
 Enter ou clique o abre. Uma barra de comandos expõe Run, Run Form, Run Changes,
 Save, Snapshot, Restore, criação/abertura de arquivos e pastas, atualização do
-Explorer, Symbols, References e Commands como botões acessíveis pelo ponteiro. Ctrl+P abre o seletor
+Explorer, Symbols, References, Source Control, Auto Save e Commands como botões
+acessíveis pelo ponteiro. A barra passa para outra linha em vez de ocultar ações
+na largura padrão. Ctrl+P abre o seletor
 filtrado de fontes do workspace; Ctrl+Shift+P abre uma paleta pesquisável cujas
 ações operam sobre o mundo Lisp vivo. Ctrl+T ou o botão Symbols abre um seletor
 de símbolos do workspace sem diferenciar caixa. Ele indexa definições reais de
@@ -602,6 +609,10 @@ topo em todos os fontes do projeto, inclui buffers ainda não gravados, preserva
 nomes e caminhos com caixa mista e abre a definição na posição exata. Cada
 resultado recebe `SOURCE ONLY`, `INTERNED`, `LIVE VALUE`, `LIVE FUNCTION` ou
 `LIVE VALUE/FUNCTION` por uma consulta somente de leitura ao mundo Lisp atual.
+Um painel Source Control somente de leitura relata o branch do Git e caminhos
+em stage, modificados, removidos, renomeados e não rastreados. O Git é iniciado
+diretamente, sem interpolação por shell, preservando caminhos exatos do
+workspace com caixa mista.
 Os prompts
 preservam exatamente as letras
 maiúsculas e minúsculas digitadas em caminhos, e a fonte bitmap desenha as duas

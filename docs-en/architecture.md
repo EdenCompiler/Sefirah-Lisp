@@ -142,6 +142,13 @@ Restart frames are intentionally not retained after unwinding; a future
 interactive debugger must suspend evaluation instead of storing dead `setjmp`
 destinations.
 
+The IDE's read-only Source Control adapter is also kept behind the session API.
+On POSIX it uses `fork`/`exec` with a pipe; on Windows it uses inherited
+anonymous pipes and `CreateProcess`. Git receives the workspace root as one
+process argument, never as shell syntax. Only bounded
+`--porcelain=v1 --branch` output enters presentation state, which keeps
+branch/change reporting deterministic and path case intact across platforms.
+
 ## Compiler flow
 
 `COMPILE` lowers a compatible function to a 64-bit integer SSA IR. The IR is

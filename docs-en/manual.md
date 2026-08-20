@@ -606,8 +606,9 @@ reuses an untouched empty tab.
 
 The command toolbar provides pointer buttons for Run, Run Form, Run Changes,
 Save, Auto Save, Snapshot, Restore, Commands, Symbols, References, Open File,
-Open Folder, New File, New Folder, and Refresh. File and folder controls use an
-in-IDE path prompt and report
+Open Folder, New File, New Folder, Source Control, and Refresh. The toolbar wraps
+onto a second row instead of hiding actions when the window is narrow. File and
+folder controls use an in-IDE path prompt and report
 failures in English inside that prompt. Creation is exclusive—it does not
 overwrite an existing path—and Refresh preserves the selected source when it
 still exists. The evaluation and snapshot buttons invoke the same live-world
@@ -624,6 +625,17 @@ clears the unsaved marker. Untitled buffers remain modified until the user gives
 them a path with Save. The headless session API exposes the same behavior with
 `sef_sessao_ide_salvamento_automatico` and
 `sef_sessao_ide_salvamento_automatico_definir`.
+
+Opening or refreshing a workspace also refreshes the read-only Source Control
+panel. The `SOURCE` button, a click on the panel, or `Refresh Source Control` in
+the command palette refreshes it independently. The panel shows Git's branch
+header and stable two-column porcelain status for staged and worktree changes,
+with an English legend for modified, added, deleted, renamed, and untracked
+paths. Sefirah launches Git directly with argument vectors or a safely quoted
+Windows command line; workspace paths are never interpolated into a shell.
+Output is bounded to 1 MiB, exact path case is preserved, and unavailable Git or
+non-repository workspaces receive English in-workbench status. Staging, commits,
+branches, and other mutating Git actions remain pending.
 
 Ctrl+P opens Quick Open and filters the workspace index without case
 sensitivity. Ctrl+Shift+P or the Commands button opens a searchable command

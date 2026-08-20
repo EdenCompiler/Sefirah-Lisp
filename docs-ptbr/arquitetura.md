@@ -149,6 +149,14 @@ inspeção antes de destruir o runtime anterior. Quadros de restart não são
 retidos depois do desenrolamento; um depurador interativo futuro deverá
 suspender a avaliação, em vez de armazenar destinos `setjmp` mortos.
 
+O adaptador somente de leitura de Source Control da IDE também permanece atrás
+da API da sessão. Em POSIX, usa `fork`/`exec` com pipe; no Windows, usa pipes
+anônimos herdados e `CreateProcess`. O Git recebe a raiz do workspace como um
+único argumento de processo, nunca como sintaxe de shell. Somente a saída
+limitada de `--porcelain=v1 --branch` entra no estado de apresentação, mantendo
+o relato de branch/alterações determinístico e a caixa dos caminhos intacta
+entre plataformas.
+
 ## Fluxo do compilador
 
 `COMPILE` baixa uma função compatível para uma IR SSA de inteiros de 64 bits. A

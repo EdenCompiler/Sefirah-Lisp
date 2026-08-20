@@ -203,7 +203,10 @@ not mean the entire milestone is complete.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [x] Session-level Auto Save toggle with toolbar, command-palette, status-bar,
   named-buffer persistence, and exact mixed-case paths.
-- [ ] Git integration and full desktop-session restoration.
+- [x] Read-only Git Source Control panel with branch/worktree/index status,
+  direct non-shell process execution, toolbar and command refresh, bounded
+  output, and exact mixed-case paths.
+- [ ] Mutating Git workflows and full desktop-session restoration.
 - [ ] IDE recompiles the compiler and itself.
 
 ### Distribution

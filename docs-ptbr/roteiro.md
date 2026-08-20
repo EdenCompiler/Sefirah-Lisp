@@ -207,7 +207,10 @@ não significa que o marco inteiro esteja concluído.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [x] Alternância de Auto Save por sessão com botão, paleta de comandos, barra
   de estado, persistência de buffers nomeados e caminhos exatos com caixa mista.
-- [ ] Integração Git e restauração completa da sessão de desktop.
+- [x] Painel somente de leitura Git Source Control com status de branch, árvore
+  e índice, execução direta sem shell, atualização por botão/comando, saída
+  limitada e caminhos exatos com caixa mista.
+- [ ] Fluxos mutáveis de Git e restauração completa da sessão de desktop.
 - [ ] IDE recompila o compilador e a si própria.
 
 ### Distribuição

@@ -1,6 +1,7 @@
 #include "ide/ide.h"
 
 #include "apoio.h"
+#include "controle_versao.h"
 #include "espaco_trabalho.h"
 
 #include <ctype.h>
@@ -81,6 +82,7 @@ struct SefSessaoIde {
     TextoIde caminho_imagem;
     TextoIde abas;
     TextoIde explorador;
+    TextoIde controle_versao;
     size_t cursor_editor;
     size_t ancora_selecao_editor;
     bool selecao_editor_ativa;
@@ -338,6 +340,40 @@ static bool atualizar_explorador(SefSessaoIde *sessao, SefErro *erro) {
             return false;
     }
     return true;
+}
+
+static bool atualizar_controle_versao_painel(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    const char *raiz = sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho);
+    if (raiz[0] == '\0')
+        return texto_definir(&sessao->controle_versao,
+                             "NO WORKSPACE OPEN\n\nOpen a folder to inspect Git status.", erro);
+    char *saida = NULL;
+    int codigo_saida = 1;
+    if (!sef_controle_versao_git_status(raiz, &saida, &codigo_saida, erro))
+        return false;
+    for (char *cursor = saida; *cursor != '\0'; cursor++) {
+        if (*cursor == '\r')
+            memmove(cursor, cursor + 1, strlen(cursor));
+    }
+    bool atualizou = false;
+    if (codigo_saida == 0) {
+        atualizou = texto_formatar(
+                        &sessao->controle_versao, erro,
+                        "WORKSPACE: %s\nINDEX/WORKTREE STATUS\n"
+                        "M modified  A added  D deleted  R renamed  ? untracked\n\n",
+                        nome_base(raiz)) &&
+                    texto_acrescentar(&sessao->controle_versao, saida, erro);
+    } else if (codigo_saida == 127) {
+        atualizou = texto_definir(&sessao->controle_versao,
+                                  "GIT UNAVAILABLE\n\nGit executable was not found.", erro);
+    } else {
+        atualizou = texto_formatar(
+            &sessao->controle_versao, erro,
+            "NO GIT STATUS\n\nGit could not inspect this workspace (exit code %d).", codigo_saida);
+    }
+    free(saida);
+    return atualizou;
 }
 
 static bool reservar_documentos(SefSessaoIde *sessao, size_t quantidade, SefErro *erro) {
@@ -905,6 +941,8 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
         !texto_definir(&sessao->estado, "New file", erro) ||
         !texto_definir(&sessao->caminho, "untitled.lisp", erro) ||
         !texto_definir(&sessao->abas, "", erro) || !texto_definir(&sessao->explorador, "", erro) ||
+        !texto_definir(&sessao->controle_versao,
+                       "NO WORKSPACE OPEN\n\nOpen a folder to inspect Git status.", erro) ||
         !atualizar_caminho_imagem(sessao, erro)) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
@@ -944,6 +982,7 @@ void sef_sessao_ide_destruir(SefSessaoIde *sessao) {
     texto_liberar(&sessao->caminho_imagem);
     texto_liberar(&sessao->abas);
     texto_liberar(&sessao->explorador);
+    texto_liberar(&sessao->controle_versao);
     simbolos_espaco_trabalho_limpar(sessao);
     free(sessao->simbolos_espaco_trabalho);
     referencias_espaco_trabalho_limpar(sessao);
@@ -971,6 +1010,9 @@ const char *sef_sessao_ide_abas(const SefSessaoIde *sessao) {
 }
 const char *sef_sessao_ide_explorador(const SefSessaoIde *sessao) {
     return sessao == NULL ? "" : sessao->explorador.dados;
+}
+const char *sef_sessao_ide_controle_versao(const SefSessaoIde *sessao) {
+    return sessao == NULL ? "" : sessao->controle_versao.dados;
 }
 const char *sef_sessao_ide_espaco_trabalho_raiz(const SefSessaoIde *sessao) {
     return sessao == NULL ? "" : sef_espaco_trabalho_ide_raiz(sessao->espaco_trabalho);
@@ -1074,9 +1116,27 @@ bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *cami
     simbolos_espaco_trabalho_limpar(sessao);
     referencias_espaco_trabalho_limpar(sessao);
     sessao->arquivo_espaco_trabalho_selecionado = 0;
+    SefErro erro_git;
+    if (!atualizar_controle_versao_painel(sessao, &erro_git)) {
+        SefErro causa = erro_git;
+        sef_erro_limpar(&erro_git);
+        texto_formatar(&sessao->controle_versao, &erro_git, "GIT UNAVAILABLE\n\n%s",
+                       causa.mensagem);
+    }
     return atualizar_explorador(sessao, erro) &&
            texto_formatar(&sessao->estado, erro, "Workspace opened: %s (%zu Lisp file(s))", caminho,
                           sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho));
+}
+
+bool sef_sessao_ide_controle_versao_atualizar(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while refreshing Source Control");
+        return false;
+    }
+    if (!atualizar_controle_versao_painel(sessao, erro))
+        return false;
+    return texto_definir(&sessao->estado, "Source Control refreshed", erro);
 }
 
 bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro) {
@@ -1110,6 +1170,7 @@ bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *err
             }
         }
         atualizou = atualizar_explorador(sessao, erro) &&
+                    atualizar_controle_versao_painel(sessao, erro) &&
                     texto_formatar(&sessao->estado, erro, "Explorer refreshed: %zu Lisp file(s)",
                                    sef_espaco_trabalho_ide_quantidade(sessao->espaco_trabalho));
     }

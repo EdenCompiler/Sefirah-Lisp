@@ -62,6 +62,25 @@ int main(void) {
     if (sessao == NULL)
         return 1;
 
+    const char *nome_diretorio_fonte = SEFIRAH_DIRETORIO_FONTE;
+    for (const char *cursor = SEFIRAH_DIRETORIO_FONTE; *cursor != '\0'; cursor++)
+        if (*cursor == '/' || *cursor == '\\')
+            nome_diretorio_fonte = cursor + 1;
+    SefSessaoIde *sessao_git = sef_sessao_ide_criar(&erro);
+    verificar(sessao_git != NULL &&
+                  sef_sessao_ide_espaco_trabalho_abrir(sessao_git, SEFIRAH_DIRETORIO_FONTE,
+                                                       &erro) &&
+                  strstr(sef_sessao_ide_controle_versao(sessao_git),
+                         "INDEX/WORKTREE STATUS") != NULL &&
+                  strstr(sef_sessao_ide_controle_versao(sessao_git), "## ") != NULL &&
+                  strstr(sef_sessao_ide_controle_versao(sessao_git), nome_diretorio_fonte) !=
+                      NULL &&
+                  strstr(sef_sessao_ide_controle_versao(sessao_git), "M modified") != NULL &&
+                  sef_sessao_ide_controle_versao_atualizar(sessao_git, &erro) &&
+                  strstr(sef_sessao_ide_estado(sessao_git), "Source Control refreshed") != NULL,
+              "Source Control mostrou branch e status Git do workspace em caminho com caixa mista");
+    sef_sessao_ide_destruir(sessao_git);
+
     SefSessaoIde *sessao_sem_nome = sef_sessao_ide_criar(&erro);
     verificar(sessao_sem_nome != NULL &&
                   sef_sessao_ide_salvamento_automatico_definir(sessao_sem_nome, true, &erro) &&

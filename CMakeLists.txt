@@ -99,6 +99,7 @@ add_library(sefirah_ide_nucleo
     fonte/ide/estrutura.c
     fonte/ide/sessao.c
     fonte/ide/espaco_trabalho.c
+    fonte/ide/controle_versao.c
 )
 target_include_directories(sefirah_ide_nucleo PUBLIC incluir)
 target_link_libraries(sefirah_ide_nucleo PUBLIC sefirah_nucleo)
@@ -142,6 +143,8 @@ if(SEFIRAH_CONSTRUIR_TESTES)
     add_test(NAME compiler COMMAND teste_compilador)
 
     add_executable(teste_ide testes/teste_ide.c)
+    target_compile_definitions(teste_ide PRIVATE
+        SEFIRAH_DIRETORIO_FONTE="${CMAKE_CURRENT_SOURCE_DIR}")
     target_link_libraries(teste_ide PRIVATE sefirah_ide_nucleo)
     add_test(NAME ide COMMAND teste_ide)
 

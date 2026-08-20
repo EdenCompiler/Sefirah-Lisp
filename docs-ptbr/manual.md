@@ -616,8 +616,10 @@ primeiro fonte reutiliza uma aba vazia ainda intocada.
 
 A barra de comandos fornece botões para Run, Run Form, Run Changes, Save, Auto
 Save, Snapshot, Restore, Commands, Symbols, References, Open File, Open Folder,
-New File, New Folder e Refresh. Os controles de arquivos e pastas usam um prompt
-de caminho interno à IDE e exibem falhas em inglês nesse prompt. A criação é exclusiva — não
+New File, New Folder, Source Control e Refresh. A barra passa para uma segunda
+linha em vez de ocultar ações quando a janela fica estreita. Os controles de
+arquivos e pastas usam um prompt de caminho interno à IDE e exibem falhas em
+inglês nesse prompt. A criação é exclusiva — não
 sobrescreve um caminho existente — e Refresh preserva o fonte selecionado
 quando ele ainda existe. Os botões de avaliação e snapshot acionam as mesmas
 operações sobre o mundo vivo que F5/F6/F7, Ctrl+S e F9/F10; a barra não cria um
@@ -634,6 +636,19 @@ marcador de alteração. Buffers sem nome continuam modificados até o usuário 
 dar um caminho com Save. A API headless da sessão oferece o mesmo comportamento
 por `sef_sessao_ide_salvamento_automatico` e
 `sef_sessao_ide_salvamento_automatico_definir`.
+
+Abrir ou atualizar um workspace também atualiza o painel somente de leitura
+Source Control. O botão `SOURCE`, um clique no painel ou `Refresh Source Control`
+na paleta de comandos o atualiza de modo independente. O painel mostra o
+cabeçalho de branch e o status porcelain estável de duas colunas do Git para
+alterações no índice e na árvore de trabalho, com legenda em inglês para
+caminhos modificados, adicionados, removidos, renomeados e não rastreados. A
+Sefirah inicia o Git diretamente com vetores de argumentos ou uma linha de
+comando Windows cotada com segurança; caminhos do workspace nunca são
+interpolados em um shell. A saída é limitada a 1 MiB, a caixa exata dos caminhos
+é preservada, e Git indisponível ou workspaces sem repositório recebem status em
+inglês dentro da IDE. Stage, commits, branches e outras ações mutáveis do Git
+continuam pendentes.
 
 Ctrl+P abre Quick Open e filtra o índice do workspace sem diferenciar caixa.
 Ctrl+Shift+P ou o botão Commands abre uma paleta pesquisável com operações de

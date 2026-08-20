@@ -27,6 +27,7 @@ typedef enum AcaoBotaoIde {
     ACAO_BOTAO_COMANDOS,
     ACAO_BOTAO_SIMBOLOS,
     ACAO_BOTAO_REFERENCIAS,
+    ACAO_BOTAO_CONTROLE_VERSAO,
     ACAO_BOTAO_ABRIR_ARQUIVO,
     ACAO_BOTAO_ABRIR_PASTA,
     ACAO_BOTAO_CRIAR_ARQUIVO,
@@ -62,6 +63,7 @@ typedef enum AcaoComandoIde {
     COMANDO_RESTAURAR,
     COMANDO_IR_DEFINICAO,
     COMANDO_NAVEGAR_REFERENCIA,
+    COMANDO_ATUALIZAR_CONTROLE_VERSAO,
     COMANDO_FOCAR_EXPLORADOR,
     COMANDO_FOCAR_OUVINTE,
     COMANDO_DESFAZER,
@@ -91,8 +93,9 @@ typedef struct EstadoIde {
     SefComponente inspetor;
     SefComponente navegador;
     SefComponente depurador;
+    SefComponente controle_versao;
     SefComponente ouvinte;
-    BotaoIde botoes[15];
+    BotaoIde botoes[16];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
     char mensagem_sobreposicao[256];
@@ -120,6 +123,7 @@ static const ComandoIde comandos[] = {
     {"Restore Live World Snapshot", COMANDO_RESTAURAR},
     {"Go to Definition at Cursor", COMANDO_IR_DEFINICAO},
     {"Find Next Reference at Cursor", COMANDO_NAVEGAR_REFERENCIA},
+    {"Refresh Source Control", COMANDO_ATUALIZAR_CONTROLE_VERSAO},
     {"Focus Workspace Explorer", COMANDO_FOCAR_EXPLORADOR},
     {"Focus Listener / REPL", COMANDO_FOCAR_OUVINTE},
     {"Undo Editor Change", COMANDO_DESFAZER},
@@ -143,6 +147,7 @@ static bool iniciar_componentes(EstadoIde *estado) {
     sef_componente_iniciar(&estado->inspetor, SEF_COMPONENTE_PAINEL, "INSPECTOR");
     sef_componente_iniciar(&estado->navegador, SEF_COMPONENTE_PAINEL, "BROWSER");
     sef_componente_iniciar(&estado->depurador, SEF_COMPONENTE_PAINEL, "DEBUGGER");
+    sef_componente_iniciar(&estado->controle_versao, SEF_COMPONENTE_PAINEL, "SOURCE CONTROL");
     sef_componente_iniciar(&estado->ouvinte, SEF_COMPONENTE_PAINEL, "REPL");
     estado->botoes[0] = (BotaoIde){"RUN", ACAO_BOTAO_EXECUTAR, {0}};
     estado->botoes[1] = (BotaoIde){"FORM  F6", ACAO_BOTAO_EXECUTAR_FORMA, {0}};
@@ -154,11 +159,12 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->botoes[7] = (BotaoIde){"COMMANDS", ACAO_BOTAO_COMANDOS, {0}};
     estado->botoes[8] = (BotaoIde){"SYMBOLS", ACAO_BOTAO_SIMBOLOS, {0}};
     estado->botoes[9] = (BotaoIde){"REFERENCES", ACAO_BOTAO_REFERENCIAS, {0}};
-    estado->botoes[10] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
-    estado->botoes[11] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
-    estado->botoes[12] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
-    estado->botoes[13] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
-    estado->botoes[14] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
+    estado->botoes[10] = (BotaoIde){"SOURCE", ACAO_BOTAO_CONTROLE_VERSAO, {0}};
+    estado->botoes[11] = (BotaoIde){"OPEN FILE", ACAO_BOTAO_ABRIR_ARQUIVO, {0}};
+    estado->botoes[12] = (BotaoIde){"OPEN FOLDER", ACAO_BOTAO_ABRIR_PASTA, {0}};
+    estado->botoes[13] = (BotaoIde){"NEW FILE", ACAO_BOTAO_CRIAR_ARQUIVO, {0}};
+    estado->botoes[14] = (BotaoIde){"NEW FOLDER", ACAO_BOTAO_CRIAR_PASTA, {0}};
+    estado->botoes[15] = (BotaoIde){"REFRESH", ACAO_BOTAO_ATUALIZAR_EXPLORADOR, {0}};
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
@@ -170,6 +176,7 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->inspetor.peso = 1;
     estado->navegador.peso = 1;
     estado->depurador.peso = 1;
+    estado->controle_versao.peso = 1;
     estado->ouvinte.peso = 1;
     return sef_componente_adicionar(&estado->raiz, &estado->area_principal) &&
            sef_componente_adicionar(&estado->raiz, &estado->ouvinte) &&
@@ -178,7 +185,8 @@ static bool iniciar_componentes(EstadoIde *estado) {
            sef_componente_adicionar(&estado->area_principal, &estado->ferramentas) &&
            sef_componente_adicionar(&estado->ferramentas, &estado->inspetor) &&
            sef_componente_adicionar(&estado->ferramentas, &estado->navegador) &&
-           sef_componente_adicionar(&estado->ferramentas, &estado->depurador);
+           sef_componente_adicionar(&estado->ferramentas, &estado->depurador) &&
+           sef_componente_adicionar(&estado->ferramentas, &estado->controle_versao);
 }
 
 static bool ponto_dentro(SefRetangulo retangulo, int x, int y) {
@@ -215,9 +223,10 @@ static void desenhar_painel(SefSuperficie *superficie, SefRetangulo limites, con
 }
 
 static void desenhar_barra_comandos(SefSuperficie *superficie, EstadoIde *estado) {
-    sef_superficie_retangulo(superficie, 0, 30, superficie->largura, 36, SEF_COR(218, 211, 182));
-    sef_superficie_retangulo(superficie, 0, 65, superficie->largura, 1, SEF_COR(101, 112, 86));
+    sef_superficie_retangulo(superficie, 0, 30, superficie->largura, 68, SEF_COR(218, 211, 182));
+    sef_superficie_retangulo(superficie, 0, 97, superficie->largura, 1, SEF_COR(101, 112, 86));
     int x = 10;
+    int y = 36;
     for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++)
         estado->botoes[i].limites = (SefRetangulo){0};
     for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++) {
@@ -226,13 +235,18 @@ static void desenhar_barra_comandos(SefSuperficie *superficie, EstadoIde *estado
             botao->rotulo = sef_sessao_ide_salvamento_automatico(estado->sessao) ? "AUTO ON"
                                                                                : "AUTO OFF";
         int largura = (int)strlen(botao->rotulo) * 6 + 20;
+        if (x + largura > superficie->largura - 10) {
+            x = 10;
+            y = 66;
+        }
         if (x + largura > superficie->largura - 10)
-            break;
-        botao->limites = (SefRetangulo){x, 36, largura, 24};
-        sef_superficie_retangulo(superficie, x, 36, largura, 24, SEF_COR(244, 238, 211));
-        sef_superficie_contorno(superficie, x, 36, largura, 24, 1, SEF_COR(101, 112, 86));
-        sef_superficie_retangulo(superficie, x + 1, 58, largura - 2, 1, SEF_COR(181, 112, 52));
-        sef_superficie_texto(superficie, x + 10, 44, botao->rotulo, 1, SEF_COR(43, 54, 45));
+            continue;
+        botao->limites = (SefRetangulo){x, y, largura, 24};
+        sef_superficie_retangulo(superficie, x, y, largura, 24, SEF_COR(244, 238, 211));
+        sef_superficie_contorno(superficie, x, y, largura, 24, 1, SEF_COR(101, 112, 86));
+        sef_superficie_retangulo(superficie, x + 1, y + 22, largura - 2, 1,
+                                 SEF_COR(181, 112, 52));
+        sef_superficie_texto(superficie, x + 10, y + 8, botao->rotulo, 1, SEF_COR(43, 54, 45));
         x += largura + 8;
     }
 }
@@ -322,6 +336,9 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         estado->foco = FOCO_EDITOR;
         sef_sessao_ide_navegar_referencia_espaco_trabalho(
             estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
+        break;
+    case ACAO_BOTAO_CONTROLE_VERSAO:
+        sef_sessao_ide_controle_versao_atualizar(estado->sessao, erro);
         break;
     case ACAO_BOTAO_ABRIR_ARQUIVO:
         abrir_sobreposicao_caminho(estado, SOBREPOSICAO_ABRIR_ARQUIVO);
@@ -666,7 +683,7 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     sef_superficie_texto(superficie, 12, 8, "SEFIRAH LISP  LIVE WORLD", 2, SEF_COR(231, 218, 168));
     desenhar_barra_comandos(superficie, estado);
     sef_componente_organizar(&estado->raiz,
-                             (SefRetangulo){0, 66, superficie->largura, superficie->altura - 102},
+                             (SefRetangulo){0, 98, superficie->largura, superficie->altura - 134},
                              &estado->tema);
 
     desenhar_painel(superficie, estado->explorador.limites, "EXPLORER",
@@ -679,6 +696,8 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                     "BROWSER [F11 DEFINITION] [F12 REFERENCES]", false);
     desenhar_painel(superficie, estado->depurador.limites, "DEBUGGER [ENTER]",
                     estado->foco == FOCO_DEPURADOR);
+    desenhar_painel(superficie, estado->controle_versao.limites, "SOURCE CONTROL [REFRESH]",
+                    false);
     desenhar_painel(superficie, estado->ouvinte.limites, "LISTENER / REPL  [ENTER] [UP HISTORY]",
                     estado->foco == FOCO_OUVINTE);
     desenhar_abas(superficie, estado->editor.limites, estado->sessao);
@@ -694,6 +713,8 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                             sef_sessao_ide_navegador(estado->sessao), false);
     desenhar_texto_limitado(superficie, estado->depurador.limites,
                             sef_sessao_ide_depurador(estado->sessao), false);
+    desenhar_texto_limitado_escala(superficie, estado->controle_versao.limites,
+                                   sef_sessao_ide_controle_versao(estado->sessao), false, 1);
 
     SefRetangulo transcricao = estado->ouvinte.limites;
     transcricao.altura -= 40;
@@ -779,6 +800,9 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
         estado->foco = FOCO_EDITOR;
         sef_sessao_ide_navegar_referencia_espaco_trabalho(
             estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
+        break;
+    case COMANDO_ATUALIZAR_CONTROLE_VERSAO:
+        sef_sessao_ide_controle_versao_atualizar(estado->sessao, erro);
         break;
     case COMANDO_FOCAR_EXPLORADOR:
         estado->foco = FOCO_EXPLORADOR;
@@ -1106,6 +1130,8 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
             if (estado->foco == FOCO_DEPURADOR)
                 sef_sessao_ide_navegar_condicao(estado->sessao, SEF_CONDICAO_PROXIMA, &erro);
             estado->foco = FOCO_DEPURADOR;
+        } else if (ponto_dentro(estado->controle_versao.limites, evento->x, evento->y)) {
+            sef_sessao_ide_controle_versao_atualizar(estado->sessao, &erro);
         } else if (ponto_dentro(estado->ouvinte.limites, evento->x, evento->y))
             estado->foco = FOCO_OUVINTE;
         break;
