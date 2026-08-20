@@ -206,6 +206,8 @@ not mean the entire milestone is complete.
 - [x] Read-only Git Source Control panel with branch/worktree/index status,
   direct non-shell process execution, toolbar and command refresh, bounded
   output, and exact mixed-case paths.
+- [x] VS Code-style tabbed tool dock that gives Inspector, Browser, Debugger,
+  and Source Control the full tool area and follows evaluation/navigation state.
 - [ ] Mutating Git workflows and full desktop-session restoration.
 - [ ] IDE recompiles the compiler and itself.
 

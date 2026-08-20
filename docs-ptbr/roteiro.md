@@ -210,6 +210,8 @@ não significa que o marco inteiro esteja concluído.
 - [x] Painel somente de leitura Git Source Control com status de branch, árvore
   e índice, execução direta sem shell, atualização por botão/comando, saída
   limitada e caminhos exatos com caixa mista.
+- [x] Dock de ferramentas em abas ao estilo VS Code que entrega toda a área a
+  Inspector, Browser, Debugger ou Source Control e acompanha avaliação/navegação.
 - [ ] Fluxos mutáveis de Git e restauração completa da sessão de desktop.
 - [ ] IDE recompila o compilador e a si própria.
 

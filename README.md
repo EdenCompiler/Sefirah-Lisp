@@ -235,6 +235,8 @@ cream, sage, olive, and amber workstation palette evokes Interlisp and Lisp
 Machines without giving up a modern workbench layout. Files open in persistent
 editor tabs; each tab preserves its own
 cursor, selection, undo/redo timeline, incremental state, and unsaved marker.
+Inspector, Browser, Debugger, and Source Control share a tabbed right-hand dock,
+so the selected Lisp tool receives the full area instead of a compressed stack.
 Opening a project directory enables the recursive Explorer sidebar, which
 indexes `.lisp` sources in deterministic order. Up/Down selects a source and
 Enter or a pointer click opens it. A command toolbar exposes Run, Run Form, Run
@@ -595,6 +597,9 @@ abertura/gravação de `.lisp`. A paleta quente em creme, sálvia, oliva e âmba
 evoca Interlisp e Lisp Machines sem abandonar o layout de workbench moderno.
 Arquivos abrem em abas persistentes; cada aba preserva cursor, seleção, linha do tempo de
 desfazer/refazer, estado incremental e indicador de alterações não gravadas.
+Inspector, Browser, Debugger e Source Control compartilham um dock direito em
+abas, entregando toda a área à ferramenta Lisp selecionada em vez de comprimi-las
+numa pilha.
 Abrir um diretório de projeto ativa a barra lateral Explorer recursiva, que
 indexa fontes `.lisp` em ordem determinística. Cima/Baixo selecionam um fonte e
 Enter ou clique o abre. Uma barra de comandos expõe Run, Run Form, Run Changes,

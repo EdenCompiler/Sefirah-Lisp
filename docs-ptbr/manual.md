@@ -683,13 +683,20 @@ Recursos locais do processo, como streams abertas e bibliotecas compartilhadas,
 mantêm as restrições do formato de imagem descritas acima. Trata-se de um
 snapshot do mundo, ainda não da restauração completa da sessão de desktop.
 
-As ferramentas à direita reúnem navegador de fontes, inspetor e depurador
-inicial. Cada condição de avaliação não tratada é retida por uma raiz pública do
-GC em um histórico limitado a 32 entradas. Shift+F9/Shift+F10 ou Cima/Baixo com
-foco no depurador navegam por esse histórico; Enter abre o objeto condição
-selecionado no inspetor geral. Falhas internas do avaliador e leitor recebem
-condições `ERROR` sintetizadas, enquanto diagnósticos de sintaxe e I/O externo
-permanecem entradas rotuladas sem objeto Lisp.
+O dock de ferramentas à direita entrega toda a sua área a uma de quatro abas:
+Inspector, Browser, Debugger ou Source Control. Clicar em uma aba troca a
+ferramenta sem descartar seu estado vivo de sessão. Avaliações selecionam
+Inspector no sucesso e Debugger na falha; comandos de definição/referência
+selecionam Browser, e a ação `SOURCE` seleciona Source Control. Assim, o layout
+segue um workbench moderno sem substituir as ferramentas conectadas de Lisp
+Machine por janelas sem relação.
+
+Cada condição de avaliação não tratada é retida por uma raiz pública do GC em um
+histórico limitado a 32 entradas. Shift+F9/Shift+F10 ou Cima/Baixo com foco no
+depurador navegam por esse histórico; Enter abre o objeto condição selecionado
+no inspetor geral. Falhas internas do avaliador e leitor recebem condições
+`ERROR` sintetizadas, enquanto diagnósticos de sintaxe e I/O externo permanecem
+entradas rotuladas sem objeto Lisp.
 
 Quando um `ERROR` não tratado retorna através de `RESTART-CASE`, o runtime
 registra os objetos restart de primeira classe que estavam ativos no ponto da

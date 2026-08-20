@@ -670,13 +670,19 @@ untouched. Process-local resources such as open streams and shared libraries
 retain the image-format restrictions described above. This is a world snapshot,
 not yet a complete desktop-session restoration facility.
 
-The right-hand tools contain the source browser, inspector, and initial
-debugger. Every unhandled evaluation condition is retained through a public GC
-root in a bounded 32-entry history. Shift+F9/Shift+F10 or Up/Down while the
-debugger is focused navigate that history; Enter opens the selected condition
-object in the general inspector. Internal evaluator and reader failures are
-represented by synthesized `ERROR` conditions, while syntax and external I/O
-diagnostics remain labeled entries without a Lisp object.
+The right-hand tool dock gives its full area to one of four tabs: Inspector,
+Browser, Debugger, or Source Control. Clicking a tab switches tools without
+discarding its live session state. Evaluation selects Inspector on success and
+Debugger on failure; definition/reference commands select Browser, and the
+`SOURCE` action selects Source Control. This follows a modern workbench layout
+without replacing the connected Lisp Machine tools with unrelated windows.
+
+Every unhandled evaluation condition is retained through a public GC root in a
+bounded 32-entry history. Shift+F9/Shift+F10 or Up/Down while the debugger is
+focused navigate that history; Enter opens the selected condition object in the
+general inspector. Internal evaluator and reader failures are represented by
+synthesized `ERROR` conditions, while syntax and external I/O diagnostics remain
+labeled entries without a Lisp object.
 
 When an unhandled `ERROR` returns through `RESTART-CASE`, the runtime snapshots
 the first-class restart objects that were active at the signal point. The IDE

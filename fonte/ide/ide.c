@@ -16,6 +16,14 @@ typedef enum FocoIde {
     FOCO_OUVINTE
 } FocoIde;
 
+typedef enum FerramentaIde {
+    FERRAMENTA_INSPETOR,
+    FERRAMENTA_NAVEGADOR,
+    FERRAMENTA_DEPURADOR,
+    FERRAMENTA_CONTROLE_VERSAO,
+    FERRAMENTA_QUANTIDADE
+} FerramentaIde;
+
 typedef enum AcaoBotaoIde {
     ACAO_BOTAO_EXECUTAR,
     ACAO_BOTAO_EXECUTAR_FORMA,
@@ -90,11 +98,9 @@ typedef struct EstadoIde {
     SefComponente explorador;
     SefComponente editor;
     SefComponente ferramentas;
-    SefComponente inspetor;
-    SefComponente navegador;
-    SefComponente depurador;
-    SefComponente controle_versao;
     SefComponente ouvinte;
+    FerramentaIde ferramenta;
+    SefRetangulo abas_ferramentas[FERRAMENTA_QUANTIDADE];
     BotaoIde botoes[16];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
@@ -143,11 +149,7 @@ static bool iniciar_componentes(EstadoIde *estado) {
     sef_componente_iniciar(&estado->area_principal, SEF_COMPONENTE_PAINEL, NULL);
     sef_componente_iniciar(&estado->explorador, SEF_COMPONENTE_PAINEL, "EXPLORER");
     sef_componente_iniciar(&estado->editor, SEF_COMPONENTE_PAINEL, "EDITOR");
-    sef_componente_iniciar(&estado->ferramentas, SEF_COMPONENTE_PAINEL, NULL);
-    sef_componente_iniciar(&estado->inspetor, SEF_COMPONENTE_PAINEL, "INSPECTOR");
-    sef_componente_iniciar(&estado->navegador, SEF_COMPONENTE_PAINEL, "BROWSER");
-    sef_componente_iniciar(&estado->depurador, SEF_COMPONENTE_PAINEL, "DEBUGGER");
-    sef_componente_iniciar(&estado->controle_versao, SEF_COMPONENTE_PAINEL, "SOURCE CONTROL");
+    sef_componente_iniciar(&estado->ferramentas, SEF_COMPONENTE_PAINEL, "TOOLS");
     sef_componente_iniciar(&estado->ouvinte, SEF_COMPONENTE_PAINEL, "REPL");
     estado->botoes[0] = (BotaoIde){"RUN", ACAO_BOTAO_EXECUTAR, {0}};
     estado->botoes[1] = (BotaoIde){"FORM  F6", ACAO_BOTAO_EXECUTAR_FORMA, {0}};
@@ -168,25 +170,17 @@ static bool iniciar_componentes(EstadoIde *estado) {
     estado->raiz.espacamento = 8;
     estado->area_principal.espacamento = 8;
     estado->area_principal.direcao = SEF_LAYOUT_LINHA;
-    estado->ferramentas.espacamento = 8;
+    estado->ferramenta = FERRAMENTA_INSPETOR;
     estado->area_principal.peso = 2;
     estado->explorador.peso = 2;
     estado->editor.peso = 5;
     estado->ferramentas.peso = 3;
-    estado->inspetor.peso = 1;
-    estado->navegador.peso = 1;
-    estado->depurador.peso = 1;
-    estado->controle_versao.peso = 1;
     estado->ouvinte.peso = 1;
     return sef_componente_adicionar(&estado->raiz, &estado->area_principal) &&
            sef_componente_adicionar(&estado->raiz, &estado->ouvinte) &&
            sef_componente_adicionar(&estado->area_principal, &estado->explorador) &&
            sef_componente_adicionar(&estado->area_principal, &estado->editor) &&
-           sef_componente_adicionar(&estado->area_principal, &estado->ferramentas) &&
-           sef_componente_adicionar(&estado->ferramentas, &estado->inspetor) &&
-           sef_componente_adicionar(&estado->ferramentas, &estado->navegador) &&
-           sef_componente_adicionar(&estado->ferramentas, &estado->depurador) &&
-           sef_componente_adicionar(&estado->ferramentas, &estado->controle_versao);
+           sef_componente_adicionar(&estado->area_principal, &estado->ferramentas);
 }
 
 static bool ponto_dentro(SefRetangulo retangulo, int x, int y) {
@@ -199,6 +193,10 @@ static void alternar_foco(EstadoIde *estado, bool anterior) {
         estado->foco = estado->foco == FOCO_EXPLORADOR ? FOCO_OUVINTE : (FocoIde)(estado->foco - 1);
     else
         estado->foco = estado->foco == FOCO_OUVINTE ? FOCO_EXPLORADOR : (FocoIde)(estado->foco + 1);
+    if (estado->foco == FOCO_INSPETOR)
+        estado->ferramenta = FERRAMENTA_INSPETOR;
+    else if (estado->foco == FOCO_DEPURADOR)
+        estado->ferramenta = FERRAMENTA_DEPURADOR;
 }
 
 static void mover_cursor_editor(EstadoIde *estado, const SefEventoJanela *evento,
@@ -222,6 +220,54 @@ static void desenhar_painel(SefSuperficie *superficie, SefRetangulo limites, con
     sef_superficie_texto(superficie, limites.x + 9, limites.y + 8, titulo, 2, tinta);
 }
 
+static const char *nome_ferramenta(FerramentaIde ferramenta) {
+    static const char *nomes[] = {"INSPECTOR", "BROWSER", "DEBUGGER", "SOURCE"};
+    return ferramenta < FERRAMENTA_QUANTIDADE ? nomes[ferramenta] : "TOOLS";
+}
+
+static bool ferramenta_focada(const EstadoIde *estado) {
+    return (estado->ferramenta == FERRAMENTA_INSPETOR && estado->foco == FOCO_INSPETOR) ||
+           (estado->ferramenta == FERRAMENTA_DEPURADOR && estado->foco == FOCO_DEPURADOR);
+}
+
+static void desenhar_abas_ferramentas(SefSuperficie *superficie, EstadoIde *estado) {
+    SefRetangulo limites = estado->ferramentas.limites;
+    int largura = limites.largura / (int)FERRAMENTA_QUANTIDADE;
+    for (int i = 0; i < (int)FERRAMENTA_QUANTIDADE; i++) {
+        int x = limites.x + i * largura;
+        int largura_atual = i + 1 == (int)FERRAMENTA_QUANTIDADE
+                                ? limites.x + limites.largura - x
+                                : largura;
+        estado->abas_ferramentas[i] = (SefRetangulo){x, limites.y + 31, largura_atual, 24};
+        bool ativa = estado->ferramenta == (FerramentaIde)i;
+        sef_superficie_retangulo(superficie, x, limites.y + 31, largura_atual, 24,
+                                 ativa ? SEF_COR(244, 238, 211) : SEF_COR(203, 211, 177));
+        sef_superficie_contorno(superficie, x, limites.y + 31, largura_atual, 24, 1,
+                                SEF_COR(101, 112, 86));
+        if (ativa)
+            sef_superficie_retangulo(superficie, x + 1, limites.y + 53, largura_atual - 2, 2,
+                                     SEF_COR(181, 112, 52));
+        sef_superficie_texto(superficie, x + 5, limites.y + 39, nome_ferramenta((FerramentaIde)i),
+                             1, SEF_COR(43, 54, 45));
+    }
+}
+
+static bool selecionar_aba_ferramenta(EstadoIde *estado, int x, int y) {
+    for (int i = 0; i < (int)FERRAMENTA_QUANTIDADE; i++) {
+        if (!ponto_dentro(estado->abas_ferramentas[i], x, y))
+            continue;
+        estado->ferramenta = (FerramentaIde)i;
+        if (estado->ferramenta == FERRAMENTA_INSPETOR)
+            estado->foco = FOCO_INSPETOR;
+        else if (estado->ferramenta == FERRAMENTA_DEPURADOR)
+            estado->foco = FOCO_DEPURADOR;
+        else
+            estado->foco = FOCO_EDITOR;
+        return true;
+    }
+    return false;
+}
+
 static void desenhar_barra_comandos(SefSuperficie *superficie, EstadoIde *estado) {
     sef_superficie_retangulo(superficie, 0, 30, superficie->largura, 68, SEF_COR(218, 211, 182));
     sef_superficie_retangulo(superficie, 0, 97, superficie->largura, 1, SEF_COR(101, 112, 86));
@@ -231,14 +277,14 @@ static void desenhar_barra_comandos(SefSuperficie *superficie, EstadoIde *estado
         estado->botoes[i].limites = (SefRetangulo){0};
     for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++) {
         BotaoIde *botao = &estado->botoes[i];
+        if (i == 8) {
+            x = 10;
+            y = 66;
+        }
         if (botao->acao == ACAO_BOTAO_SALVAMENTO_AUTOMATICO)
             botao->rotulo = sef_sessao_ide_salvamento_automatico(estado->sessao) ? "AUTO ON"
                                                                                : "AUTO OFF";
         int largura = (int)strlen(botao->rotulo) * 6 + 20;
-        if (x + largura > superficie->largura - 10) {
-            x = 10;
-            y = 66;
-        }
         if (x + largura > superficie->largura - 10)
             continue;
         botao->limites = (SefRetangulo){x, y, largura, 24};
@@ -303,15 +349,21 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
     switch (acao) {
     case ACAO_BOTAO_EXECUTAR:
         estado->foco = FOCO_EDITOR;
-        sef_sessao_ide_executar_editor(estado->sessao, erro);
+        estado->ferramenta = sef_sessao_ide_executar_editor(estado->sessao, erro)
+                                 ? FERRAMENTA_INSPETOR
+                                 : FERRAMENTA_DEPURADOR;
         break;
     case ACAO_BOTAO_EXECUTAR_FORMA:
         estado->foco = FOCO_EDITOR;
-        sef_sessao_ide_executar_forma_no_cursor(estado->sessao, erro);
+        estado->ferramenta = sef_sessao_ide_executar_forma_no_cursor(estado->sessao, erro)
+                                 ? FERRAMENTA_INSPETOR
+                                 : FERRAMENTA_DEPURADOR;
         break;
     case ACAO_BOTAO_EXECUTAR_ALTERACOES:
         estado->foco = FOCO_EDITOR;
-        sef_sessao_ide_executar_alteracoes(estado->sessao, erro);
+        estado->ferramenta = sef_sessao_ide_executar_alteracoes(estado->sessao, erro)
+                                 ? FERRAMENTA_INSPETOR
+                                 : FERRAMENTA_DEPURADOR;
         break;
     case ACAO_BOTAO_SALVAR:
         sef_sessao_ide_salvar(estado->sessao, sef_sessao_ide_caminho(estado->sessao), erro);
@@ -334,10 +386,12 @@ static void acionar_botao(EstadoIde *estado, AcaoBotaoIde acao, SefErro *erro) {
         break;
     case ACAO_BOTAO_REFERENCIAS:
         estado->foco = FOCO_EDITOR;
+        estado->ferramenta = FERRAMENTA_NAVEGADOR;
         sef_sessao_ide_navegar_referencia_espaco_trabalho(
             estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
         break;
     case ACAO_BOTAO_CONTROLE_VERSAO:
+        estado->ferramenta = FERRAMENTA_CONTROLE_VERSAO;
         sef_sessao_ide_controle_versao_atualizar(estado->sessao, erro);
         break;
     case ACAO_BOTAO_ABRIR_ARQUIVO:
@@ -690,14 +744,12 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
                     estado->foco == FOCO_EXPLORADOR);
     desenhar_painel(superficie, estado->editor.limites, "EDITOR  [F5 ALL] [F6 FORM] [SHIFT+F6]",
                     estado->foco == FOCO_EDITOR);
-    desenhar_painel(superficie, estado->inspetor.limites, "INSPECTOR [ENTER] [BACK]",
-                    estado->foco == FOCO_INSPETOR);
-    desenhar_painel(superficie, estado->navegador.limites,
-                    "BROWSER [F11 DEFINITION] [F12 REFERENCES]", false);
-    desenhar_painel(superficie, estado->depurador.limites, "DEBUGGER [ENTER]",
-                    estado->foco == FOCO_DEPURADOR);
-    desenhar_painel(superficie, estado->controle_versao.limites, "SOURCE CONTROL [REFRESH]",
-                    false);
+    char titulo_ferramenta[64];
+    snprintf(titulo_ferramenta, sizeof(titulo_ferramenta), "TOOLS: %s",
+             nome_ferramenta(estado->ferramenta));
+    desenhar_painel(superficie, estado->ferramentas.limites, titulo_ferramenta,
+                    ferramenta_focada(estado));
+    desenhar_abas_ferramentas(superficie, estado);
     desenhar_painel(superficie, estado->ouvinte.limites, "LISTENER / REPL  [ENTER] [UP HISTORY]",
                     estado->foco == FOCO_OUVINTE);
     desenhar_abas(superficie, estado->editor.limites, estado->sessao);
@@ -707,14 +759,21 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     desenhar_editor(superficie, area_codigo, estado->sessao);
     desenhar_texto_limitado_escala(superficie, estado->explorador.limites,
                                    sef_sessao_ide_explorador(estado->sessao), false, 1);
-    desenhar_texto_limitado(superficie, estado->inspetor.limites,
-                            sef_sessao_ide_inspetor(estado->sessao), false);
-    desenhar_texto_limitado(superficie, estado->navegador.limites,
-                            sef_sessao_ide_navegador(estado->sessao), false);
-    desenhar_texto_limitado(superficie, estado->depurador.limites,
-                            sef_sessao_ide_depurador(estado->sessao), false);
-    desenhar_texto_limitado_escala(superficie, estado->controle_versao.limites,
-                                   sef_sessao_ide_controle_versao(estado->sessao), false, 1);
+    SefRetangulo conteudo_ferramenta = estado->ferramentas.limites;
+    conteudo_ferramenta.y += 24;
+    conteudo_ferramenta.altura -= 24;
+    if (estado->ferramenta == FERRAMENTA_INSPETOR)
+        desenhar_texto_limitado(superficie, conteudo_ferramenta,
+                                sef_sessao_ide_inspetor(estado->sessao), false);
+    else if (estado->ferramenta == FERRAMENTA_NAVEGADOR)
+        desenhar_texto_limitado(superficie, conteudo_ferramenta,
+                                sef_sessao_ide_navegador(estado->sessao), false);
+    else if (estado->ferramenta == FERRAMENTA_DEPURADOR)
+        desenhar_texto_limitado(superficie, conteudo_ferramenta,
+                                sef_sessao_ide_depurador(estado->sessao), false);
+    else
+        desenhar_texto_limitado_escala(superficie, conteudo_ferramenta,
+                                       sef_sessao_ide_controle_versao(estado->sessao), false, 1);
 
     SefRetangulo transcricao = estado->ouvinte.limites;
     transcricao.altura -= 40;
@@ -794,14 +853,17 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
         break;
     case COMANDO_IR_DEFINICAO:
         estado->foco = FOCO_EDITOR;
+        estado->ferramenta = FERRAMENTA_NAVEGADOR;
         sef_sessao_ide_ir_para_definicao_espaco_trabalho(estado->sessao, erro);
         break;
     case COMANDO_NAVEGAR_REFERENCIA:
         estado->foco = FOCO_EDITOR;
+        estado->ferramenta = FERRAMENTA_NAVEGADOR;
         sef_sessao_ide_navegar_referencia_espaco_trabalho(
             estado->sessao, SEF_REFERENCIA_PROXIMA, erro);
         break;
     case COMANDO_ATUALIZAR_CONTROLE_VERSAO:
+        estado->ferramenta = FERRAMENTA_CONTROLE_VERSAO;
         sef_sessao_ide_controle_versao_atualizar(estado->sessao, erro);
         break;
     case COMANDO_FOCAR_EXPLORADOR:
@@ -832,8 +894,10 @@ static void executar_item_sobreposicao(EstadoIde *estado, SefErro *erro) {
             sef_sessao_ide_espaco_trabalho_abrir_selecionado(estado->sessao, erro))
             estado->foco = FOCO_EDITOR;
     } else if (modo == SOBREPOSICAO_SIMBOLOS) {
-        if (sef_sessao_ide_simbolo_espaco_trabalho_abrir(estado->sessao, indice_real, erro))
+        if (sef_sessao_ide_simbolo_espaco_trabalho_abrir(estado->sessao, indice_real, erro)) {
             estado->foco = FOCO_EDITOR;
+            estado->ferramenta = FERRAMENTA_NAVEGADOR;
+        }
     } else {
         executar_comando(estado, comandos[indice_real].acao, erro);
     }
@@ -979,11 +1043,15 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
                 estado->foco = FOCO_EDITOR;
         } else if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_nova_linha(estado->sessao, &erro);
-        else if (estado->foco == FOCO_OUVINTE)
-            sef_sessao_ide_ouvinte_enviar(estado->sessao, &erro);
-        else if (estado->foco == FOCO_DEPURADOR) {
-            if (sef_sessao_ide_inspecionar_condicao(estado->sessao, &erro))
+        else if (estado->foco == FOCO_OUVINTE) {
+            estado->ferramenta = sef_sessao_ide_ouvinte_enviar(estado->sessao, &erro)
+                                     ? FERRAMENTA_INSPETOR
+                                     : FERRAMENTA_DEPURADOR;
+        } else if (estado->foco == FOCO_DEPURADOR) {
+            if (sef_sessao_ide_inspecionar_condicao(estado->sessao, &erro)) {
                 estado->foco = FOCO_INSPETOR;
+                estado->ferramenta = FERRAMENTA_INSPETOR;
+            }
         } else
             sef_sessao_ide_inspetor_entrar(estado->sessao, &erro);
         break;
@@ -991,29 +1059,38 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         alternar_foco(estado, evento->modificador_shift);
         break;
     case SEF_EVENTO_EXECUTAR:
-        sef_sessao_ide_executar_editor(estado->sessao, &erro);
+        estado->ferramenta = sef_sessao_ide_executar_editor(estado->sessao, &erro)
+                                 ? FERRAMENTA_INSPETOR
+                                 : FERRAMENTA_DEPURADOR;
         break;
     case SEF_EVENTO_EXECUTAR_FORMA:
         if (evento->modificador_shift)
             sef_sessao_ide_editor_selecionar_forma(estado->sessao, &erro);
         else
-            sef_sessao_ide_executar_forma_no_cursor(estado->sessao, &erro);
+            estado->ferramenta = sef_sessao_ide_executar_forma_no_cursor(estado->sessao, &erro)
+                                     ? FERRAMENTA_INSPETOR
+                                     : FERRAMENTA_DEPURADOR;
         break;
     case SEF_EVENTO_EXECUTAR_ALTERACOES:
-        sef_sessao_ide_executar_alteracoes(estado->sessao, &erro);
+        estado->ferramenta = sef_sessao_ide_executar_alteracoes(estado->sessao, &erro)
+                                 ? FERRAMENTA_INSPETOR
+                                 : FERRAMENTA_DEPURADOR;
         break;
     case SEF_EVENTO_NAVEGAR_DEFINICAO:
         estado->foco = FOCO_EDITOR;
+        estado->ferramenta = FERRAMENTA_NAVEGADOR;
         sef_sessao_ide_navegar_definicao(
             estado->sessao,
             evento->modificador_shift ? SEF_DEFINICAO_ANTERIOR : SEF_DEFINICAO_PROXIMA, &erro);
         break;
     case SEF_EVENTO_IR_PARA_DEFINICAO:
         estado->foco = FOCO_EDITOR;
+        estado->ferramenta = FERRAMENTA_NAVEGADOR;
         sef_sessao_ide_ir_para_definicao_espaco_trabalho(estado->sessao, &erro);
         break;
     case SEF_EVENTO_NAVEGAR_REFERENCIA:
         estado->foco = FOCO_EDITOR;
+        estado->ferramenta = FERRAMENTA_NAVEGADOR;
         sef_sessao_ide_navegar_referencia_espaco_trabalho(
             estado->sessao,
             evento->modificador_shift ? SEF_REFERENCIA_ANTERIOR : SEF_REFERENCIA_PROXIMA, &erro);
@@ -1021,6 +1098,7 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_SALVAR_IMAGEM:
         if (evento->modificador_shift) {
             estado->foco = FOCO_DEPURADOR;
+            estado->ferramenta = FERRAMENTA_DEPURADOR;
             sef_sessao_ide_navegar_condicao(estado->sessao, SEF_CONDICAO_ANTERIOR, &erro);
         } else {
             sef_sessao_ide_imagem_salvar(estado->sessao, &erro);
@@ -1029,6 +1107,7 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_RESTAURAR_IMAGEM:
         if (evento->modificador_shift) {
             estado->foco = FOCO_DEPURADOR;
+            estado->ferramenta = FERRAMENTA_DEPURADOR;
             sef_sessao_ide_navegar_condicao(estado->sessao, SEF_CONDICAO_PROXIMA, &erro);
         } else {
             sef_sessao_ide_imagem_restaurar(estado->sessao, &erro);
@@ -1118,20 +1197,24 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
                 if (indice < sef_sessao_ide_quantidade_documentos(estado->sessao))
                     sef_sessao_ide_documento_ativar(estado->sessao, indice, &erro);
             }
-        } else if (ponto_dentro(estado->inspetor.limites, evento->x, evento->y)) {
-            if (estado->foco == FOCO_INSPETOR)
-                sef_sessao_ide_inspetor_mover_componente(estado->sessao,
-                                                         SEF_COMPONENTE_INSPETOR_PROXIMO, &erro);
-            estado->foco = FOCO_INSPETOR;
-        } else if (ponto_dentro(estado->navegador.limites, evento->x, evento->y)) {
-            estado->foco = FOCO_EDITOR;
-            sef_sessao_ide_navegar_definicao(estado->sessao, SEF_DEFINICAO_PROXIMA, &erro);
-        } else if (ponto_dentro(estado->depurador.limites, evento->x, evento->y)) {
-            if (estado->foco == FOCO_DEPURADOR)
-                sef_sessao_ide_navegar_condicao(estado->sessao, SEF_CONDICAO_PROXIMA, &erro);
-            estado->foco = FOCO_DEPURADOR;
-        } else if (ponto_dentro(estado->controle_versao.limites, evento->x, evento->y)) {
-            sef_sessao_ide_controle_versao_atualizar(estado->sessao, &erro);
+        } else if (ponto_dentro(estado->ferramentas.limites, evento->x, evento->y)) {
+            if (selecionar_aba_ferramenta(estado, evento->x, evento->y))
+                break;
+            if (estado->ferramenta == FERRAMENTA_INSPETOR) {
+                if (estado->foco == FOCO_INSPETOR)
+                    sef_sessao_ide_inspetor_mover_componente(
+                        estado->sessao, SEF_COMPONENTE_INSPETOR_PROXIMO, &erro);
+                estado->foco = FOCO_INSPETOR;
+            } else if (estado->ferramenta == FERRAMENTA_NAVEGADOR) {
+                estado->foco = FOCO_EDITOR;
+                sef_sessao_ide_navegar_definicao(estado->sessao, SEF_DEFINICAO_PROXIMA, &erro);
+            } else if (estado->ferramenta == FERRAMENTA_DEPURADOR) {
+                if (estado->foco == FOCO_DEPURADOR)
+                    sef_sessao_ide_navegar_condicao(estado->sessao, SEF_CONDICAO_PROXIMA, &erro);
+                estado->foco = FOCO_DEPURADOR;
+            } else {
+                sef_sessao_ide_controle_versao_atualizar(estado->sessao, &erro);
+            }
         } else if (ponto_dentro(estado->ouvinte.limites, evento->x, evento->y))
             estado->foco = FOCO_OUVINTE;
         break;
