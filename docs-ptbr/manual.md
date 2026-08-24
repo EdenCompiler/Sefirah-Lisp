@@ -708,6 +708,11 @@ string são paradas distintas, enquanto nomes de símbolos UTF-8 movem como
 unidades e espaços intermediários são ignorados. Acrescentar Shift estende ou
 contrai a seleção desde sua âncora estável pelos mesmos limites.
 
+Ctrl+Home e Ctrl+End movem diretamente ao início e ao fim do buffer ativo;
+Command é o equivalente no macOS. Acrescentar Shift seleciona desde a âncora
+estável até esse limite do documento, enquanto usar o atalho sem Shift limpa uma
+seleção anterior. O viewport centrado no cursor acompanha os dois destinos.
+
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
 envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;

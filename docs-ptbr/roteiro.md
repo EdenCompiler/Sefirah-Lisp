@@ -208,6 +208,8 @@ não significa que o marco inteiro esteja concluído.
   remoção atômica da seleção, undo, indicador de alteração e Auto Save.
 - [x] Navegação multiplataforma Ctrl/Command por palavra e seleção com Shift,
   usando limites Lisp de delimitador, espaços e símbolos UTF-8.
+- [x] Navegação multiplataforma Ctrl/Command+Home/End pelo documento inteiro e
+  seleção com Shift por âncora estável acompanhada pelo viewport.
 - [x] Ciclo de criação/fechamento de abas com Ctrl+N/Ctrl+W, acesso pela
   barra/paleta, confirmação explícita para descartar alterações, seleção
   determinística da aba vizinha e invariante permanente de um editor.

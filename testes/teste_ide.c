@@ -636,6 +636,16 @@ int main(void) {
     verificar(sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
                   inicio_selecao == strlen("(") && fim_selecao == strlen("(alpha  "),
               "palavra seguinte com Shift selecionou simbolo e espacos seguintes");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_FIM_DOCUMENTO);
+    verificar(sef_sessao_ide_cursor_editor(sessao) == strlen("(alpha  ação)"),
+              "fim do documento posicionou cursor no ultimo byte");
+    sef_sessao_ide_editor_mover_cursor_selecionando(sessao, SEF_CURSOR_INICIO_DOCUMENTO);
+    verificar(sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  inicio_selecao == 0 && fim_selecao == strlen("(alpha  ação)"),
+              "inicio do documento com Shift selecionou o buffer inteiro");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_FIM_DOCUMENTO);
+    verificar(!sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao),
+              "fim do documento sem Shift limpou selecao");
 
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),

@@ -204,6 +204,8 @@ not mean the entire milestone is complete.
   selected-range removal, undo history, modified tracking, and Auto Save.
 - [x] Cross-platform Ctrl/Command word navigation and Shift-selection with
   Lisp-aware delimiter, whitespace, and UTF-8 symbol boundaries.
+- [x] Cross-platform Ctrl/Command+Home/End whole-document navigation and
+  stable-anchor Shift-selection with cursor-centered viewport following.
 - [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
   explicit unsaved-discard confirmation, deterministic neighbor selection, and
   a permanent one-editor invariant.

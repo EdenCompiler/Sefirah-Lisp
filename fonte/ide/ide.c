@@ -1503,11 +1503,15 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_CURSOR_INICIO:
         if (estado->foco == FOCO_EDITOR)
-            mover_cursor_editor(estado, evento, SEF_CURSOR_INICIO_LINHA);
+            mover_cursor_editor(estado, evento,
+                                evento->modificador_controle ? SEF_CURSOR_INICIO_DOCUMENTO
+                                                            : SEF_CURSOR_INICIO_LINHA);
         break;
     case SEF_EVENTO_CURSOR_FIM:
         if (estado->foco == FOCO_EDITOR)
-            mover_cursor_editor(estado, evento, SEF_CURSOR_FIM_LINHA);
+            mover_cursor_editor(estado, evento,
+                                evento->modificador_controle ? SEF_CURSOR_FIM_DOCUMENTO
+                                                            : SEF_CURSOR_FIM_LINHA);
         break;
     case SEF_EVENTO_PONTEIRO_MOVER:
         if (estado->selecionando_com_ponteiro &&

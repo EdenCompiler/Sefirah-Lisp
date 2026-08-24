@@ -2261,6 +2261,12 @@ static void mover_cursor_editor(SefSessaoIde *sessao, SefMovimentoCursorIde movi
     case SEF_CURSOR_PALAVRA_SEGUINTE:
         sessao->cursor_editor = palavra_seguinte_editor(editor, sessao->cursor_editor);
         break;
+    case SEF_CURSOR_INICIO_DOCUMENTO:
+        sessao->cursor_editor = 0;
+        break;
+    case SEF_CURSOR_FIM_DOCUMENTO:
+        sessao->cursor_editor = editor->tamanho;
+        break;
     }
     if (selecionar)
         sessao->selecao_editor_ativa = sessao->ancora_selecao_editor != sessao->cursor_editor;

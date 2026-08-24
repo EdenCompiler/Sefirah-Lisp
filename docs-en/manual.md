@@ -694,6 +694,11 @@ quotes are distinct delimiter stops, while UTF-8 symbol names move as units and
 intervening whitespace is skipped. Adding Shift extends or contracts the
 selection from its stable anchor over the same boundaries.
 
+Ctrl+Home and Ctrl+End move directly to the start and end of the active buffer;
+Command is the macOS equivalent. Adding Shift selects from the stable anchor to
+that document boundary, while using the shortcut without Shift clears an old
+selection. The cursor-centered viewport follows both destinations.
+
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector
 component or debugger condition, or submits a complete form in the listener.

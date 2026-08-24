@@ -115,7 +115,8 @@ Ctrl+N, Ctrl+W, Delete, and Escape into portable events. Presentation code owns 
 Quick Open, command palette, active-editor Find, Go to Line, and unsaved-close
 confirmation overlays;
 Control/Command state is preserved on cursor events so the session can apply
-Lisp-aware word movement while Shift independently controls range extension.
+Lisp-aware word or whole-document movement while Shift independently controls
+range extension.
 text matching, document ownership, file discovery, exclusive file/folder
 creation, refresh, and opening remain in the testable session layer.
 The editor presentation derives its numbered gutter and active-row highlight

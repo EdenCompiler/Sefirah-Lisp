@@ -15,7 +15,9 @@ typedef enum SefMovimentoCursorIde {
     SEF_CURSOR_INICIO_LINHA,
     SEF_CURSOR_FIM_LINHA,
     SEF_CURSOR_PALAVRA_ANTERIOR,
-    SEF_CURSOR_PALAVRA_SEGUINTE
+    SEF_CURSOR_PALAVRA_SEGUINTE,
+    SEF_CURSOR_INICIO_DOCUMENTO,
+    SEF_CURSOR_FIM_DOCUMENTO
 } SefMovimentoCursorIde;
 
 typedef enum SefMovimentoHistoricoIde {
