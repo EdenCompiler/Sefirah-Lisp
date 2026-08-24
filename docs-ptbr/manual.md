@@ -696,6 +696,12 @@ estruturais e de Find. Digitar ou usar Backspace então o substitui ou remove co
 uma única edição reversível. Um buffer vazio permanece sem seleção e informa que
 não há conteúdo para selecionar.
 
+Backspace remove o ponto de código UTF-8 anterior e Delete remove o próximo.
+Com um intervalo selecionado, qualquer uma das teclas remove todo o intervalo
+normalizado como uma única edição reversível; o cursor retorna ao seu início.
+A exclusão adiante participa do indicador de alteração e de Auto Save como as
+demais edições de conteúdo.
+
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
 envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;

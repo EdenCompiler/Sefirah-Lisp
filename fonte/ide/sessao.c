@@ -2102,17 +2102,7 @@ bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefE
            atualizar_abas(sessao, erro) && autosalvar_se_necessario(sessao, erro);
 }
 
-void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
-    if (sessao == NULL)
-        return;
-    size_t inicio = 0;
-    size_t fim = 0;
-    if (!sef_sessao_ide_selecao_editor(sessao, &inicio, &fim)) {
-        if (sessao->cursor_editor == 0)
-            return;
-        inicio = utf8_anterior(&sessao->editor, sessao->cursor_editor);
-        fim = sessao->cursor_editor;
-    }
+static void apagar_intervalo_editor(SefSessaoIde *sessao, size_t inicio, size_t fim) {
     memmove(sessao->editor.dados + inicio, sessao->editor.dados + fim,
             sessao->editor.tamanho - fim + 1);
     sessao->editor.tamanho -= fim - inicio;
@@ -2126,6 +2116,34 @@ void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
     referencias_espaco_trabalho_limpar(sessao);
     atualizar_abas(sessao, &descarte);
     autosalvar_se_necessario(sessao, &descarte);
+}
+
+void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao) {
+    if (sessao == NULL)
+        return;
+    size_t inicio = 0;
+    size_t fim = 0;
+    if (!sef_sessao_ide_selecao_editor(sessao, &inicio, &fim)) {
+        if (sessao->cursor_editor == 0)
+            return;
+        inicio = utf8_anterior(&sessao->editor, sessao->cursor_editor);
+        fim = sessao->cursor_editor;
+    }
+    apagar_intervalo_editor(sessao, inicio, fim);
+}
+
+void sef_sessao_ide_editor_apagar_adiante(SefSessaoIde *sessao) {
+    if (sessao == NULL)
+        return;
+    size_t inicio = 0;
+    size_t fim = 0;
+    if (!sef_sessao_ide_selecao_editor(sessao, &inicio, &fim)) {
+        if (sessao->cursor_editor == sessao->editor.tamanho)
+            return;
+        inicio = sessao->cursor_editor;
+        fim = utf8_proximo(&sessao->editor, sessao->cursor_editor);
+    }
+    apagar_intervalo_editor(sessao, inicio, fim);
 }
 
 static size_t inicio_linha(const TextoIde *texto, size_t posicao) {

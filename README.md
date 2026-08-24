@@ -284,7 +284,8 @@ boundary; gutter clicks choose column one and clicks beyond text choose the
 line end. Holding the pointer extends a UTF-8-safe selection across visible
 lines. Arrow, Home, and End move the editor cursor; holding Shift extends a
 UTF-8-safe selection,
-and typing or Backspace replaces or removes it as one undoable edit. The toolbar
+and typing, Backspace, or Delete replaces or removes it as one undoable edit;
+Delete otherwise removes the next UTF-8 character. The toolbar
 and command palette can toggle Auto Save for immediate writes of named buffers
 while preserving exact mixed-case paths; untitled buffers remain unsaved until
 given a path. In the listener, Up and Down browse submitted events. In the
@@ -667,7 +668,8 @@ UTF-8 mais próximo; cliques no gutter escolhem a coluna um e cliques depois do
 texto escolhem o final da linha. Manter o ponteiro pressionado estende uma
 seleção UTF-8 segura pelas linhas visíveis. Setas, Home e End movem o cursor do editor; com
 Shift, estendem uma seleção segura para UTF-8, e digitar
-ou usar Backspace a substitui ou remove como uma única edição reversível. O
+ou usar Backspace/Delete a substitui ou remove como uma única edição reversível;
+Delete sem seleção remove o próximo caractere UTF-8. O
 botão e a paleta de comandos podem alternar Auto Save para gravar imediatamente
 buffers nomeados, preservando caminhos com caixa mista; buffers sem nome
 continuam sem gravar até receberem um caminho. No ouvinte, Cima e Baixo

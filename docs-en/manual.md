@@ -683,6 +683,11 @@ Find selections. Typing or Backspace then replaces or removes it as one
 undoable edit. An empty buffer remains unselected and reports that there is
 nothing to select.
 
+Backspace removes the previous UTF-8 code point and Delete removes the next one.
+When a range is selected, either key removes the whole normalized range as one
+undoable edit; the caret returns to its beginning. Forward deletion participates
+in modified-tab tracking and Auto Save exactly like every other content edit.
+
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector
 component or debugger condition, or submits a complete form in the listener.

@@ -98,6 +98,7 @@ void sef_sessao_ide_editor_linha_coluna(const SefSessaoIde *sessao, size_t *linh
 bool sef_sessao_ide_editor_definir(SefSessaoIde *sessao, const char *codigo, SefErro *erro);
 bool sef_sessao_ide_editor_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro);
 void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao);
+void sef_sessao_ide_editor_apagar_adiante(SefSessaoIde *sessao);
 void sef_sessao_ide_editor_mover_cursor(SefSessaoIde *sessao, SefMovimentoCursorIde movimento);
 void sef_sessao_ide_editor_mover_cursor_selecionando(SefSessaoIde *sessao,
                                                      SefMovimentoCursorIde movimento);

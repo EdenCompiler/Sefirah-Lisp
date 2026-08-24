@@ -52,15 +52,18 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
         DestroyWindow(janela);
         return 0;
     } else if (mensagem == WM_KEYDOWN && estado != NULL && estado->ao_evento != NULL &&
-               (wparam == VK_F5 || wparam == VK_F6 || wparam == VK_F7 || wparam == VK_F8 ||
-                wparam == VK_F9 || wparam == VK_F10 || wparam == VK_F11 || wparam == VK_F12 ||
+               (wparam == VK_DELETE || wparam == VK_F5 || wparam == VK_F6 || wparam == VK_F7 ||
+                wparam == VK_F8 || wparam == VK_F9 || wparam == VK_F10 || wparam == VK_F11 ||
+                wparam == VK_F12 ||
                 ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
                  (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'P' ||
                   wparam == 'T' || wparam == 'F' || wparam == 'G' || wparam == 'N' ||
                   wparam == 'W' || wparam == 'A' || wparam == 'Z' || wparam == 'Y')))) {
         SefEventoJanela evento = {0};
         evento.modificador_shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
-        if (wparam == 'S')
+        if (wparam == VK_DELETE)
+            evento.tipo = SEF_EVENTO_APAGAR_ADIANTE;
+        else if (wparam == 'S')
             evento.tipo = SEF_EVENTO_SALVAR;
         else if (wparam == 'O')
             evento.tipo = SEF_EVENTO_ABRIR;

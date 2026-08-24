@@ -603,6 +603,24 @@ int main(void) {
     verificar(sef_sessao_ide_editor_posicionar_selecionando(sessao, 1, 2, &erro) &&
                   !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao),
               "extensao de volta a ancora limpou o intervalo vazio");
+    verificar(sef_sessao_ide_editor_definir(sessao, "açúcar", &erro) &&
+                  sef_sessao_ide_editor_posicionar(sessao, 1, 2, &erro),
+              "preparou exclusao adiante UTF-8");
+    sef_sessao_ide_editor_apagar_adiante(sessao);
+    verificar(strcmp(sef_sessao_ide_editor(sessao), "aúcar") == 0 &&
+                  sef_sessao_ide_cursor_editor(sessao) == strlen("a"),
+              "delete removeu um ponto de codigo UTF-8 sem mover o cursor");
+    sef_sessao_ide_editor_mover_cursor_selecionando(sessao, SEF_CURSOR_DIREITA);
+    sef_sessao_ide_editor_mover_cursor_selecionando(sessao, SEF_CURSOR_DIREITA);
+    sef_sessao_ide_editor_apagar_adiante(sessao);
+    verificar(strcmp(sef_sessao_ide_editor(sessao), "aar") == 0 &&
+                  !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao),
+              "delete removeu a selecao antes do caractere seguinte");
+    verificar(sef_sessao_ide_editor_desfazer(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), "aúcar") == 0 &&
+                  sef_sessao_ide_editor_refazer(sessao, &erro) &&
+                  strcmp(sef_sessao_ide_editor(sessao), "aar") == 0,
+              "delete adiante participou do historico de undo e redo");
 
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),

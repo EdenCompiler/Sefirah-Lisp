@@ -118,6 +118,8 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                         evento_sefirah.tipo = SEF_EVENTO_ENTER;
                     } else if (tecla == XK_BackSpace) {
                         evento_sefirah.tipo = SEF_EVENTO_APAGAR;
+                    } else if (tecla == XK_Delete) {
+                        evento_sefirah.tipo = SEF_EVENTO_APAGAR_ADIANTE;
                     } else if (tecla == XK_Tab || tecla == XK_ISO_Left_Tab) {
                         evento_sefirah.tipo = SEF_EVENTO_TAB;
                     } else if (tamanho > 0) {

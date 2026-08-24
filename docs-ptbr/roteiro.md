@@ -204,6 +204,8 @@ não significa que o marco inteiro esteja concluído.
   UTF-8 segura e substituível atomicamente do editor.
 - [x] Seleção por arraste do ponteiro pelas linhas visíveis com âncora estável,
   mapeamento UTF-8 de linha/coluna e intervalo atômico normalizado.
+- [x] Delete adiante multiplataforma com limites por ponto de código UTF-8,
+  remoção atômica da seleção, undo, indicador de alteração e Auto Save.
 - [x] Ciclo de criação/fechamento de abas com Ctrl+N/Ctrl+W, acesso pela
   barra/paleta, confirmação explícita para descartar alterações, seleção
   determinística da aba vizinha e invariante permanente de um editor.

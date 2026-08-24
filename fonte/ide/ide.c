@@ -129,6 +129,9 @@ typedef struct EstadoIde {
     size_t primeiro_item_sobreposicao;
     size_t quantidade_itens_visiveis;
     bool selecionando_com_ponteiro;
+    bool selecao_ponteiro_moveu;
+    int selecao_ponteiro_x;
+    int selecao_ponteiro_y;
 } EstadoIde;
 
 static const ComandoIde comandos[] = {
@@ -1358,6 +1361,10 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         else if (estado->foco == FOCO_INSPETOR)
             sef_sessao_ide_inspetor_voltar(estado->sessao, &erro);
         break;
+    case SEF_EVENTO_APAGAR_ADIANTE:
+        if (estado->foco == FOCO_EDITOR)
+            sef_sessao_ide_editor_apagar_adiante(estado->sessao);
+        break;
     case SEF_EVENTO_ENTER:
         if (estado->foco == FOCO_EXPLORADOR) {
             if (sef_sessao_ide_espaco_trabalho_abrir_selecionado(estado->sessao, &erro))
@@ -1500,17 +1507,25 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_PONTEIRO_MOVER:
         if (estado->selecionando_com_ponteiro &&
-            ponto_dentro(estado->editor.limites, evento->x, evento->y))
-            posicionar_cursor_com_ponteiro(estado, evento, true, &erro);
+            ponto_dentro(estado->editor.limites, evento->x, evento->y) &&
+            (evento->x != estado->selecao_ponteiro_x || evento->y != estado->selecao_ponteiro_y) &&
+            posicionar_cursor_com_ponteiro(estado, evento, true, &erro))
+            estado->selecao_ponteiro_moveu = true;
         break;
     case SEF_EVENTO_PONTEIRO_SOLTAR:
         if (estado->selecionando_com_ponteiro &&
+            (estado->selecao_ponteiro_moveu || evento->x != estado->selecao_ponteiro_x ||
+             evento->y != estado->selecao_ponteiro_y) &&
             ponto_dentro(estado->editor.limites, evento->x, evento->y))
             posicionar_cursor_com_ponteiro(estado, evento, true, &erro);
         estado->selecionando_com_ponteiro = false;
+        estado->selecao_ponteiro_moveu = false;
         break;
     case SEF_EVENTO_PONTEIRO_PRESSIONAR:
         estado->selecionando_com_ponteiro = false;
+        estado->selecao_ponteiro_moveu = false;
+        estado->selecao_ponteiro_x = evento->x;
+        estado->selecao_ponteiro_y = evento->y;
         for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++) {
             if (ponto_dentro(estado->botoes[i].limites, evento->x, evento->y)) {
                 acionar_botao(estado, estado->botoes[i].acao, &erro);

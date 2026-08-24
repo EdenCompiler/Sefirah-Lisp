@@ -117,7 +117,7 @@ de que sempre existe exatamente um editor ativo.
 nativa de diretórios, evita recursão por links simbólicos/reparse points e
 separa caminhos absolutos daqueles relativos exibidos pelo Explorer.
 Os adaptadores de janela convertem Ctrl+P, Ctrl+Shift+P, Ctrl+F, Ctrl+G, Ctrl+A,
-Ctrl+N, Ctrl+W e Escape em eventos portáveis. A apresentação mantém as sobreposições de
+Ctrl+N, Ctrl+W, Delete e Escape em eventos portáveis. A apresentação mantém as sobreposições de
 Quick Open, paleta de comandos, Find do editor ativo, Go to Line e confirmação de fechamento sem
 gravação; correspondência de texto, propriedade dos documentos, descoberta,
 criação exclusiva de arquivo/pasta, atualização e abertura permanecem na camada

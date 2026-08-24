@@ -200,6 +200,8 @@ not mean the entire milestone is complete.
   UTF-8-safe, atomically replaceable selection model.
 - [x] Pointer drag selection across visible source rows with stable anchor,
   UTF-8 line/column mapping, and normalized atomic edit ranges.
+- [x] Cross-platform forward Delete with UTF-8 code-point boundaries, atomic
+  selected-range removal, undo history, modified tracking, and Auto Save.
 - [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
   explicit unsaved-discard confirmation, deterministic neighbor selection, and
   a permanent one-editor invariant.

@@ -163,6 +163,8 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
         evento.tipo = SEF_EVENTO_ENTER;
     } else if (codigo == 51) {
         evento.tipo = SEF_EVENTO_APAGAR;
+    } else if (codigo == 117) {
+        evento.tipo = SEF_EVENTO_APAGAR_ADIANTE;
     } else if (codigo == 48) {
         evento.tipo = SEF_EVENTO_TAB;
     } else if (codigo == 123) {
