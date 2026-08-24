@@ -809,6 +809,31 @@ static void desenhar_sobreposicao(SefSuperficie *superficie, EstadoIde *estado) 
     sef_superficie_texto(superficie, x + 12, y + altura - 18, ajuda, 1, SEF_COR(75, 84, 67));
 }
 
+static size_t quantidade_linhas_editor(const SefSessaoIde *sessao) {
+    size_t quantidade = 1;
+    const char *codigo = sef_sessao_ide_editor(sessao);
+    for (const char *caractere = codigo; *caractere != '\0'; caractere++)
+        if (*caractere == '\n')
+            quantidade++;
+    return quantidade;
+}
+
+static size_t digitos_numero_linha(size_t quantidade_linhas) {
+    size_t digitos = 1;
+    for (size_t valor = quantidade_linhas; valor >= 10; valor /= 10)
+        digitos++;
+    return digitos;
+}
+
+static size_t primeira_linha_visivel_editor(const SefSessaoIde *sessao, size_t linhas_visiveis) {
+    size_t linha_cursor = 1;
+    sef_sessao_ide_editor_linha_coluna(sessao, &linha_cursor, NULL);
+    size_t cursor = sef_sessao_ide_cursor_editor(sessao);
+    size_t tamanho = strlen(sef_sessao_ide_editor(sessao));
+    size_t linhas_anteriores = cursor == tamanho ? linhas_visiveis : linhas_visiveis / 2u + 1u;
+    return linha_cursor >= linhas_anteriores ? linha_cursor - linhas_anteriores + 1u : 1u;
+}
+
 static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
                             const SefSessaoIde *sessao) {
     const char *codigo = sef_sessao_ide_editor(sessao);
@@ -843,20 +868,12 @@ static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
     size_t linhas_anteriores = cursor == tamanho ? linhas : linhas / 2u + 1u;
     const char *inicio = inicio_antes_da_posicao(com_cursor, cursor_visual, linhas_anteriores);
 
-    size_t quantidade_linhas = 1;
-    for (const char *caractere = codigo; *caractere != '\0'; caractere++)
-        if (*caractere == '\n')
-            quantidade_linhas++;
-    size_t primeira_linha = 1;
-    for (const char *caractere = com_cursor; caractere < inicio; caractere++)
-        if (*caractere == '\n')
-            primeira_linha++;
+    size_t quantidade_linhas = quantidade_linhas_editor(sessao);
+    size_t primeira_linha = primeira_linha_visivel_editor(sessao, linhas);
     size_t linha_cursor = 1;
     sef_sessao_ide_editor_linha_coluna(sessao, &linha_cursor, NULL);
 
-    size_t digitos = 1;
-    for (size_t valor = quantidade_linhas; valor >= 10; valor /= 10)
-        digitos++;
+    size_t digitos = digitos_numero_linha(quantidade_linhas);
     int largura_glifo = 12;
     int altura_linha = 18;
     int largura_marcador = (int)(digitos + 2u) * largura_glifo;
@@ -900,6 +917,33 @@ static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
     sef_superficie_retangulo(superficie, x_codigo - 7, y_inicial - 5, 1,
                              (int)linhas * altura_linha, SEF_COR(177, 196, 154));
     free(com_cursor);
+}
+
+static void posicionar_cursor_com_ponteiro(EstadoIde *estado, const SefEventoJanela *evento,
+                                           SefErro *erro) {
+    SefRetangulo area_codigo = estado->editor.limites;
+    area_codigo.y += 24;
+    area_codigo.altura -= 24;
+    int y_codigo = area_codigo.y + 36;
+    if (evento->y < y_codigo)
+        return;
+
+    size_t linhas_visiveis =
+        area_codigo.altura > 44 ? (size_t)(area_codigo.altura - 44) / 18u : 1u;
+    size_t indice_linha = (size_t)(evento->y - y_codigo) / 18u;
+    if (indice_linha >= linhas_visiveis)
+        return;
+    size_t linha = primeira_linha_visivel_editor(estado->sessao, linhas_visiveis) + indice_linha;
+    size_t quantidade_linhas = quantidade_linhas_editor(estado->sessao);
+    if (linha > quantidade_linhas)
+        return;
+
+    size_t digitos = digitos_numero_linha(quantidade_linhas);
+    int x_codigo = area_codigo.x + 12 + (int)(digitos + 2u) * 12;
+    size_t coluna = 1;
+    if (evento->x > x_codigo)
+        coluna = (size_t)(evento->x - x_codigo + 6) / 12u + 1u;
+    sef_sessao_ide_editor_posicionar(estado->sessao, linha, coluna, erro);
 }
 
 static void desenhar_ide(SefSuperficie *superficie, void *dados) {
@@ -1464,7 +1508,8 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
                 size_t indice = (size_t)(evento->x - estado->editor.limites.x - 2) / 180u;
                 if (indice < sef_sessao_ide_quantidade_documentos(estado->sessao))
                     sef_sessao_ide_documento_ativar(estado->sessao, indice, &erro);
-            }
+            } else
+                posicionar_cursor_com_ponteiro(estado, evento, &erro);
         } else if (ponto_dentro(estado->ferramentas.limites, evento->x, evento->y)) {
             if (selecionar_aba_ferramenta(estado, evento->x, evento->y))
                 break;

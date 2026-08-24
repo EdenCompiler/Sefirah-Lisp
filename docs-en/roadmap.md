@@ -194,6 +194,8 @@ not mean the entire milestone is complete.
   and a persistent one-based UTF-8 line/column status indicator.
 - [x] Adaptive editor line-number gutter with active-row highlighting and
   cursor-centered scrolling in the warm Lisp-workstation palette.
+- [x] UTF-8-safe pointer caret placement synchronized with the visible gutter,
+  cursor-centered scrolling, and end-of-line clamping.
 - [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
   explicit unsaved-discard confirmation, deterministic neighbor selection, and
   a permanent one-editor invariant.

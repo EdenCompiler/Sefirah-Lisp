@@ -671,6 +671,9 @@ one-based column counts UTF-8 code points rather than encoded bytes.
 The editor gutter numbers every visible source row, grows automatically when
 line numbers gain digits, and highlights the active row. Long documents keep
 the cursor and surrounding numbered lines centered until the final screenful.
+Clicking visible source places the caret at the nearest UTF-8 code-point
+boundary. A gutter click selects column one; a click beyond the row's text
+selects its end. The resulting location immediately appears in the status bar.
 
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector

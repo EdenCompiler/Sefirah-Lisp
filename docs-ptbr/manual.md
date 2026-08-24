@@ -684,6 +684,10 @@ pontos de código UTF-8, não os bytes da codificação.
 O gutter do editor numera cada linha visível, cresce automaticamente quando os
 números ganham dígitos e destaca a linha ativa. Em documentos longos, o cursor
 e as linhas numeradas próximas permanecem centralizados até a tela final.
+Um clique no fonte visível posiciona o cursor no limite de ponto de código UTF-8
+mais próximo. Um clique no gutter escolhe a coluna um; um clique depois do texto
+da linha escolhe seu final. A nova localização aparece imediatamente na barra
+de estado.
 
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou

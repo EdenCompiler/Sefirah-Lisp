@@ -2375,6 +2375,25 @@ bool sef_sessao_ide_editor_buscar(SefSessaoIde *sessao, const char *consulta,
                           retornou_ao_inicio ? " (wrapped)" : "", consulta);
 }
 
+static bool localizar_linha_editor(const TextoIde *editor, size_t linha, size_t *inicio,
+                                   size_t *quantidade) {
+    size_t linha_atual = 1;
+    size_t posicao = 0;
+    while (linha_atual < linha && posicao < editor->tamanho) {
+        if (editor->dados[posicao++] == '\n')
+            linha_atual++;
+    }
+    size_t quantidade_linhas = linha_atual;
+    for (size_t i = posicao; i < editor->tamanho; i++)
+        if (editor->dados[i] == '\n')
+            quantidade_linhas++;
+    if (inicio != NULL)
+        *inicio = posicao;
+    if (quantidade != NULL)
+        *quantidade = quantidade_linhas;
+    return linha_atual == linha;
+}
+
 bool sef_sessao_ide_editor_ir_para_linha(SefSessaoIde *sessao, size_t linha, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL) {
@@ -2385,17 +2404,10 @@ bool sef_sessao_ide_editor_ir_para_linha(SefSessaoIde *sessao, size_t linha, Sef
         sef_erro_definir(erro, 0, 0, "line number must be 1 or greater");
         return false;
     }
-    size_t linha_atual = 1;
     size_t posicao = 0;
-    while (linha_atual < linha && posicao < sessao->editor.tamanho) {
-        if (sessao->editor.dados[posicao++] == '\n')
-            linha_atual++;
-    }
-    size_t quantidade_linhas = linha_atual;
-    for (size_t i = posicao; i < sessao->editor.tamanho; i++)
-        if (sessao->editor.dados[i] == '\n')
-            quantidade_linhas++;
-    if (linha_atual != linha) {
+    size_t quantidade_linhas = 0;
+    bool encontrada = localizar_linha_editor(&sessao->editor, linha, &posicao, &quantidade_linhas);
+    if (!encontrada) {
         sef_erro_definir(erro, 0, 0, "line %zu does not exist (document has %zu line(s))", linha,
                          quantidade_linhas);
         return false;
@@ -2404,6 +2416,36 @@ bool sef_sessao_ide_editor_ir_para_linha(SefSessaoIde *sessao, size_t linha, Sef
     selecao_editor_limpar(sessao);
     return texto_formatar(&sessao->estado, erro, "Went to line %zu of %zu", linha,
                           quantidade_linhas);
+}
+
+bool sef_sessao_ide_editor_posicionar(SefSessaoIde *sessao, size_t linha, size_t coluna,
+                                      SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while positioning the cursor");
+        return false;
+    }
+    if (linha == 0) {
+        sef_erro_definir(erro, 0, 0, "line number must be 1 or greater");
+        return false;
+    }
+    if (coluna == 0) {
+        sef_erro_definir(erro, 0, 0, "column number must be 1 or greater");
+        return false;
+    }
+    size_t inicio = 0;
+    size_t quantidade_linhas = 0;
+    if (!localizar_linha_editor(&sessao->editor, linha, &inicio, &quantidade_linhas)) {
+        sef_erro_definir(erro, 0, 0, "line %zu does not exist (document has %zu line(s))", linha,
+                         quantidade_linhas);
+        return false;
+    }
+    size_t fim = fim_linha(&sessao->editor, inicio);
+    sessao->cursor_editor = posicao_na_coluna(&sessao->editor, inicio, fim, coluna - 1);
+    selecao_editor_limpar(sessao);
+    size_t coluna_real = coluna_utf8(&sessao->editor, inicio, sessao->cursor_editor) + 1;
+    return texto_formatar(&sessao->estado, erro, "Moved cursor to line %zu, column %zu", linha,
+                          coluna_real);
 }
 
 bool sef_sessao_ide_ouvinte_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {

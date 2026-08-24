@@ -564,6 +564,24 @@ int main(void) {
                   sef_sessao_ide_editor_ir_para_linha(sessao, 2, &erro) &&
                   sef_sessao_ide_cursor_editor(sessao) == strlen("one\n"),
               "ir para linha reconheceu a linha vazia depois da quebra final");
+    verificar(sef_sessao_ide_editor_definir(sessao, "a\nábc\nlast", &erro) &&
+                  sef_sessao_ide_editor_posicionar(sessao, 2, 3, &erro) &&
+                  sef_sessao_ide_cursor_editor(sessao) == strlen("a\náb") &&
+                  strstr(sef_sessao_ide_estado(sessao),
+                         "Moved cursor to line 2, column 3") != NULL,
+              "posicionamento por linha e coluna respeitou pontos de codigo UTF-8");
+    sef_sessao_ide_editor_mover_cursor_selecionando(sessao, SEF_CURSOR_DIREITA);
+    verificar(sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  sef_sessao_ide_editor_posicionar(sessao, 2, 1, &erro) &&
+                  !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao),
+              "posicionamento direto limpou a selecao anterior");
+    verificar(sef_sessao_ide_editor_posicionar(sessao, 2, 99, &erro),
+              "posicionamento alem da linha foi limitado ao seu final");
+    sef_sessao_ide_editor_linha_coluna(sessao, &linha_cursor, &coluna_cursor);
+    verificar(linha_cursor == 2 && coluna_cursor == 4 &&
+                  !sef_sessao_ide_editor_posicionar(sessao, 2, 0, &erro) &&
+                  strstr(erro.mensagem, "column number must be 1 or greater") != NULL,
+              "posicionamento limitou a coluna e rejeitou coluna zero em ingles");
 
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),

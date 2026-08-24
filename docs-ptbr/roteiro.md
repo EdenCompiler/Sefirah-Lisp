@@ -198,6 +198,8 @@ não significa que o marco inteiro esteja concluído.
   e indicador persistente de linha/coluna UTF-8 iniciado em um.
 - [x] Gutter adaptável com números de linha, destaque da linha ativa e rolagem
   centrada no cursor na paleta quente da estação Lisp.
+- [x] Posicionamento do cursor por ponteiro seguro para UTF-8 e sincronizado com
+  gutter visível, rolagem centrada e limite de final de linha.
 - [x] Ciclo de criação/fechamento de abas com Ctrl+N/Ctrl+W, acesso pela
   barra/paleta, confirmação explícita para descartar alterações, seleção
   determinística da aba vizinha e invariante permanente de um editor.
