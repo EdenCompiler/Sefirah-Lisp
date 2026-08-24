@@ -110,8 +110,8 @@ invariant that exactly one active editor always exists.
 `espaco_trabalho.c` builds the bounded, sorted project index through native
 directory enumeration, skips symlink/reparse-point recursion, and keeps
 absolute paths separate from the relative paths shown by the Explorer.
-The window adapters translate Ctrl+P, Ctrl+Shift+P, Ctrl+F, Ctrl+G, Ctrl+N,
-Ctrl+W, and Escape into portable events. Presentation code owns the filtered
+The window adapters translate Ctrl+P, Ctrl+Shift+P, Ctrl+F, Ctrl+G, Ctrl+A,
+Ctrl+N, Ctrl+W, and Escape into portable events. Presentation code owns the filtered
 Quick Open, command palette, active-editor Find, Go to Line, and unsaved-close
 confirmation overlays;
 text matching, document ownership, file discovery, exclusive file/folder

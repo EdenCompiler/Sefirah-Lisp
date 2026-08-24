@@ -210,6 +210,9 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
     } else if (comando && texto_igual_ascii(atalho, 'w')) {
         evento.tipo = SEF_EVENTO_FECHAR_DOCUMENTO;
         reconhecido = true;
+    } else if (comando && texto_igual_ascii(atalho, 'a')) {
+        evento.tipo = SEF_EVENTO_SELECIONAR_TUDO;
+        reconhecido = true;
     } else if (comando && texto_igual_ascii(atalho, 'z')) {
         evento.tipo = SEF_EVENTO_DESFAZER;
         reconhecido = true;

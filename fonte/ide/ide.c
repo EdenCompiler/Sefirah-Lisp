@@ -90,6 +90,7 @@ typedef enum AcaoComandoIde {
     COMANDO_LIMPAR_PERFIL,
     COMANDO_FOCAR_EXPLORADOR,
     COMANDO_FOCAR_OUVINTE,
+    COMANDO_SELECIONAR_TUDO,
     COMANDO_DESFAZER,
     COMANDO_REFAZER
 } AcaoComandoIde;
@@ -154,6 +155,7 @@ static const ComandoIde comandos[] = {
     {"Clear Evaluation Profile", COMANDO_LIMPAR_PERFIL},
     {"Focus Workspace Explorer", COMANDO_FOCAR_EXPLORADOR},
     {"Focus Listener / REPL", COMANDO_FOCAR_OUVINTE},
+    {"Select All Editor Text", COMANDO_SELECIONAR_TUDO},
     {"Undo Editor Change", COMANDO_DESFAZER},
     {"Redo Editor Change", COMANDO_REFAZER},
 };
@@ -1113,6 +1115,10 @@ static void executar_comando(EstadoIde *estado, AcaoComandoIde acao, SefErro *er
     case COMANDO_FOCAR_OUVINTE:
         estado->foco = FOCO_OUVINTE;
         break;
+    case COMANDO_SELECIONAR_TUDO:
+        estado->foco = FOCO_EDITOR;
+        sef_sessao_ide_editor_selecionar_tudo(estado->sessao, erro);
+        break;
     case COMANDO_DESFAZER:
         estado->foco = FOCO_EDITOR;
         sef_sessao_ide_editor_desfazer(estado->sessao, erro);
@@ -1432,6 +1438,10 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     case SEF_EVENTO_REFAZER:
         if (estado->foco == FOCO_EDITOR)
             sef_sessao_ide_editor_refazer(estado->sessao, &erro);
+        break;
+    case SEF_EVENTO_SELECIONAR_TUDO:
+        if (estado->foco == FOCO_EDITOR)
+            sef_sessao_ide_editor_selecionar_tudo(estado->sessao, &erro);
         break;
     case SEF_EVENTO_SALVAR:
         sef_sessao_ide_salvar(estado->sessao, sef_sessao_ide_caminho(estado->sessao), &erro);

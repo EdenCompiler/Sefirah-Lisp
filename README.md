@@ -274,7 +274,8 @@ sites. Ctrl+N creates an untitled tab and Ctrl+W closes the active tab; modified
 tabs require explicit discard confirmation, and one fresh tab always remains.
 Ctrl+F opens case-insensitive Find for the active editor; Enter and
 Shift+Enter select the next or previous match with wraparound. Ctrl+Z/Ctrl+Y
-undo and redo; Ctrl+G opens Go to Line; Ctrl+S saves; and Ctrl+O opens the path
+undo and redo; Ctrl+A selects the entire editor buffer; Ctrl+G opens Go to Line;
+Ctrl+S saves; and Ctrl+O opens the path
 prompt. The status bar reports the cursor's one-based line and UTF-8 code-point
 column. A fixed editor gutter numbers visible lines, expands for larger
 documents, and marks the active line in the historical workstation palette.
@@ -655,7 +656,8 @@ aba sem nome e Ctrl+W fecha a aba ativa; abas alteradas exigem confirmação
 explícita de descarte, e uma aba nova sempre permanece. Ctrl+F abre Find
 sem diferenciar caixa no editor ativo; Enter e Shift+Enter selecionam o próximo
 resultado ou o anterior com retorno circular. Ctrl+Z/Ctrl+Y desfazem e refazem;
-Ctrl+G abre Go to Line; Ctrl+S salva; e Ctrl+O abre o prompt de caminho. A barra
+Ctrl+A seleciona todo o buffer do editor; Ctrl+G abre Go to Line; Ctrl+S salva;
+e Ctrl+O abre o prompt de caminho. A barra
 de estado mostra a linha do cursor e sua coluna por ponto de código UTF-8, ambas
 iniciadas em um. Um gutter fixo numera as linhas visíveis, expande para
 documentos maiores e marca a linha ativa na paleta histórica da estação.

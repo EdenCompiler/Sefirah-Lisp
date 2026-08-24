@@ -57,7 +57,7 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
                 ((GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
                  (wparam == VK_RETURN || wparam == 'S' || wparam == 'O' || wparam == 'P' ||
                   wparam == 'T' || wparam == 'F' || wparam == 'G' || wparam == 'N' ||
-                  wparam == 'W' || wparam == 'Z' || wparam == 'Y')))) {
+                  wparam == 'W' || wparam == 'A' || wparam == 'Z' || wparam == 'Y')))) {
         SefEventoJanela evento = {0};
         evento.modificador_shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         if (wparam == 'S')
@@ -77,6 +77,8 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
             evento.tipo = SEF_EVENTO_NOVO_DOCUMENTO;
         else if (wparam == 'W')
             evento.tipo = SEF_EVENTO_FECHAR_DOCUMENTO;
+        else if (wparam == 'A')
+            evento.tipo = SEF_EVENTO_SELECIONAR_TUDO;
         else if (wparam == 'Z')
             evento.tipo = SEF_EVENTO_DESFAZER;
         else if (wparam == 'Y')

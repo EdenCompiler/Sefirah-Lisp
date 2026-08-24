@@ -2217,6 +2217,20 @@ void sef_sessao_ide_editor_mover_cursor_selecionando(SefSessaoIde *sessao,
     mover_cursor_editor(sessao, movimento, true);
 }
 
+bool sef_sessao_ide_editor_selecionar_tudo(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing IDE session while selecting editor text");
+        return false;
+    }
+    sessao->ancora_selecao_editor = 0;
+    sessao->cursor_editor = sessao->editor.tamanho;
+    sessao->selecao_editor_ativa = sessao->editor.tamanho > 0;
+    return texto_formatar(&sessao->estado, erro,
+                          sessao->selecao_editor_ativa ? "Selected all editor text"
+                                                       : "Editor is empty; nothing to select");
+}
+
 bool sef_sessao_ide_editor_selecionar_forma(SefSessaoIde *sessao, SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL) {

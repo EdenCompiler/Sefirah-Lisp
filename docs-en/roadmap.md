@@ -196,6 +196,8 @@ not mean the entire milestone is complete.
   cursor-centered scrolling in the warm Lisp-workstation palette.
 - [x] UTF-8-safe pointer caret placement synchronized with the visible gutter,
   cursor-centered scrolling, and end-of-line clamping.
+- [x] Cross-platform Ctrl+A and command-palette Select All using the editor's
+  UTF-8-safe, atomically replaceable selection model.
 - [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
   explicit unsaved-discard confirmation, deterministic neighbor selection, and
   a permanent one-editor invariant.

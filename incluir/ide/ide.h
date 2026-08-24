@@ -101,6 +101,7 @@ void sef_sessao_ide_editor_apagar(SefSessaoIde *sessao);
 void sef_sessao_ide_editor_mover_cursor(SefSessaoIde *sessao, SefMovimentoCursorIde movimento);
 void sef_sessao_ide_editor_mover_cursor_selecionando(SefSessaoIde *sessao,
                                                      SefMovimentoCursorIde movimento);
+bool sef_sessao_ide_editor_selecionar_tudo(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_selecionar_forma(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_nova_linha(SefSessaoIde *sessao, SefErro *erro);
 bool sef_sessao_ide_editor_desfazer(SefSessaoIde *sessao, SefErro *erro);

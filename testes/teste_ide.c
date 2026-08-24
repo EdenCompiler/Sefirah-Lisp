@@ -582,6 +582,16 @@ int main(void) {
                   !sef_sessao_ide_editor_posicionar(sessao, 2, 0, &erro) &&
                   strstr(erro.mensagem, "column number must be 1 or greater") != NULL,
               "posicionamento limitou a coluna e rejeitou coluna zero em ingles");
+    verificar(sef_sessao_ide_editor_selecionar_tudo(sessao, &erro) &&
+                  sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  inicio_selecao == 0 && fim_selecao == strlen("a\nábc\nlast") &&
+                  strstr(sef_sessao_ide_estado(sessao), "Selected all editor text") != NULL,
+              "selecionar tudo cobriu o buffer inteiro e informou estado em ingles");
+    verificar(sef_sessao_ide_editor_definir(sessao, "", &erro) &&
+                  sef_sessao_ide_editor_selecionar_tudo(sessao, &erro) &&
+                  !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  strstr(sef_sessao_ide_estado(sessao), "Editor is empty") != NULL,
+              "selecionar tudo tratou buffer vazio sem criar selecao");
 
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),

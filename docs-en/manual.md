@@ -675,6 +675,12 @@ Clicking visible source places the caret at the nearest UTF-8 code-point
 boundary. A gutter click selects column one; a click beyond the row's text
 selects its end. The resulting location immediately appears in the status bar.
 
+Ctrl+A or `Select All Editor Text` in the command palette selects the complete
+active buffer through the same UTF-8-safe range model used by structural and
+Find selections. Typing or Backspace then replaces or removes it as one
+undoable edit. An empty buffer remains unselected and reports that there is
+nothing to select.
+
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector
 component or debugger condition, or submits a complete form in the listener.

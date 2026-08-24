@@ -689,6 +689,12 @@ mais próximo. Um clique no gutter escolhe a coluna um; um clique depois do text
 da linha escolhe seu final. A nova localização aparece imediatamente na barra
 de estado.
 
+Ctrl+A ou `Select All Editor Text` na paleta de comandos seleciona todo o buffer
+ativo pelo mesmo modelo de intervalo seguro para UTF-8 usado por seleções
+estruturais e de Find. Digitar ou usar Backspace então o substitui ou remove como
+uma única edição reversível. Um buffer vazio permanece sem seleção e informa que
+não há conteúdo para selecionar.
+
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
 envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;
