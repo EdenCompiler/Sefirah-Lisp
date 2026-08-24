@@ -58,6 +58,8 @@ not mean the entire milestone is complete.
   inspection, inactive-state safety, GC, and image persistence.
 - [x] Named helpers `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`, and
   `USE-VALUE`.
+- [x] Synchronous host debugger boundary with live restart discovery, rooted
+  argument transfer, guarded invocation, and explicit decline semantics.
 - [x] Mutable global value/function cells with `FDEFINITION`, `MAKUNBOUND`,
   `FMAKUNBOUND`, and generalized `SETF` access.
 - [x] Persistent symbol property lists with `SYMBOL-PLIST`, `GET`, `REMPROP`,

@@ -379,6 +379,17 @@ não avalia Lisp nem substitui os últimos valores múltiplos do runtime. A IDE 
 esse contrato para distinguir definições apenas no fonte das instaladas no
 mundo vivo.
 
+Um depurador hospedeiro pode registrar um `SefDepuradorCondicao` síncrono com
+`sef_runtime_definir_depurador`. O callback roda depois que os handlers recusam
+um `ERROR`, mas antes de seus quadros dinâmicos de `RESTART-CASE` serem
+desenrolados. Ele recebe a condição e uma visão ordenada e emprestada dos
+objetos restart ativos. Chamar `sef_runtime_invocar_reinicio_ativo` com índice e
+vetor de argumentos copia e enraíza os argumentos, então executa a transferência
+não local existente; uma invocação bem-sucedida não retorna ao callback.
+Retornar normalmente recusa a recuperação e preserva o caminho comum de erro
+não tratado. O callback não pode avaliar recursivamente o mesmo runtime, e a API
+rejeita essa tentativa com diagnóstico em inglês.
+
 ## Packages
 
 O runtime inicia em `COMMON-LISP-USER`, que usa `COMMON-LISP`. Símbolos
@@ -772,7 +783,7 @@ de histórico da condição. Enter abre uma prateleira com a condição seguida
 desses snapshots de restart; Esquerda/Direita navega pela prateleira, e o
 inspetor expõe `NAME` e `ACTIVE` de cada restart.
 
-O SDK C expõe o snapshot emprestado por
+O SDK C expõe o snapshot emprestado posterior ao desenrolamento por
 `sef_runtime_quantidade_reinicios_ultima_condicao` e
 `sef_runtime_reinicio_ultima_condicao`. Sua vida termina quando a próxima
 avaliação começa; portanto, ferramentas residentes devem criar raízes `SefRaiz`
@@ -780,8 +791,11 @@ para valores retidos. Os registros executáveis dos restarts continuam
 pertencendo à pilha da avaliação e tornam-se corretamente inativos quando ela é
 desenrolada. O painel marca os snapshots como históricos e não finge que uma
 falha encerrada ainda possui restarts invocáveis. Invocá-los no ponto da falha
-ainda exige uma continuação suspensível do avaliador/depurador e permanece
-pendente.
+agora está disponível para hosts síncronos por `SefDepuradorCondicao` e
+`sef_runtime_invocar_reinicio_ativo`: o callback roda antes do desenrolamento e
+deve transferir imediatamente ou retornar e recusar. A IDE desktop ainda
+precisa ligar esse limite seguro do runtime a um laço de apresentação
+suspensível; seu seletor interativo permanece pendente.
 
 O navegador
 mostra o catálogo de definições ou as referências/callers do símbolo

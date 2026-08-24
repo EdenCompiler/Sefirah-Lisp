@@ -201,6 +201,9 @@ size_t sef_runtime_coletar(SefRuntime *runtime, SefValor raiz_temporaria) {
     marcar(runtime->ultima_condicao);
     for (size_t i = 0; i < runtime->quantidade_reinicios_ultima_condicao; i++)
         marcar(runtime->reinicios_ultima_condicao[i]);
+    for (size_t i = 0; i < runtime->quantidade_argumentos_depurador; i++)
+        marcar(runtime->argumentos_depurador[i]);
+    marcar(runtime->lista_argumentos_depurador);
     marcar(runtime->valor_transferencia);
     marcar(runtime->parametros_transferencia);
     marcar(runtime->corpo_transferencia);
@@ -383,6 +386,7 @@ void sef_runtime_destruir(SefRuntime *runtime) {
     free(runtime->simbolos);
     free(runtime->pacotes);
     free(runtime->reinicios_ultima_condicao);
+    free(runtime->argumentos_depurador);
     free(runtime->valores_multiplos);
     sef_valores_salvos_liberar(&runtime->valores_transferencia);
     free(runtime);
@@ -455,6 +459,84 @@ SefValor sef_runtime_reinicio_ultima_condicao(const SefRuntime *runtime, size_t 
                : runtime->reinicios_ultima_condicao[indice];
 }
 
+void sef_runtime_definir_depurador(SefRuntime *runtime, SefDepuradorCondicao depurador,
+                                   void *dados) {
+    if (runtime == NULL)
+        return;
+    runtime->depurador = depurador;
+    runtime->dados_depurador = depurador == NULL ? NULL : dados;
+}
+
+void sef_runtime_notificar_depurador(SefRuntime *runtime, SefValor condicao, SefErro *erro) {
+    if (runtime == NULL || runtime->depurador == NULL || runtime->depurador_em_execucao)
+        return;
+    runtime->depurador_em_execucao = true;
+    runtime->depurador(runtime, condicao, runtime->reinicios_ultima_condicao,
+                       runtime->quantidade_reinicios_ultima_condicao, runtime->dados_depurador,
+                       erro);
+    runtime->depurador_em_execucao = false;
+}
+
+bool sef_runtime_invocar_reinicio_ativo(SefRuntime *runtime, size_t indice,
+                                        const SefValor *argumentos,
+                                        size_t quantidade_argumentos, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (runtime == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing runtime while invoking debugger restart");
+        return false;
+    }
+    if (!runtime->depurador_em_execucao) {
+        sef_erro_definir(erro, 0, 0,
+                         "an active debugger callback is required to invoke this restart");
+        return false;
+    }
+    if (indice >= runtime->quantidade_reinicios_ultima_condicao) {
+        sef_erro_definir(erro, 0, 0, "debugger restart index is out of range");
+        return false;
+    }
+    if (quantidade_argumentos != 0 && argumentos == NULL) {
+        sef_erro_definir(erro, 0, 0, "missing debugger restart arguments");
+        return false;
+    }
+    if (quantidade_argumentos > runtime->capacidade_argumentos_depurador) {
+        SefValor *novos =
+            realloc(runtime->argumentos_depurador, quantidade_argumentos * sizeof(*novos));
+        if (novos == NULL) {
+            sef_erro_definir(erro, 0, 0, "not enough memory for debugger restart arguments");
+            return false;
+        }
+        runtime->argumentos_depurador = novos;
+        runtime->capacidade_argumentos_depurador = quantidade_argumentos;
+    }
+    for (size_t i = 0; i < quantidade_argumentos; i++) {
+        if (argumentos[i] == NULL) {
+            sef_erro_definir(erro, 0, 0, "debugger restart argument %zu is null", i);
+            return false;
+        }
+        runtime->argumentos_depurador[i] = argumentos[i];
+    }
+    runtime->quantidade_argumentos_depurador = quantidade_argumentos;
+    runtime->lista_argumentos_depurador = runtime->nulo;
+    for (size_t i = quantidade_argumentos; i > 0; i--) {
+        SefValor lista = sef_par_novo(runtime, runtime->argumentos_depurador[i - 1],
+                                     runtime->lista_argumentos_depurador, erro);
+        if (lista == NULL) {
+            runtime->quantidade_argumentos_depurador = 0;
+            runtime->lista_argumentos_depurador = runtime->nulo;
+            return false;
+        }
+        runtime->lista_argumentos_depurador = lista;
+    }
+
+    SefValor reinicio = runtime->reinicios_ultima_condicao[indice];
+    runtime->depurador_em_execucao = false;
+    SefValor resultado =
+        sef_reinicio_invocar(runtime, reinicio, runtime->lista_argumentos_depurador, erro);
+    runtime->quantidade_argumentos_depurador = 0;
+    runtime->lista_argumentos_depurador = runtime->nulo;
+    return resultado != NULL;
+}
+
 bool sef_runtime_registrar_reinicios_ativos(SefRuntime *runtime, SefErro *erro) {
     size_t quantidade = 0;
     for (SefReinicioDinamico *reinicio = runtime->reinicios; reinicio != NULL;
@@ -482,6 +564,11 @@ SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefE
     sef_erro_limpar(erro);
     if (runtime == NULL || codigo == NULL) {
         sef_erro_definir(erro, 0, 0, "missing runtime or source code");
+        return NULL;
+    }
+    if (runtime->depurador_em_execucao) {
+        sef_erro_definir(erro, 0, 0,
+                         "cannot evaluate the runtime while its debugger callback is active");
         return NULL;
     }
     runtime->ultima_condicao = NULL;

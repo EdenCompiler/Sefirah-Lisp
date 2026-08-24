@@ -372,6 +372,17 @@ or replace the runtime's last multiple values. The IDE uses this contract to
 distinguish source-only definitions from definitions installed in the live
 world.
 
+A host debugger can register a synchronous `SefDepuradorCondicao` with
+`sef_runtime_definir_depurador`. The callback runs after handlers decline an
+`ERROR` but before its dynamic `RESTART-CASE` frames unwind. It receives the
+condition and an ordered, borrowed view of the active restart objects. Calling
+`sef_runtime_invocar_reinicio_ativo` with an index and an argument array copies
+and roots the arguments, then performs the existing non-local transfer; a
+successful invocation therefore does not return to the callback. Returning
+normally declines recovery and preserves the ordinary unhandled-error path.
+The callback must not recursively evaluate the same runtime, and the API
+rejects that attempt with an English diagnostic.
+
 ## Packages
 
 The runtime starts in `COMMON-LISP-USER`, which uses `COMMON-LISP`. `:name`
@@ -757,15 +768,19 @@ condition. Enter opens a shelf containing the condition followed by those
 restart snapshots; Left/Right navigates the shelf, and the inspector exposes
 each restart's `NAME` and `ACTIVE` state.
 
-The C SDK exposes the borrowed snapshot through
+The C SDK exposes the post-unwind borrowed snapshot through
 `sef_runtime_quantidade_reinicios_ultima_condicao` and
 `sef_runtime_reinicio_ultima_condicao`. Its lifetime ends when the next
 evaluation begins, so resident tools must create `SefRaiz` handles for values
 they retain. Restart executable records still belong to the evaluation stack
 and correctly become inactive when evaluation unwinds. The panel labels the
 snapshots as historical and does not pretend that a completed failure has
-invokable restarts. Invocation at the failure point still requires a
-suspendable evaluator/debugger continuation and remains pending.
+invokable restarts. Invocation at the failure point is now available to
+synchronous hosts through `SefDepuradorCondicao` and
+`sef_runtime_invocar_reinicio_ativo`: the callback runs before unwind and must
+either transfer immediately or return and decline. The desktop IDE still needs
+to connect this safe runtime boundary to a suspendable presentation loop; its
+interactive selector remains pending.
 
 The browser can
 show the definition catalog or the references/callers for the selected symbol,

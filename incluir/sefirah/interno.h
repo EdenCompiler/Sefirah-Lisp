@@ -207,6 +207,13 @@ struct SefRuntime {
     SefValor *reinicios_ultima_condicao;
     size_t quantidade_reinicios_ultima_condicao;
     size_t capacidade_reinicios_ultima_condicao;
+    SefDepuradorCondicao depurador;
+    void *dados_depurador;
+    bool depurador_em_execucao;
+    SefValor *argumentos_depurador;
+    size_t quantidade_argumentos_depurador;
+    size_t capacidade_argumentos_depurador;
+    SefValor lista_argumentos_depurador;
 
     SefQuadroControle *controle;
     SefReinicioDinamico *reinicios;
@@ -371,6 +378,7 @@ SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor
                               SefErro *erro);
 bool sef_condicao_sinalizar(SefRuntime *runtime, SefValor condicao, SefErro *erro);
 bool sef_runtime_registrar_reinicios_ativos(SefRuntime *runtime, SefErro *erro);
+void sef_runtime_notificar_depurador(SefRuntime *runtime, SefValor condicao, SefErro *erro);
 SefFuncaoNativa sef_primitiva_buscar(const char *nome);
 const char *sef_primitiva_nome(SefFuncaoNativa funcao);
 SefValor sef_primitiva_copy_seq(SefRuntime *runtime, SefValor argumentos, SefErro *erro);

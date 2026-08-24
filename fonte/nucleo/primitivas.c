@@ -1999,6 +1999,7 @@ static SefValor primitiva_error(SefRuntime *runtime, SefValor argumentos, SefErr
         !sef_runtime_registrar_reinicios_ativos(runtime, erro))
         return NULL;
     runtime->ultima_condicao = condicao;
+    sef_runtime_notificar_depurador(runtime, condicao, erro);
     sef_erro_definir(erro, 0, 0, "%s", condicao->como.condicao.mensagem->como.texto.dados);
     return NULL;
 }

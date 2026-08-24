@@ -160,6 +160,17 @@ Restart frames are intentionally not retained after unwinding; a future
 interactive debugger must suspend evaluation instead of storing dead `setjmp`
 destinations.
 
+The public synchronous debugger boundary performs that decision while the
+frames are live. After handlers decline, the runtime roots the condition and
+restart snapshot, sets a reentrancy guard, and calls the registered host
+callback. The host can return to decline or invoke one indexed restart with a
+copied argument vector. During invocation, the vector and the incrementally
+built Lisp list remain in runtime-owned GC roots until the ordinary transfer
+state takes ownership immediately before `longjmp`. Function pointers and host
+data are process-local and are never serialized in an image. The desktop layer
+must keep the callback on the evaluation thread and pump or coordinate UI work
+without recursively evaluating that runtime.
+
 The IDE's read-only Source Control adapter is also kept behind the session API.
 On POSIX it uses `fork`/`exec` with a pipe; on Windows it uses inherited
 anonymous pipes and `CreateProcess`. Git receives the workspace root as one

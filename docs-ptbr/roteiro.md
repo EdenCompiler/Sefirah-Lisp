@@ -60,6 +60,9 @@ não significa que o marco inteiro esteja concluído.
   inspeção, segurança quando inativos, GC e persistência em imagem.
 - [x] Auxiliares nomeados `ABORT`, `CONTINUE`, `MUFFLE-WARNING`, `STORE-VALUE`
   e `USE-VALUE`.
+- [x] Limite síncrono para depurador hospedeiro com descoberta de restarts
+  vivos, transferência de argumentos enraizada, invocação protegida e semântica
+  explícita de recusa.
 - [x] Células globais mutáveis de valor/função com `FDEFINITION`, `MAKUNBOUND`,
   `FMAKUNBOUND` e acesso generalizado por `SETF`.
 - [x] Property lists persistentes de símbolos com `SYMBOL-PLIST`, `GET`,

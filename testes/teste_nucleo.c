@@ -11,6 +11,58 @@ static int64_t combinar_i64(int64_t a, int64_t b) {
     return (int64_t)((uint64_t)a * 10u + (uint64_t)b);
 }
 
+typedef enum AcaoDepuradorTeste {
+    ACAO_DEPURADOR_RECUSAR,
+    ACAO_DEPURADOR_INVOCAR,
+    ACAO_DEPURADOR_INDICE_INVALIDO,
+    ACAO_DEPURADOR_REENTRAR
+} AcaoDepuradorTeste;
+
+typedef struct EstadoDepuradorTeste {
+    AcaoDepuradorTeste acao;
+    SefValor argumento;
+    size_t chamadas;
+    size_t quantidade_reinicios;
+    bool condicao_publicada;
+    bool invocacao_retornou;
+    bool reentrada_bloqueada;
+    char mensagem[512];
+} EstadoDepuradorTeste;
+
+static void depurador_teste(SefRuntime *runtime, SefValor condicao,
+                            const SefValor *reinicios, size_t quantidade_reinicios, void *dados,
+                            SefErro *erro) {
+    EstadoDepuradorTeste *estado = dados;
+    estado->chamadas++;
+    estado->quantidade_reinicios = quantidade_reinicios;
+    estado->condicao_publicada =
+        condicao != NULL && (quantidade_reinicios == 0 || reinicios != NULL) &&
+        sef_runtime_ultima_condicao(runtime) == condicao;
+
+    if (estado->acao == ACAO_DEPURADOR_REENTRAR) {
+        SefErro erro_reentrada;
+        SefValor resultado = sef_runtime_avaliar_texto(runtime, "(+ 40 2)", &erro_reentrada);
+        estado->reentrada_bloqueada =
+            resultado == NULL && erro_reentrada.ocorreu &&
+            strcmp(erro_reentrada.mensagem,
+                   "cannot evaluate the runtime while its debugger callback is active") == 0;
+        return;
+    }
+
+    if (estado->acao == ACAO_DEPURADOR_RECUSAR)
+        return;
+
+    size_t indice = estado->acao == ACAO_DEPURADOR_INDICE_INVALIDO ? quantidade_reinicios : 0;
+    const SefValor *argumentos = estado->argumento == NULL ? NULL : &estado->argumento;
+    size_t quantidade_argumentos = estado->argumento == NULL ? 0 : 1;
+    if (!sef_runtime_invocar_reinicio_ativo(runtime, indice, argumentos, quantidade_argumentos,
+                                            erro)) {
+        estado->invocacao_retornou = true;
+        if (erro->ocorreu)
+            snprintf(estado->mensagem, sizeof(estado->mensagem), "%s", erro->mensagem);
+    }
+}
+
 static void verificar(bool condicao, const char *mensagem) {
     if (!condicao) {
         fprintf(stderr, "FALHOU: %s\n", mensagem);
@@ -688,6 +740,64 @@ int main(int argc, char **argv) {
                     "(error \"recuperavel\")) "
                     "(use-value (valor) valor))",
                     "42");
+    SefValor argumento_depurador = avaliar(runtime, "41");
+    SefRaiz *raiz_argumento_depurador =
+        argumento_depurador == NULL ? NULL : sef_raiz_criar(runtime, argumento_depurador, &erro);
+    EstadoDepuradorTeste estado_depurador = {0};
+    estado_depurador.acao = ACAO_DEPURADOR_RECUSAR;
+    sef_runtime_definir_depurador(runtime, depurador_teste, &estado_depurador);
+    verificar_texto(runtime,
+                    "(restart-case "
+                    "(handler-bind ((error (lambda (condition) "
+                    "(invoke-restart 'continue)))) "
+                    "(error \"handled before debugger\")) "
+                    "(continue () 42))",
+                    "42");
+    verificar(estado_depurador.chamadas == 0,
+              "handler que transferiu controle nao entrou no depurador hospedeiro");
+
+    memset(&estado_depurador, 0, sizeof(estado_depurador));
+    estado_depurador.acao = ACAO_DEPURADOR_INVOCAR;
+    estado_depurador.argumento =
+        raiz_argumento_depurador == NULL ? NULL : sef_raiz_valor(raiz_argumento_depurador);
+    SefValor recuperado_depurador = sef_runtime_avaliar_texto(
+        runtime,
+        "(restart-case (error \"interactive recovery\") "
+        "(use-value (value) (+ value 1)) (abort () 0))",
+        &erro);
+    verificar(recuperado_depurador != NULL && sef_valor_e_inteiro(recuperado_depurador) &&
+                  sef_valor_como_inteiro(recuperado_depurador) == 42 &&
+                  estado_depurador.chamadas == 1 && estado_depurador.quantidade_reinicios == 2 &&
+                  estado_depurador.condicao_publicada && !estado_depurador.invocacao_retornou &&
+                  sef_runtime_ultima_condicao(runtime) == NULL,
+              "callback publico invocou restart ativo antes do desenrolamento");
+
+    memset(&estado_depurador, 0, sizeof(estado_depurador));
+    estado_depurador.acao = ACAO_DEPURADOR_INDICE_INVALIDO;
+    SefValor indice_invalido = sef_runtime_avaliar_texto(
+        runtime, "(restart-case (error \"invalid choice\") (abort () 0))", &erro);
+    verificar(indice_invalido == NULL && erro.ocorreu &&
+                  strcmp(erro.mensagem, "debugger restart index is out of range") == 0 &&
+                  estado_depurador.chamadas == 1 && estado_depurador.invocacao_retornou &&
+                  strcmp(estado_depurador.mensagem,
+                         "debugger restart index is out of range") == 0,
+              "callback rejeitou indice de restart invalido com diagnostico em ingles");
+
+    memset(&estado_depurador, 0, sizeof(estado_depurador));
+    estado_depurador.acao = ACAO_DEPURADOR_REENTRAR;
+    SefValor reentrada = sef_runtime_avaliar_texto(runtime, "(error \"declined recovery\")", &erro);
+    verificar(reentrada == NULL && erro.ocorreu &&
+                  strcmp(erro.mensagem, "declined recovery") == 0 &&
+                  estado_depurador.chamadas == 1 && estado_depurador.quantidade_reinicios == 0 &&
+                  estado_depurador.reentrada_bloqueada,
+              "callback recusado preservou a condicao e bloqueou avaliacao reentrante");
+
+    sef_runtime_definir_depurador(runtime, NULL, NULL);
+    verificar(!sef_runtime_invocar_reinicio_ativo(runtime, 0, NULL, 0, &erro) && erro.ocorreu &&
+                  strcmp(erro.mensagem,
+                         "an active debugger callback is required to invoke this restart") == 0,
+              "SDK impediu invocacao depois da extensao dinamica do depurador");
+    sef_raiz_liberar(raiz_argumento_depurador);
     SefValor falha_com_reinicios = sef_runtime_avaliar_texto(
         runtime,
         "(restart-case (error \"restart snapshot\") "

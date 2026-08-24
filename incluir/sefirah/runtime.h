@@ -13,6 +13,15 @@ typedef struct SefObjeto *SefValor;
 typedef struct SefRaiz SefRaiz;
 typedef struct SefFuncaoCompilada SefFuncaoCompilada;
 
+/*
+ * Chamado de modo sincrono enquanto os restarts da condicao ainda estao
+ * ativos. Os valores recebidos sao emprestados e validos apenas durante a
+ * chamada. Retornar normalmente recusa a entrada no depurador.
+ */
+typedef void (*SefDepuradorCondicao)(SefRuntime *runtime, SefValor condicao,
+                                    const SefValor *reinicios, size_t quantidade_reinicios,
+                                    void *dados, SefErro *erro);
+
 typedef enum SefEstadoCodigo {
     SEF_CODIGO_COMPLETO,
     SEF_CODIGO_INCOMPLETO,
@@ -27,6 +36,18 @@ typedef struct SefEstadoVinculosSimbolo {
 
 SefRuntime *sef_runtime_criar(SefErro *erro);
 void sef_runtime_destruir(SefRuntime *runtime);
+
+/* O runtime nao assume a propriedade de dados. NULL remove o depurador. */
+void sef_runtime_definir_depurador(SefRuntime *runtime, SefDepuradorCondicao depurador,
+                                   void *dados);
+/*
+ * So pode ser chamado pelo callback do depurador. Em caso de sucesso, a
+ * transferencia para o restart nao retorna; false indica uma falha validada.
+ * Os argumentos sao copiados e enraizados antes da transferencia.
+ */
+bool sef_runtime_invocar_reinicio_ativo(SefRuntime *runtime, size_t indice,
+                                        const SefValor *argumentos,
+                                        size_t quantidade_argumentos, SefErro *erro);
 
 SefValor sef_runtime_avaliar_texto(SefRuntime *runtime, const char *codigo, SefErro *erro);
 /* Valor emprestado da ultima condicao nao tratada; pode ser NULL. */

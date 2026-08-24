@@ -1112,6 +1112,8 @@ SefValor sef_reinicio_invocar(SefRuntime *runtime, SefValor designador, SefValor
             continue;
         if (!iniciar_transferencia(runtime, reinicio->destino, argumentos, erro))
             return NULL;
+        runtime->quantidade_argumentos_depurador = 0;
+        runtime->lista_argumentos_depurador = runtime->nulo;
         runtime->parametros_transferencia = reinicio->parametros;
         runtime->corpo_transferencia = reinicio->corpo;
         runtime->ambiente_transferencia = reinicio->ambiente;
