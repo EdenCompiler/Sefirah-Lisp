@@ -139,6 +139,7 @@ static void vista_tecla_pressionada(id self, SEL cmd, id evento_nativo) {
     bool comando = (modificadores & (MODIFICADOR_COMMAND_MAC | MODIFICADOR_CONTROL_MAC)) != 0;
     SefEventoJanela evento = {0};
     evento.modificador_shift = (modificadores & MODIFICADOR_SHIFT_MAC) != 0;
+    evento.modificador_controle = comando;
     bool reconhecido = true;
 
     if (codigo == 53) {

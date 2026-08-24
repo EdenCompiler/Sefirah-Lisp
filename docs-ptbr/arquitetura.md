@@ -123,7 +123,9 @@ gravação; correspondência de texto, propriedade dos documentos, descoberta,
 criação exclusiva de arquivo/pasta, atualização e abertura permanecem na camada
 de sessão testável. A apresentação do editor deriva seu gutter numerado e o
 destaque da linha ativa da localização UTF-8 iniciada em um fornecida pela
-sessão. O intervalo visível centrado no cursor mantém gutter e linhas do fonte
+sessão. O estado de Control/Command permanece nos eventos de cursor para a sessão
+aplicar movimento Lisp por palavra, enquanto Shift controla independentemente a
+extensão do intervalo. O intervalo visível centrado no cursor mantém gutter e linhas do fonte
 sincronizados sem armazenar um segundo estado de rolagem. O hit-testing do
 ponteiro consome essas mesmas métricas e entrega a linha/coluna iniciada em um à
 sessão, que limita colunas nos limites UTF-8 da linha e limpa seleções antigas.

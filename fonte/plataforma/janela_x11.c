@@ -59,6 +59,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
                     SefEventoJanela evento_sefirah = {0};
                     bool controle = (evento.xkey.state & ControlMask) != 0;
                     evento_sefirah.modificador_shift = (evento.xkey.state & ShiftMask) != 0;
+                    evento_sefirah.modificador_controle = controle;
                     if (tecla == XK_Escape) {
                         evento_sefirah.tipo = SEF_EVENTO_CANCELAR;
                     } else if (controle && (tecla == XK_p || tecla == XK_P)) {

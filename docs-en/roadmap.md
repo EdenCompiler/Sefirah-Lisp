@@ -202,6 +202,8 @@ not mean the entire milestone is complete.
   UTF-8 line/column mapping, and normalized atomic edit ranges.
 - [x] Cross-platform forward Delete with UTF-8 code-point boundaries, atomic
   selected-range removal, undo history, modified tracking, and Auto Save.
+- [x] Cross-platform Ctrl/Command word navigation and Shift-selection with
+  Lisp-aware delimiter, whitespace, and UTF-8 symbol boundaries.
 - [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
   explicit unsaved-discard confirmation, deterministic neighbor selection, and
   a permanent one-editor invariant.

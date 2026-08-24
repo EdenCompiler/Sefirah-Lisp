@@ -110,6 +110,7 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
                 wparam == VK_HOME || wparam == VK_END)) {
         SefEventoJanela evento = {0};
         evento.modificador_shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        evento.modificador_controle = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
         if (wparam == VK_LEFT)
             evento.tipo = SEF_EVENTO_CURSOR_ESQUERDA;
         else if (wparam == VK_RIGHT)

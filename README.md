@@ -283,7 +283,8 @@ Clicking a visible source row places the caret at the nearest UTF-8 code-point
 boundary; gutter clicks choose column one and clicks beyond text choose the
 line end. Holding the pointer extends a UTF-8-safe selection across visible
 lines. Arrow, Home, and End move the editor cursor; holding Shift extends a
-UTF-8-safe selection,
+UTF-8-safe selection. Ctrl+Left/Right moves across Lisp-aware token boundaries,
+and adding Shift selects those spans;
 and typing, Backspace, or Delete replaces or removes it as one undoable edit;
 Delete otherwise removes the next UTF-8 character. The toolbar
 and command palette can toggle Auto Save for immediate writes of named buffers
@@ -667,7 +668,8 @@ Um clique em uma linha visível posiciona o cursor no limite de ponto de código
 UTF-8 mais próximo; cliques no gutter escolhem a coluna um e cliques depois do
 texto escolhem o final da linha. Manter o ponteiro pressionado estende uma
 seleção UTF-8 segura pelas linhas visíveis. Setas, Home e End movem o cursor do editor; com
-Shift, estendem uma seleção segura para UTF-8, e digitar
+Shift, estendem uma seleção segura para UTF-8. Ctrl+Esquerda/Direita move pelos
+limites de tokens Lisp, e acrescentar Shift seleciona esses intervalos; digitar
 ou usar Backspace/Delete a substitui ou remove como uma única edição reversível;
 Delete sem seleção remove o próximo caractere UTF-8. O
 botão e a paleta de comandos podem alternar Auto Save para gravar imediatamente

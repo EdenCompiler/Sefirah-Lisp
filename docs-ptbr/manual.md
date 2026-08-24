@@ -702,6 +702,12 @@ normalizado como uma única edição reversível; o cursor retorna ao seu iníci
 A exclusão adiante participa do indicador de alteração e de Auto Save como as
 demais edições de conteúdo.
 
+Ctrl+Esquerda e Ctrl+Direita movem para limites de tokens Lisp; Command substitui
+Ctrl no macOS. Parênteses, aspas, crase, vírgula, ponto e vírgula e aspas de
+string são paradas distintas, enquanto nomes de símbolos UTF-8 movem como
+unidades e espaços intermediários são ignorados. Acrescentar Shift estende ou
+contrai a seleção desde sua âncora estável pelos mesmos limites.
+
 Tab, Shift+Tab ou clique alterna entre editor, inspetor, depurador e ouvinte.
 Enter insere linha no editor, abre o componente ou a condição selecionada ou
 envia uma forma completa no ouvinte. F5 ou Ctrl+Enter executa o buffer inteiro;

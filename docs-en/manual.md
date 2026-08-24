@@ -688,6 +688,12 @@ When a range is selected, either key removes the whole normalized range as one
 undoable edit; the caret returns to its beginning. Forward deletion participates
 in modified-tab tracking and Auto Save exactly like every other content edit.
 
+Ctrl+Left and Ctrl+Right move to Lisp-aware token boundaries; Command replaces
+Ctrl on macOS. Parentheses, quotes, backquote, comma, semicolon, and string
+quotes are distinct delimiter stops, while UTF-8 symbol names move as units and
+intervening whitespace is skipped. Adding Shift extends or contracts the
+selection from its stable anchor over the same boundaries.
+
 Tab, Shift+Tab, or a pointer click switches among editor, inspector, debugger,
 and listener. Enter inserts a line in the editor, opens the selected inspector
 component or debugger condition, or submits a complete form in the listener.

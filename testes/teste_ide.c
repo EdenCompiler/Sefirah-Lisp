@@ -621,6 +621,21 @@ int main(void) {
                   sef_sessao_ide_editor_refazer(sessao, &erro) &&
                   strcmp(sef_sessao_ide_editor(sessao), "aar") == 0,
               "delete adiante participou do historico de undo e redo");
+    verificar(sef_sessao_ide_editor_definir(sessao, "(alpha  ação)", &erro),
+              "preparou navegacao Lisp por palavras");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_PALAVRA_ANTERIOR);
+    verificar(sef_sessao_ide_cursor_editor(sessao) == strlen("(alpha  ação"),
+              "palavra anterior tratou delimitador Lisp separadamente");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_PALAVRA_ANTERIOR);
+    verificar(sef_sessao_ide_cursor_editor(sessao) == strlen("(alpha  "),
+              "palavra anterior encontrou simbolo UTF-8 depois de espacos");
+    sef_sessao_ide_editor_mover_cursor(sessao, SEF_CURSOR_PALAVRA_ANTERIOR);
+    verificar(sef_sessao_ide_cursor_editor(sessao) == strlen("("),
+              "palavra anterior encontrou o simbolo Lisp precedente");
+    sef_sessao_ide_editor_mover_cursor_selecionando(sessao, SEF_CURSOR_PALAVRA_SEGUINTE);
+    verificar(sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  inicio_selecao == strlen("(") && fim_selecao == strlen("(alpha  "),
+              "palavra seguinte com Shift selecionou simbolo e espacos seguintes");
 
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),

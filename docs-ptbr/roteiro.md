@@ -206,6 +206,8 @@ não significa que o marco inteiro esteja concluído.
   mapeamento UTF-8 de linha/coluna e intervalo atômico normalizado.
 - [x] Delete adiante multiplataforma com limites por ponto de código UTF-8,
   remoção atômica da seleção, undo, indicador de alteração e Auto Save.
+- [x] Navegação multiplataforma Ctrl/Command por palavra e seleção com Shift,
+  usando limites Lisp de delimitador, espaços e símbolos UTF-8.
 - [x] Ciclo de criação/fechamento de abas com Ctrl+N/Ctrl+W, acesso pela
   barra/paleta, confirmação explícita para descartar alterações, seleção
   determinística da aba vizinha e invariante permanente de um editor.

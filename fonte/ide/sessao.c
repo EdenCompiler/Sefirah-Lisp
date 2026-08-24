@@ -2176,6 +2176,42 @@ static size_t posicao_na_coluna(const TextoIde *texto, size_t inicio, size_t fim
     return posicao;
 }
 
+static int categoria_palavra_editor(const TextoIde *texto, size_t posicao) {
+    unsigned char caractere = (unsigned char)texto->dados[posicao];
+    if (isspace(caractere))
+        return 0;
+    if (caractere < 0x80u && strchr("()'`,;\"", (int)caractere) != NULL)
+        return 2;
+    return 1;
+}
+
+static size_t palavra_anterior_editor(const TextoIde *texto, size_t posicao) {
+    if (posicao == 0)
+        return 0;
+    posicao = utf8_anterior(texto, posicao);
+    while (posicao > 0 && categoria_palavra_editor(texto, posicao) == 0)
+        posicao = utf8_anterior(texto, posicao);
+    int categoria = categoria_palavra_editor(texto, posicao);
+    while (posicao > 0) {
+        size_t anterior = utf8_anterior(texto, posicao);
+        if (categoria_palavra_editor(texto, anterior) != categoria)
+            break;
+        posicao = anterior;
+    }
+    return posicao;
+}
+
+static size_t palavra_seguinte_editor(const TextoIde *texto, size_t posicao) {
+    if (posicao >= texto->tamanho)
+        return texto->tamanho;
+    int categoria = categoria_palavra_editor(texto, posicao);
+    while (posicao < texto->tamanho && categoria_palavra_editor(texto, posicao) == categoria)
+        posicao = utf8_proximo(texto, posicao);
+    while (posicao < texto->tamanho && categoria_palavra_editor(texto, posicao) == 0)
+        posicao = utf8_proximo(texto, posicao);
+    return posicao;
+}
+
 static void mover_cursor_editor(SefSessaoIde *sessao, SefMovimentoCursorIde movimento,
                                 bool selecionar) {
     if (sessao == NULL)
@@ -2218,6 +2254,12 @@ static void mover_cursor_editor(SefSessaoIde *sessao, SefMovimentoCursorIde movi
             sessao->cursor_editor =
                 posicao_na_coluna(editor, inicio_seguinte, fim_seguinte, coluna);
         }
+        break;
+    case SEF_CURSOR_PALAVRA_ANTERIOR:
+        sessao->cursor_editor = palavra_anterior_editor(editor, sessao->cursor_editor);
+        break;
+    case SEF_CURSOR_PALAVRA_SEGUINTE:
+        sessao->cursor_editor = palavra_seguinte_editor(editor, sessao->cursor_editor);
         break;
     }
     if (selecionar)

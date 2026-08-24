@@ -56,6 +56,7 @@ typedef struct SefEventoJanela {
     int x;
     int y;
     bool modificador_shift;
+    bool modificador_controle;
 } SefEventoJanela;
 
 /* Retorna verdadeiro quando o evento alterou algo que precisa ser redesenhado. */

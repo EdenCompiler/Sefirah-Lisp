@@ -1461,13 +1461,17 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         break;
     case SEF_EVENTO_CURSOR_ESQUERDA:
         if (estado->foco == FOCO_EDITOR)
-            mover_cursor_editor(estado, evento, SEF_CURSOR_ESQUERDA);
+            mover_cursor_editor(estado, evento,
+                                evento->modificador_controle ? SEF_CURSOR_PALAVRA_ANTERIOR
+                                                            : SEF_CURSOR_ESQUERDA);
         else if (estado->foco == FOCO_INSPETOR)
             sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_ANTERIOR, &erro);
         break;
     case SEF_EVENTO_CURSOR_DIREITA:
         if (estado->foco == FOCO_EDITOR)
-            mover_cursor_editor(estado, evento, SEF_CURSOR_DIREITA);
+            mover_cursor_editor(estado, evento,
+                                evento->modificador_controle ? SEF_CURSOR_PALAVRA_SEGUINTE
+                                                            : SEF_CURSOR_DIREITA);
         else if (estado->foco == FOCO_INSPETOR)
             sef_sessao_ide_inspetor_mover(estado->sessao, SEF_INSPETOR_PROXIMO, &erro);
         break;
