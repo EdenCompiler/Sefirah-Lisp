@@ -202,6 +202,8 @@ não significa que o marco inteiro esteja concluído.
   gutter visível, rolagem centrada e limite de final de linha.
 - [x] Ctrl+A multiplataforma e Select All pela paleta usando o modelo de seleção
   UTF-8 segura e substituível atomicamente do editor.
+- [x] Seleção por arraste do ponteiro pelas linhas visíveis com âncora estável,
+  mapeamento UTF-8 de linha/coluna e intervalo atômico normalizado.
 - [x] Ciclo de criação/fechamento de abas com Ctrl+N/Ctrl+W, acesso pela
   barra/paleta, confirmação explícita para descartar alterações, seleção
   determinística da aba vizinha e invariante permanente de um editor.

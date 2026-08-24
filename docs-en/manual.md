@@ -673,7 +673,9 @@ line numbers gain digits, and highlights the active row. Long documents keep
 the cursor and surrounding numbered lines centered until the final screenful.
 Clicking visible source places the caret at the nearest UTF-8 code-point
 boundary. A gutter click selects column one; a click beyond the row's text
-selects its end. The resulting location immediately appears in the status bar.
+selects its end. Holding the pointer and dragging extends the anchored selection
+across visible rows; releasing finalizes the UTF-8-safe range. The resulting
+location immediately appears in the status bar.
 
 Ctrl+A or `Select All Editor Text` in the command palette selects the complete
 active buffer through the same UTF-8-safe range model used by structural and

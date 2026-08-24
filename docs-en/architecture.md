@@ -121,7 +121,9 @@ from the session's one-based UTF-8 cursor location. Its cursor-centered visible
 range keeps the gutter and source rows synchronized without storing duplicate
 scroll state. Pointer hit-testing consumes those same metrics and delegates the
 resulting one-based line/column to the session, which clamps columns at UTF-8
-line boundaries and clears stale selections.
+line boundaries and clears stale selections. Pointer press establishes the
+session anchor, motion extends it with the same mapping, and release finalizes
+the normalized range.
 The session can execute, load, save, snapshot, and restore without a window,
 which makes behavior testable on CI. `sefirah_ide`
 only lays out the panels,

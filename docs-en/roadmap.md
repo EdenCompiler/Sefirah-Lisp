@@ -198,6 +198,8 @@ not mean the entire milestone is complete.
   cursor-centered scrolling, and end-of-line clamping.
 - [x] Cross-platform Ctrl+A and command-palette Select All using the editor's
   UTF-8-safe, atomically replaceable selection model.
+- [x] Pointer drag selection across visible source rows with stable anchor,
+  UTF-8 line/column mapping, and normalized atomic edit ranges.
 - [x] New/Close editor-tab lifecycle with Ctrl+N/Ctrl+W, toolbar/command access,
   explicit unsaved-discard confirmation, deterministic neighbor selection, and
   a permanent one-editor invariant.

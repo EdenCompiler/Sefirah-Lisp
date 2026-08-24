@@ -686,8 +686,9 @@ números ganham dígitos e destaca a linha ativa. Em documentos longos, o cursor
 e as linhas numeradas próximas permanecem centralizados até a tela final.
 Um clique no fonte visível posiciona o cursor no limite de ponto de código UTF-8
 mais próximo. Um clique no gutter escolhe a coluna um; um clique depois do texto
-da linha escolhe seu final. A nova localização aparece imediatamente na barra
-de estado.
+da linha escolhe seu final. Manter o ponteiro pressionado e arrastar estende a
+seleção ancorada pelas linhas visíveis; soltar finaliza o intervalo UTF-8 seguro.
+A nova localização aparece imediatamente na barra de estado.
 
 Ctrl+A ou `Select All Editor Text` na paleta de comandos seleciona todo o buffer
 ativo pelo mesmo modelo de intervalo seguro para UTF-8 usado por seleções

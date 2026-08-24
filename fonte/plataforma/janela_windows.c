@@ -134,6 +134,10 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
                 mensagem == WM_LBUTTONUP) &&
                estado != NULL && estado->ao_evento != NULL) {
         SefEventoJanela evento = {0};
+        if (mensagem == WM_LBUTTONDOWN)
+            SetCapture(janela);
+        else if (mensagem == WM_LBUTTONUP && GetCapture() == janela)
+            ReleaseCapture();
         evento.tipo = mensagem == WM_MOUSEMOVE     ? SEF_EVENTO_PONTEIRO_MOVER
                       : mensagem == WM_LBUTTONDOWN ? SEF_EVENTO_PONTEIRO_PRESSIONAR
                                                    : SEF_EVENTO_PONTEIRO_SOLTAR;

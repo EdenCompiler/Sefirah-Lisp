@@ -128,6 +128,7 @@ typedef struct EstadoIde {
     SefRetangulo limites_sobreposicao;
     size_t primeiro_item_sobreposicao;
     size_t quantidade_itens_visiveis;
+    bool selecionando_com_ponteiro;
 } EstadoIde;
 
 static const ComandoIde comandos[] = {
@@ -921,31 +922,33 @@ static void desenhar_editor(SefSuperficie *superficie, SefRetangulo limites,
     free(com_cursor);
 }
 
-static void posicionar_cursor_com_ponteiro(EstadoIde *estado, const SefEventoJanela *evento,
-                                           SefErro *erro) {
+static bool posicionar_cursor_com_ponteiro(EstadoIde *estado, const SefEventoJanela *evento,
+                                           bool selecionar, SefErro *erro) {
     SefRetangulo area_codigo = estado->editor.limites;
     area_codigo.y += 24;
     area_codigo.altura -= 24;
     int y_codigo = area_codigo.y + 36;
     if (evento->y < y_codigo)
-        return;
+        return false;
 
     size_t linhas_visiveis =
         area_codigo.altura > 44 ? (size_t)(area_codigo.altura - 44) / 18u : 1u;
     size_t indice_linha = (size_t)(evento->y - y_codigo) / 18u;
     if (indice_linha >= linhas_visiveis)
-        return;
+        return false;
     size_t linha = primeira_linha_visivel_editor(estado->sessao, linhas_visiveis) + indice_linha;
     size_t quantidade_linhas = quantidade_linhas_editor(estado->sessao);
     if (linha > quantidade_linhas)
-        return;
+        return false;
 
     size_t digitos = digitos_numero_linha(quantidade_linhas);
     int x_codigo = area_codigo.x + 12 + (int)(digitos + 2u) * 12;
     size_t coluna = 1;
     if (evento->x > x_codigo)
         coluna = (size_t)(evento->x - x_codigo + 6) / 12u + 1u;
-    sef_sessao_ide_editor_posicionar(estado->sessao, linha, coluna, erro);
+    if (selecionar)
+        return sef_sessao_ide_editor_posicionar_selecionando(estado->sessao, linha, coluna, erro);
+    return sef_sessao_ide_editor_posicionar(estado->sessao, linha, coluna, erro);
 }
 
 static void desenhar_ide(SefSuperficie *superficie, void *dados) {
@@ -1495,7 +1498,19 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
         if (estado->foco == FOCO_EDITOR)
             mover_cursor_editor(estado, evento, SEF_CURSOR_FIM_LINHA);
         break;
+    case SEF_EVENTO_PONTEIRO_MOVER:
+        if (estado->selecionando_com_ponteiro &&
+            ponto_dentro(estado->editor.limites, evento->x, evento->y))
+            posicionar_cursor_com_ponteiro(estado, evento, true, &erro);
+        break;
+    case SEF_EVENTO_PONTEIRO_SOLTAR:
+        if (estado->selecionando_com_ponteiro &&
+            ponto_dentro(estado->editor.limites, evento->x, evento->y))
+            posicionar_cursor_com_ponteiro(estado, evento, true, &erro);
+        estado->selecionando_com_ponteiro = false;
+        break;
     case SEF_EVENTO_PONTEIRO_PRESSIONAR:
+        estado->selecionando_com_ponteiro = false;
         for (size_t i = 0; i < sizeof(estado->botoes) / sizeof(estado->botoes[0]); i++) {
             if (ponto_dentro(estado->botoes[i].limites, evento->x, evento->y)) {
                 acionar_botao(estado, estado->botoes[i].acao, &erro);
@@ -1519,7 +1534,8 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
                 if (indice < sef_sessao_ide_quantidade_documentos(estado->sessao))
                     sef_sessao_ide_documento_ativar(estado->sessao, indice, &erro);
             } else
-                posicionar_cursor_com_ponteiro(estado, evento, &erro);
+                estado->selecionando_com_ponteiro =
+                    posicionar_cursor_com_ponteiro(estado, evento, false, &erro);
         } else if (ponto_dentro(estado->ferramentas.limites, evento->x, evento->y)) {
             if (selecionar_aba_ferramenta(estado, evento->x, evento->y))
                 break;

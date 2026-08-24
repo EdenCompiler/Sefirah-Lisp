@@ -2432,8 +2432,8 @@ bool sef_sessao_ide_editor_ir_para_linha(SefSessaoIde *sessao, size_t linha, Sef
                           quantidade_linhas);
 }
 
-bool sef_sessao_ide_editor_posicionar(SefSessaoIde *sessao, size_t linha, size_t coluna,
-                                      SefErro *erro) {
+static bool posicionar_editor(SefSessaoIde *sessao, size_t linha, size_t coluna, bool selecionar,
+                              SefErro *erro) {
     sef_erro_limpar(erro);
     if (sessao == NULL) {
         sef_erro_definir(erro, 0, 0, "missing IDE session while positioning the cursor");
@@ -2456,10 +2456,26 @@ bool sef_sessao_ide_editor_posicionar(SefSessaoIde *sessao, size_t linha, size_t
     }
     size_t fim = fim_linha(&sessao->editor, inicio);
     sessao->cursor_editor = posicao_na_coluna(&sessao->editor, inicio, fim, coluna - 1);
-    selecao_editor_limpar(sessao);
+    if (selecionar) {
+        sessao->selecao_editor_ativa = sessao->ancora_selecao_editor != sessao->cursor_editor;
+    } else {
+        selecao_editor_limpar(sessao);
+    }
     size_t coluna_real = coluna_utf8(&sessao->editor, inicio, sessao->cursor_editor) + 1;
-    return texto_formatar(&sessao->estado, erro, "Moved cursor to line %zu, column %zu", linha,
-                          coluna_real);
+    return texto_formatar(&sessao->estado, erro,
+                          selecionar ? "Extended selection to line %zu, column %zu"
+                                     : "Moved cursor to line %zu, column %zu",
+                          linha, coluna_real);
+}
+
+bool sef_sessao_ide_editor_posicionar(SefSessaoIde *sessao, size_t linha, size_t coluna,
+                                      SefErro *erro) {
+    return posicionar_editor(sessao, linha, coluna, false, erro);
+}
+
+bool sef_sessao_ide_editor_posicionar_selecionando(SefSessaoIde *sessao, size_t linha,
+                                                    size_t coluna, SefErro *erro) {
+    return posicionar_editor(sessao, linha, coluna, true, erro);
 }
 
 bool sef_sessao_ide_ouvinte_inserir(SefSessaoIde *sessao, const char *texto, SefErro *erro) {

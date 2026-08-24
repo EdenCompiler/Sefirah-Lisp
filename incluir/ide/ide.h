@@ -111,6 +111,8 @@ bool sef_sessao_ide_editor_buscar(SefSessaoIde *sessao, const char *consulta,
 bool sef_sessao_ide_editor_ir_para_linha(SefSessaoIde *sessao, size_t linha, SefErro *erro);
 bool sef_sessao_ide_editor_posicionar(SefSessaoIde *sessao, size_t linha, size_t coluna,
                                       SefErro *erro);
+bool sef_sessao_ide_editor_posicionar_selecionando(SefSessaoIde *sessao, size_t linha,
+                                                    size_t coluna, SefErro *erro);
 
 bool sef_sessao_ide_espaco_trabalho_abrir(SefSessaoIde *sessao, const char *caminho, SefErro *erro);
 bool sef_sessao_ide_espaco_trabalho_atualizar(SefSessaoIde *sessao, SefErro *erro);

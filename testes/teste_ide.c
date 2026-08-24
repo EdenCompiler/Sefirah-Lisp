@@ -592,6 +592,17 @@ int main(void) {
                   !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
                   strstr(sef_sessao_ide_estado(sessao), "Editor is empty") != NULL,
               "selecionar tudo tratou buffer vazio sem criar selecao");
+    verificar(sef_sessao_ide_editor_definir(sessao, "um\ndois\ntrês", &erro) &&
+                  sef_sessao_ide_editor_posicionar(sessao, 1, 2, &erro) &&
+                  sef_sessao_ide_editor_posicionar_selecionando(sessao, 3, 3, &erro) &&
+                  sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao) &&
+                  inicio_selecao == strlen("u") && fim_selecao == strlen("um\ndois\ntr") &&
+                  strstr(sef_sessao_ide_estado(sessao), "Extended selection to line 3, column 3") !=
+                      NULL,
+              "extensao por linha e coluna preservou ancora e limites UTF-8");
+    verificar(sef_sessao_ide_editor_posicionar_selecionando(sessao, 1, 2, &erro) &&
+                  !sef_sessao_ide_selecao_editor(sessao, &inicio_selecao, &fim_selecao),
+              "extensao de volta a ancora limpou o intervalo vazio");
 
     verificar(sef_sessao_ide_editor_definir(sessao, "(+ simbolo-inexistente 1)\n(+ 7 8)", &erro) &&
                   sef_sessao_ide_executar_forma_no_cursor(sessao, &erro),

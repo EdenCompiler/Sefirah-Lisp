@@ -281,7 +281,8 @@ column. A fixed editor gutter numbers visible lines, expands for larger
 documents, and marks the active line in the historical workstation palette.
 Clicking a visible source row places the caret at the nearest UTF-8 code-point
 boundary; gutter clicks choose column one and clicks beyond text choose the
-line end. Arrow, Home, and End move the editor cursor; holding Shift extends a
+line end. Holding the pointer extends a UTF-8-safe selection across visible
+lines. Arrow, Home, and End move the editor cursor; holding Shift extends a
 UTF-8-safe selection,
 and typing or Backspace replaces or removes it as one undoable edit. The toolbar
 and command palette can toggle Auto Save for immediate writes of named buffers
@@ -663,7 +664,8 @@ iniciadas em um. Um gutter fixo numera as linhas visíveis, expande para
 documentos maiores e marca a linha ativa na paleta histórica da estação.
 Um clique em uma linha visível posiciona o cursor no limite de ponto de código
 UTF-8 mais próximo; cliques no gutter escolhem a coluna um e cliques depois do
-texto escolhem o final da linha. Setas, Home e End movem o cursor do editor; com
+texto escolhem o final da linha. Manter o ponteiro pressionado estende uma
+seleção UTF-8 segura pelas linhas visíveis. Setas, Home e End movem o cursor do editor; com
 Shift, estendem uma seleção segura para UTF-8, e digitar
 ou usar Backspace a substitui ou remove como uma única edição reversível. O
 botão e a paleta de comandos podem alternar Auto Save para gravar imediatamente
