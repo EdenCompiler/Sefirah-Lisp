@@ -12,6 +12,37 @@
 
 static int falhas = 0;
 
+typedef struct EstadoDepuradorAoVivoTeste {
+    bool chamado;
+    bool mostrou_condicao;
+    bool navegou;
+    bool solicitou_invocacao;
+} EstadoDepuradorAoVivoTeste;
+
+static void suspender_depurador_teste(SefSessaoIde *sessao, void *dados) {
+    EstadoDepuradorAoVivoTeste *estado = dados;
+    SefErro erro;
+    estado->chamado = sef_sessao_ide_depurador_ao_vivo(sessao) &&
+                      sef_sessao_ide_depurador_reinicios_ao_vivo(sessao) == 2;
+    estado->mostrou_condicao =
+        strstr(sef_sessao_ide_depurador(sessao), "LIVE CONDITION") != NULL &&
+        strstr(sef_sessao_ide_depurador(sessao), "EVALUATION SUSPENDED") != NULL &&
+        strstr(sef_sessao_ide_depurador(sessao), "#<RESTART ABORT> [ACTIVE]") != NULL;
+    estado->navegou = sef_sessao_ide_depurador_mover_reinicio(
+                          sessao, SEF_REINICIO_PROXIMO, &erro) &&
+                      sef_sessao_ide_depurador_reinicio_selecionado(sessao) == 1 &&
+                      strstr(sef_sessao_ide_depurador(sessao), "> 2: #<RESTART CONTINUE>") != NULL;
+    estado->solicitou_invocacao =
+        estado->navegou && sef_sessao_ide_depurador_solicitar_invocacao(sessao, &erro);
+}
+
+static void recusar_depurador_teste(SefSessaoIde *sessao, void *dados) {
+    bool *recusou = dados;
+    SefErro erro;
+    *recusou = sef_sessao_ide_depurador_ao_vivo(sessao) &&
+               sef_sessao_ide_depurador_solicitar_recusa(sessao, &erro);
+}
+
 static void verificar(bool condicao, const char *mensagem) {
     if (!condicao) {
         fprintf(stderr, "FAILED: %s\n", mensagem);
@@ -204,6 +235,29 @@ int main(void) {
                   strstr(sef_sessao_ide_inspetor(sessao), "> CAR: 30") != NULL,
               "inspetor voltou e alternou entre raizes estruturadas");
 
+    EstadoDepuradorAoVivoTeste estado_depurador_ao_vivo = {0};
+    sef_sessao_ide_definir_ao_suspender_depurador(sessao, suspender_depurador_teste,
+                                                   &estado_depurador_ao_vivo);
+    verificar(sef_sessao_ide_ouvinte_inserir(
+                  sessao,
+                  "(restart-case (error \"choose live restart\") "
+                  "(abort () 0) (continue () 42))",
+                  &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  estado_depurador_ao_vivo.chamado && estado_depurador_ao_vivo.mostrou_condicao &&
+                  estado_depurador_ao_vivo.navegou &&
+                  estado_depurador_ao_vivo.solicitou_invocacao &&
+                  !sef_sessao_ide_depurador_ao_vivo(sessao) &&
+                  strstr(sef_sessao_ide_transcricao(sessao), "42\n") != NULL,
+              "depurador ao vivo suspendeu, navegou e retomou pelo restart selecionado");
+    sef_sessao_ide_definir_ao_suspender_depurador(sessao, NULL, NULL);
+    verificar(!sef_sessao_ide_depurador_solicitar_invocacao(sessao, &erro) && erro.ocorreu &&
+                  strcmp(erro.mensagem, "no live debugger condition") == 0,
+              "depurador recusou invocacao fora da suspensao dinamica");
+
+    bool recusou_depurador_ao_vivo = false;
+    sef_sessao_ide_definir_ao_suspender_depurador(sessao, recusar_depurador_teste,
+                                                   &recusou_depurador_ao_vivo);
     verificar(sef_sessao_ide_ouvinte_inserir(
                   sessao,
                   "(restart-case (error \"falha depuravel\") "
@@ -216,8 +270,10 @@ int main(void) {
                   strstr(sef_sessao_ide_depurador(sessao), "RESTARTS AT SIGNAL: 2") != NULL &&
                   strstr(sef_sessao_ide_depurador(sessao), "#<RESTART USE-VALUE>") != NULL &&
                   strstr(sef_sessao_ide_depurador(sessao), "#<RESTART ABORT>") != NULL &&
+                  recusou_depurador_ao_vivo &&
                   strstr(sef_sessao_ide_perfil(sessao), "REPL  ERROR") != NULL,
-              "depurador reteve uma condicao Lisp e seus restarts historicos");
+              "depurador recusou a suspensao e reteve a condicao com restarts historicos");
+    sef_sessao_ide_definir_ao_suspender_depurador(sessao, NULL, NULL);
     verificar(sef_sessao_ide_ouvinte_inserir(sessao, "(+ 20 22)", &erro) &&
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
                   sef_sessao_ide_inspecionar_condicao(sessao, &erro) &&
@@ -702,6 +758,18 @@ int main(void) {
                   sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
                   strstr(sef_sessao_ide_transcricao(sessao), "\n40\n") != NULL,
               "IDE salvou e restaurou um snapshot do mundo Lisp");
+    memset(&estado_depurador_ao_vivo, 0, sizeof(estado_depurador_ao_vivo));
+    sef_sessao_ide_definir_ao_suspender_depurador(sessao, suspender_depurador_teste,
+                                                   &estado_depurador_ao_vivo);
+    verificar(sef_sessao_ide_ouvinte_inserir(
+                  sessao,
+                  "(restart-case (error \"restored debugger hook\") "
+                  "(abort () 0) (continue () 42))",
+                  &erro) &&
+                  sef_sessao_ide_ouvinte_enviar(sessao, &erro) &&
+                  estado_depurador_ao_vivo.solicitou_invocacao,
+              "mundo restaurado reinstalou o callback local do depurador ao vivo");
+    sef_sessao_ide_definir_ao_suspender_depurador(sessao, NULL, NULL);
     remove("teste-mundo.imagem");
     verificar(!sef_sessao_ide_imagem_restaurar(sessao, &erro) && erro.ocorreu &&
                   sef_sessao_ide_ouvinte_inserir(sessao, "(+ estado-do-mundo 2)", &erro) &&

@@ -383,6 +383,17 @@ normally declines recovery and preserves the ordinary unhandled-error path.
 The callback must not recursively evaluate the same runtime, and the API
 rejects that attempt with an English diagnostic.
 
+The desktop IDE registers that boundary for every new or restored live world.
+When an `ERROR` reaches it, evaluation remains suspended on its original thread
+and the Debugger tab switches from history to a `LIVE CONDITION` view. Up/Down
+or the Previous/Next buttons select an active restart; Enter or Invoke requests
+the selected restart, while Escape or Decline lets the error unwind into the
+ordinary debugger history. Selection first exits the nested native event
+dispatcher and only then performs the non-local transfer, so recovery never
+longjmps across X11, Win32, or AppKit dispatch frames. The initial desktop
+selector invokes restarts without arguments; argument entry and the Common Lisp
+`:INTERACTIVE`, `:REPORT`, and `:TEST` restart options remain pending.
+
 ## Packages
 
 The runtime starts in `COMMON-LISP-USER`, which uses `COMMON-LISP`. `:name`
@@ -778,9 +789,10 @@ snapshots as historical and does not pretend that a completed failure has
 invokable restarts. Invocation at the failure point is now available to
 synchronous hosts through `SefDepuradorCondicao` and
 `sef_runtime_invocar_reinicio_ativo`: the callback runs before unwind and must
-either transfer immediately or return and decline. The desktop IDE still needs
-to connect this safe runtime boundary to a suspendable presentation loop; its
-interactive selector remains pending.
+either transfer immediately or return and decline. The desktop IDE connects
+this boundary to a same-thread suspendable presentation loop and exposes live
+keyboard and pointer navigation. If the user declines, the completed failure is
+then recorded as the same rooted historical snapshot described above.
 
 The browser can
 show the definition catalog or the references/callers for the selected symbol,

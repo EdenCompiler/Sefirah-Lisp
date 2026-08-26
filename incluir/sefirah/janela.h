@@ -61,9 +61,17 @@ typedef struct SefEventoJanela {
 
 /* Retorna verdadeiro quando o evento alterou algo que precisa ser redesenhado. */
 typedef bool (*SefAoEvento)(const SefEventoJanela *evento, void *dados);
+typedef bool (*SefEnquantoModal)(void *dados);
 
 int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_desenhar,
                         SefAoEvento ao_evento, void *dados, char *mensagem_erro,
                         int capacidade_erro);
+
+/*
+ * Processa a janela ativa na mesma thread ate enquanto_modal devolver false.
+ * Deve ser chamado somente durante um callback da janela. Retorna false se a
+ * janela foi fechada ou se nao existe uma janela ativa.
+ */
+bool sef_janela_processar_modal(SefEnquantoModal enquanto_modal, void *dados);
 
 #endif

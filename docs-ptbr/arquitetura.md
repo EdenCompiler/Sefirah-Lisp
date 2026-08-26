@@ -162,8 +162,9 @@ ponto da sinalização. O vetor é zerado na próxima avaliação, enquanto a se
 copia seus membros para raízes pertencentes à entrada correspondente do
 histórico. Restaurar outro mundo libera todas as raízes de condições, restarts e
 inspeção antes de destruir o runtime anterior. Quadros de restart não são
-retidos depois do desenrolamento; um depurador interativo futuro deverá
-suspender a avaliação, em vez de armazenar destinos `setjmp` mortos.
+retidos depois do desenrolamento. O depurador interativo suspende a avaliação
+enquanto esses quadros estão vivos, em vez de armazenar destinos `setjmp`
+mortos.
 
 O limite público síncrono do depurador toma essa decisão enquanto os quadros
 estão vivos. Depois que os handlers recusam, o runtime enraíza a condição e o
@@ -173,9 +174,16 @@ indexado com um vetor de argumentos copiado. Durante a invocação, o vetor e a
 lista Lisp construída incrementalmente permanecem em raízes pertencentes ao
 runtime até o estado comum da transferência assumir a posse imediatamente antes
 do `longjmp`. Ponteiros de função e dados do host pertencem ao processo e nunca
-são serializados na imagem. A camada desktop deve manter o callback na thread de
-avaliação e bombear ou coordenar a interface sem avaliar esse runtime
-recursivamente.
+são serializados na imagem.
+
+A camada desktop mantém o callback na thread de avaliação e entra em uma bomba
+nativa aninhada de eventos. Durante a suspensão, seu handler fica restrito à
+navegação do depurador vivo. Invoke e Decline apenas registram a ação solicitada
+e encerram essa bomba; depois que o despachante nativo retorna normalmente, o
+callback da sessão invoca o restart selecionado ou retorna para desenrolar. Essa
+transferência em duas fases evita saltos não locais através de quadros do X11,
+Win32 e AppKit. Fechar a janela solicita recusa, e restaurar um mundo instala o
+mesmo callback local do processo no runtime substituto.
 
 O adaptador somente de leitura de Source Control da IDE também permanece atrás
 da API da sessão. Em POSIX, usa `fork`/`exec` com pipe; no Windows, usa pipes

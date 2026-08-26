@@ -390,6 +390,18 @@ Retornar normalmente recusa a recuperação e preserva o caminho comum de erro
 não tratado. O callback não pode avaliar recursivamente o mesmo runtime, e a API
 rejeita essa tentativa com diagnóstico em inglês.
 
+A IDE desktop registra esse limite para todo mundo vivo novo ou restaurado.
+Quando um `ERROR` o alcança, a avaliação permanece suspensa em sua thread
+original e a aba Debugger troca o histórico por uma visão `LIVE CONDITION`.
+Cima/Baixo ou os botões Previous/Next selecionam um restart ativo; Enter ou
+Invoke solicita o restart selecionado, enquanto Escape ou Decline deixa o erro
+desenrolar até o histórico comum do depurador. A seleção primeiro sai do
+despachante nativo de eventos aninhado e somente depois executa a transferência
+não local; assim, a recuperação nunca faz `longjmp` através de quadros de
+despacho do X11, Win32 ou AppKit. O seletor desktop inicial invoca restarts sem
+argumentos; a entrada de argumentos e as opções Common Lisp `:INTERACTIVE`,
+`:REPORT` e `:TEST` ainda estão pendentes.
+
 ## Packages
 
 O runtime inicia em `COMMON-LISP-USER`, que usa `COMMON-LISP`. Símbolos
@@ -793,9 +805,10 @@ desenrolada. O painel marca os snapshots como históricos e não finge que uma
 falha encerrada ainda possui restarts invocáveis. Invocá-los no ponto da falha
 agora está disponível para hosts síncronos por `SefDepuradorCondicao` e
 `sef_runtime_invocar_reinicio_ativo`: o callback roda antes do desenrolamento e
-deve transferir imediatamente ou retornar e recusar. A IDE desktop ainda
-precisa ligar esse limite seguro do runtime a um laço de apresentação
-suspensível; seu seletor interativo permanece pendente.
+deve transferir imediatamente ou retornar e recusar. A IDE desktop liga esse
+limite a um laço de apresentação suspensível na mesma thread e oferece
+navegação viva por teclado e ponteiro. Se o usuário recusar, a falha concluída é
+então registrada como o mesmo snapshot histórico enraizado descrito acima.
 
 O navegador
 mostra o catálogo de definições ou as referências/callers do símbolo

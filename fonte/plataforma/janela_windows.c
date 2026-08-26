@@ -10,13 +10,18 @@ typedef struct EstadoJanela {
     SefAoDesenhar ao_desenhar;
     SefAoEvento ao_evento;
     void *dados;
+    HWND janela;
+    bool executando;
 } EstadoJanela;
+
+static EstadoJanela *janela_ativa = NULL;
 
 static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, LPARAM lparam) {
     EstadoJanela *estado = (EstadoJanela *)GetWindowLongPtrW(janela, GWLP_USERDATA);
     if (mensagem == WM_NCCREATE) {
         CREATESTRUCTW *criacao = (CREATESTRUCTW *)lparam;
         estado = (EstadoJanela *)criacao->lpCreateParams;
+        estado->janela = janela;
         SetWindowLongPtrW(janela, GWLP_USERDATA, (LONG_PTR)estado);
     } else if (mensagem == WM_SIZE && estado != NULL) {
         int largura = LOWORD(lparam);
@@ -169,10 +174,30 @@ static LRESULT CALLBACK procedimento(HWND janela, UINT mensagem, WPARAM wparam, 
         }
         return 0;
     } else if (mensagem == WM_DESTROY) {
+        if (estado != NULL)
+            estado->executando = false;
         PostQuitMessage(0);
         return 0;
     }
     return DefWindowProcW(janela, mensagem, wparam, lparam);
+}
+
+bool sef_janela_processar_modal(SefEnquantoModal enquanto_modal, void *dados) {
+    EstadoJanela *estado = janela_ativa;
+    if (estado == NULL || enquanto_modal == NULL)
+        return false;
+    InvalidateRect(estado->janela, NULL, FALSE);
+    MSG mensagem;
+    while (estado->executando && enquanto_modal(dados)) {
+        BOOL resultado = GetMessageW(&mensagem, NULL, 0, 0);
+        if (resultado <= 0) {
+            estado->executando = false;
+            return false;
+        }
+        TranslateMessage(&mensagem);
+        DispatchMessageW(&mensagem);
+    }
+    return estado->executando;
 }
 
 int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_desenhar,
@@ -194,6 +219,7 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     estado.ao_desenhar = ao_desenhar;
     estado.ao_evento = ao_evento;
     estado.dados = dados;
+    estado.executando = true;
     if (!sef_superficie_criar(&estado.superficie, configuracao->largura, configuracao->altura))
         return 1;
 
@@ -209,11 +235,13 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
         return 1;
     }
     ShowWindow(janela, SW_SHOW);
+    janela_ativa = &estado;
     MSG mensagem;
-    while (GetMessageW(&mensagem, NULL, 0, 0) > 0) {
+    while (estado.executando && GetMessageW(&mensagem, NULL, 0, 0) > 0) {
         TranslateMessage(&mensagem);
         DispatchMessageW(&mensagem);
     }
+    janela_ativa = NULL;
     sef_superficie_destruir(&estado.superficie);
     return 0;
 }

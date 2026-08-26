@@ -224,7 +224,10 @@ not mean the entire milestone is complete.
   inspector.
 - [x] Bounded elapsed-time evaluation profiler with origin, success/error,
   totals/average, Profile tab/button, and a command-palette reset action.
-- [ ] Suspendable debugger and interactive restart invocation/navigation.
+- [x] Suspendable debugger with live restart navigation, keyboard/pointer
+  invocation or decline, and safe same-thread native event pumping.
+- [ ] Restart argument editor and complete `:INTERACTIVE`, `:REPORT`, and
+  `:TEST` option support.
 - [ ] Reversible DWIM and selective/out-of-order transactional history.
 - [x] Session-level Auto Save toggle with toolbar, command-palette, status-bar,
   named-buffer persistence, and exact mixed-case paths.

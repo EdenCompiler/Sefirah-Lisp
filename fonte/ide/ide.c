@@ -118,6 +118,7 @@ typedef struct EstadoIde {
     SefComponente ouvinte;
     FerramentaIde ferramenta;
     SefRetangulo abas_ferramentas[FERRAMENTA_QUANTIDADE];
+    SefRetangulo botoes_depurador[4];
     BotaoIde botoes[21];
     ModoSobreposicaoIde sobreposicao;
     char consulta[1024];
@@ -327,6 +328,23 @@ static void desenhar_barra_comandos(SefSuperficie *superficie, EstadoIde *estado
                                  SEF_COR(181, 112, 52));
         sef_superficie_texto(superficie, x + 10, y + 8, botao->rotulo, 1, SEF_COR(43, 54, 45));
         x += largura + 8;
+    }
+}
+
+static void desenhar_botoes_depurador(SefSuperficie *superficie, EstadoIde *estado,
+                                      SefRetangulo limites) {
+    static const char *rotulos[] = {"PREVIOUS", "NEXT", "INVOKE", "DECLINE"};
+    int x = limites.x + 8;
+    int y = limites.y + limites.altura - 30;
+    for (size_t i = 0; i < sizeof(rotulos) / sizeof(rotulos[0]); i++) {
+        int largura = (int)strlen(rotulos[i]) * 6 + 16;
+        estado->botoes_depurador[i] = (SefRetangulo){x, y, largura, 24};
+        SefCor fundo = i == 2 ? SEF_COR(231, 218, 168) : SEF_COR(203, 211, 177);
+        sef_superficie_retangulo(superficie, x, y, largura, 24, fundo);
+        sef_superficie_contorno(superficie, x, y, largura, 24, 1,
+                                i == 2 ? SEF_COR(181, 112, 52) : SEF_COR(101, 112, 86));
+        sef_superficie_texto(superficie, x + 8, y + 8, rotulos[i], 1, SEF_COR(43, 54, 45));
+        x += largura + 6;
     }
 }
 
@@ -993,10 +1011,16 @@ static void desenhar_ide(SefSuperficie *superficie, void *dados) {
     else if (estado->ferramenta == FERRAMENTA_NAVEGADOR)
         desenhar_texto_limitado(superficie, conteudo_ferramenta,
                                 sef_sessao_ide_navegador(estado->sessao), false);
-    else if (estado->ferramenta == FERRAMENTA_DEPURADOR)
+    else if (estado->ferramenta == FERRAMENTA_DEPURADOR) {
+        if (sef_sessao_ide_depurador_ao_vivo(estado->sessao))
+            conteudo_ferramenta.altura -= 36;
         desenhar_texto_limitado(superficie, conteudo_ferramenta,
                                 sef_sessao_ide_depurador(estado->sessao), false);
-    else if (estado->ferramenta == FERRAMENTA_CONTROLE_VERSAO)
+        if (sef_sessao_ide_depurador_ao_vivo(estado->sessao)) {
+            conteudo_ferramenta.altura += 36;
+            desenhar_botoes_depurador(superficie, estado, conteudo_ferramenta);
+        }
+    } else if (estado->ferramenta == FERRAMENTA_CONTROLE_VERSAO)
         desenhar_texto_limitado_escala(superficie, conteudo_ferramenta,
                                        sef_sessao_ide_controle_versao(estado->sessao), false, 1);
     else
@@ -1310,6 +1334,38 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     SefErro erro;
     sef_erro_limpar(&erro);
 
+    if (sef_sessao_ide_depurador_ao_vivo(estado->sessao)) {
+        if (evento->tipo == SEF_EVENTO_CANCELAR)
+            sef_sessao_ide_depurador_solicitar_recusa(estado->sessao, &erro);
+        else if (evento->tipo == SEF_EVENTO_ENTER)
+            sef_sessao_ide_depurador_solicitar_invocacao(estado->sessao, &erro);
+        else if (evento->tipo == SEF_EVENTO_CURSOR_CIMA)
+            sef_sessao_ide_depurador_mover_reinicio(estado->sessao, SEF_REINICIO_ANTERIOR,
+                                                    &erro);
+        else if (evento->tipo == SEF_EVENTO_CURSOR_BAIXO)
+            sef_sessao_ide_depurador_mover_reinicio(estado->sessao, SEF_REINICIO_PROXIMO, &erro);
+        else if (evento->tipo == SEF_EVENTO_PONTEIRO_PRESSIONAR) {
+            for (size_t i = 0; i < 4; i++) {
+                if (!ponto_dentro(estado->botoes_depurador[i], evento->x, evento->y))
+                    continue;
+                if (i == 0)
+                    sef_sessao_ide_depurador_mover_reinicio(
+                        estado->sessao, SEF_REINICIO_ANTERIOR, &erro);
+                else if (i == 1)
+                    sef_sessao_ide_depurador_mover_reinicio(
+                        estado->sessao, SEF_REINICIO_PROXIMO, &erro);
+                else if (i == 2)
+                    sef_sessao_ide_depurador_solicitar_invocacao(estado->sessao, &erro);
+                else
+                    sef_sessao_ide_depurador_solicitar_recusa(estado->sessao, &erro);
+                break;
+            }
+        }
+        estado->foco = FOCO_DEPURADOR;
+        estado->ferramenta = FERRAMENTA_DEPURADOR;
+        return true;
+    }
+
     if (evento->tipo == SEF_EVENTO_ABRIR_RAPIDO) {
         abrir_sobreposicao(estado, SOBREPOSICAO_ABRIR_RAPIDO);
         return true;
@@ -1586,6 +1642,23 @@ static bool tratar_evento(const SefEventoJanela *evento, void *dados) {
     return true;
 }
 
+static bool continuar_depurador_ao_vivo(void *dados) {
+    EstadoIde *estado = dados;
+    return sef_sessao_ide_depurador_ao_vivo(estado->sessao);
+}
+
+static void suspender_depurador_ide(SefSessaoIde *sessao, void *dados) {
+    EstadoIde *estado = dados;
+    estado->sobreposicao = SOBREPOSICAO_NENHUMA;
+    estado->foco = FOCO_DEPURADOR;
+    estado->ferramenta = FERRAMENTA_DEPURADOR;
+    bool janela_aberta = sef_janela_processar_modal(continuar_depurador_ao_vivo, estado);
+    if (!janela_aberta && sef_sessao_ide_depurador_ao_vivo(sessao)) {
+        SefErro descarte;
+        sef_sessao_ide_depurador_solicitar_recusa(sessao, &descarte);
+    }
+}
+
 int sef_ide_executar(const char *caminho_inicial) {
     SefErro erro;
     EstadoIde estado = {0};
@@ -1603,6 +1676,9 @@ int sef_ide_executar(const char *caminho_inicial) {
         else
             fprintf(stderr, "IDE could not open '%s': %s\n", caminho_inicial, erro.mensagem);
     }
+
+    sef_sessao_ide_definir_ao_suspender_depurador(estado.sessao, suspender_depurador_ide,
+                                                   &estado);
 
     char mensagem[512] = {0};
     SefConfigJanela configuracao = {"Sefirah Lisp — live environment", 1120, 760};

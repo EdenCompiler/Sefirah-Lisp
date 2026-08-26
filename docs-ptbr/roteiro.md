@@ -229,7 +229,10 @@ não significa que o marco inteiro esteja concluído.
   inspetor.
 - [x] Profiler limitado de avaliações por tempo decorrido, com origem,
   sucesso/erro, total/média, aba/botão Profile e limpeza pela paleta de comandos.
-- [ ] Debugger suspensível e invocação/navegação interativa por restarts.
+- [x] Debugger suspensível com navegação viva por restarts, invocação ou recusa
+  por teclado/ponteiro e bomba nativa segura de eventos na mesma thread.
+- [ ] Editor de argumentos de restart e suporte completo às opções
+  `:INTERACTIVE`, `:REPORT` e `:TEST`.
 - [ ] DWIM reversível e histórico transacional seletivo/fora de ordem.
 - [x] Alternância de Auto Save por sessão com botão, paleta de comandos, barra
   de estado, persistência de buffers nomeados e caminhos exatos com caixa mista.

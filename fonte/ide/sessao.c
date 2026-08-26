@@ -86,6 +86,12 @@ typedef struct ResultadoReferenciaEspacoTrabalhoIde {
     char *rotulo;
 } ResultadoReferenciaEspacoTrabalhoIde;
 
+typedef enum AcaoDepuradorAoVivoIde {
+    ACAO_DEPURADOR_AO_VIVO_AGUARDAR,
+    ACAO_DEPURADOR_AO_VIVO_INVOCAR,
+    ACAO_DEPURADOR_AO_VIVO_RECUSAR
+} AcaoDepuradorAoVivoIde;
+
 struct SefSessaoIde {
     SefRuntime *runtime;
     TextoIde editor;
@@ -137,6 +143,14 @@ struct SefSessaoIde {
     DiagnosticoIde diagnosticos[SEF_LIMITE_CONDICOES_IDE];
     size_t quantidade_diagnosticos;
     size_t diagnostico_selecionado;
+    SefAoSuspenderDepuradorIde ao_suspender_depurador;
+    void *dados_suspensao_depurador;
+    bool depurador_ao_vivo;
+    const SefValor *reinicios_ao_vivo;
+    size_t quantidade_reinicios_ao_vivo;
+    size_t reinicio_ao_vivo_selecionado;
+    AcaoDepuradorAoVivoIde acao_depurador_ao_vivo;
+    char origem_avaliacao[64];
     EventoPerfilIde eventos_perfil[SEF_LIMITE_EVENTOS_PERFIL_IDE];
     size_t quantidade_eventos_perfil;
 };
@@ -630,6 +644,79 @@ static bool atualizar_depurador(SefSessaoIde *sessao, SefErro *erro) {
                              "\n\nThis diagnostic has no inspectable Lisp object.", erro);
 }
 
+static bool atualizar_depurador_ao_vivo(SefSessaoIde *sessao, SefValor condicao,
+                                         SefErro *erro) {
+    char *representacao_condicao = sef_valor_para_texto(sessao->runtime, condicao, true, erro);
+    if (representacao_condicao == NULL)
+        return false;
+    bool atualizou = texto_formatar(
+        &sessao->depurador, erro,
+        "LIVE CONDITION\nEVALUATION SUSPENDED\nSOURCE: %s\nCONDITION: %s\nACTIVE RESTARTS: %zu",
+        sessao->origem_avaliacao[0] == '\0' ? "EVALUATION" : sessao->origem_avaliacao,
+        representacao_condicao, sessao->quantidade_reinicios_ao_vivo);
+    sef_texto_liberar(representacao_condicao);
+    if (!atualizou)
+        return false;
+
+    for (size_t i = 0; i < sessao->quantidade_reinicios_ao_vivo; i++) {
+        char prefixo[48];
+        int tamanho = snprintf(prefixo, sizeof(prefixo), "\n%c %zu: ",
+                               i == sessao->reinicio_ao_vivo_selecionado ? '>' : ' ', i + 1);
+        if (tamanho <= 0 || (size_t)tamanho >= sizeof(prefixo)) {
+            sef_erro_definir(erro, 0, 0, "active restart index is too large to display");
+            return false;
+        }
+        char *representacao =
+            sef_valor_para_texto(sessao->runtime, sessao->reinicios_ao_vivo[i], true, erro);
+        if (representacao == NULL)
+            return false;
+        atualizou = texto_acrescentar_n(&sessao->depurador, prefixo, (size_t)tamanho, erro) &&
+                    texto_acrescentar(&sessao->depurador, representacao, erro) &&
+                    texto_acrescentar(&sessao->depurador, " [ACTIVE]", erro);
+        sef_texto_liberar(representacao);
+        if (!atualizou)
+            return false;
+    }
+    if (sessao->quantidade_reinicios_ao_vivo == 0)
+        return texto_acrescentar(
+            &sessao->depurador,
+            "\n\nNo active restarts. ESC declines and records the condition.", erro);
+    return texto_acrescentar(
+        &sessao->depurador,
+        "\n\nUP/DOWN selects a live restart. ENTER invokes it without arguments.\n"
+        "ESC declines and records the condition in debugger history.",
+        erro);
+}
+
+static void depurador_condicao_ao_vivo(SefRuntime *runtime, SefValor condicao,
+                                        const SefValor *reinicios, size_t quantidade_reinicios,
+                                        void *dados, SefErro *erro) {
+    SefSessaoIde *sessao = dados;
+    sessao->depurador_ao_vivo = true;
+    sessao->reinicios_ao_vivo = reinicios;
+    sessao->quantidade_reinicios_ao_vivo = quantidade_reinicios;
+    sessao->reinicio_ao_vivo_selecionado = 0;
+    sessao->acao_depurador_ao_vivo = ACAO_DEPURADOR_AO_VIVO_AGUARDAR;
+    if (!atualizar_depurador_ao_vivo(sessao, condicao, erro)) {
+        sessao->depurador_ao_vivo = false;
+        sessao->reinicios_ao_vivo = NULL;
+        sessao->quantidade_reinicios_ao_vivo = 0;
+        return;
+    }
+
+    if (sessao->ao_suspender_depurador != NULL)
+        sessao->ao_suspender_depurador(sessao, sessao->dados_suspensao_depurador);
+
+    bool invocar = sessao->acao_depurador_ao_vivo == ACAO_DEPURADOR_AO_VIVO_INVOCAR;
+    size_t indice = sessao->reinicio_ao_vivo_selecionado;
+    sessao->depurador_ao_vivo = false;
+    sessao->reinicios_ao_vivo = NULL;
+    sessao->quantidade_reinicios_ao_vivo = 0;
+    sessao->acao_depurador_ao_vivo = ACAO_DEPURADOR_AO_VIVO_RECUSAR;
+    if (invocar)
+        sef_runtime_invocar_reinicio_ativo(runtime, indice, NULL, 0, erro);
+}
+
 static void diagnostico_liberar(DiagnosticoIde *diagnostico) {
     if (diagnostico == NULL)
         return;
@@ -997,6 +1084,7 @@ static bool executar_codigo(SefSessaoIde *sessao, const char *codigo, const char
                              erro))))
         return false;
 
+    snprintf(sessao->origem_avaliacao, sizeof(sessao->origem_avaliacao), "%s", origem);
     SefErro avaliacao;
     uint64_t inicio_avaliacao = instante_nanossegundos();
     SefValor valor = sef_runtime_avaliar_texto(sessao->runtime, codigo, &avaliacao);
@@ -1032,6 +1120,7 @@ SefSessaoIde *sef_sessao_ide_criar(SefErro *erro) {
         sef_sessao_ide_destruir(sessao);
         return NULL;
     }
+    sef_runtime_definir_depurador(sessao->runtime, depurador_condicao_ao_vivo, sessao);
     sessao->espaco_trabalho = sef_espaco_trabalho_ide_criar(erro);
     if (sessao->espaco_trabalho == NULL) {
         sef_sessao_ide_destruir(sessao);
@@ -1116,6 +1205,75 @@ const char *sef_sessao_ide_transcricao(const SefSessaoIde *sessao) {
 const char *sef_sessao_ide_inspetor(const SefSessaoIde *sessao) { return sessao->inspetor.dados; }
 const char *sef_sessao_ide_navegador(const SefSessaoIde *sessao) { return sessao->navegador.dados; }
 const char *sef_sessao_ide_depurador(const SefSessaoIde *sessao) { return sessao->depurador.dados; }
+void sef_sessao_ide_definir_ao_suspender_depurador(SefSessaoIde *sessao,
+                                                    SefAoSuspenderDepuradorIde ao_suspender,
+                                                    void *dados) {
+    if (sessao == NULL)
+        return;
+    sessao->ao_suspender_depurador = ao_suspender;
+    sessao->dados_suspensao_depurador = ao_suspender == NULL ? NULL : dados;
+}
+
+bool sef_sessao_ide_depurador_ao_vivo(const SefSessaoIde *sessao) {
+    return sessao != NULL && sessao->depurador_ao_vivo;
+}
+
+size_t sef_sessao_ide_depurador_reinicios_ao_vivo(const SefSessaoIde *sessao) {
+    return sessao == NULL || !sessao->depurador_ao_vivo ? 0 : sessao->quantidade_reinicios_ao_vivo;
+}
+
+size_t sef_sessao_ide_depurador_reinicio_selecionado(const SefSessaoIde *sessao) {
+    return sessao == NULL || !sessao->depurador_ao_vivo ? 0 : sessao->reinicio_ao_vivo_selecionado;
+}
+
+bool sef_sessao_ide_depurador_mover_reinicio(SefSessaoIde *sessao,
+                                             SefMovimentoReinicioIde movimento, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || !sessao->depurador_ao_vivo) {
+        sef_erro_definir(erro, 0, 0, "no live debugger condition");
+        return false;
+    }
+    if (sessao->quantidade_reinicios_ao_vivo == 0)
+        return texto_definir(&sessao->estado, "No active restarts", erro);
+    if (movimento == SEF_REINICIO_ANTERIOR) {
+        sessao->reinicio_ao_vivo_selecionado = sessao->reinicio_ao_vivo_selecionado == 0
+                                                    ? sessao->quantidade_reinicios_ao_vivo - 1
+                                                    : sessao->reinicio_ao_vivo_selecionado - 1;
+    } else {
+        sessao->reinicio_ao_vivo_selecionado =
+            (sessao->reinicio_ao_vivo_selecionado + 1) % sessao->quantidade_reinicios_ao_vivo;
+    }
+    return atualizar_depurador_ao_vivo(sessao, sef_runtime_ultima_condicao(sessao->runtime), erro) &&
+           texto_formatar(&sessao->estado, erro, "Live restart %zu/%zu selected",
+                          sessao->reinicio_ao_vivo_selecionado + 1,
+                          sessao->quantidade_reinicios_ao_vivo);
+}
+
+bool sef_sessao_ide_depurador_solicitar_invocacao(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || !sessao->depurador_ao_vivo) {
+        sef_erro_definir(erro, 0, 0, "no live debugger condition");
+        return false;
+    }
+    if (sessao->quantidade_reinicios_ao_vivo == 0) {
+        sef_erro_definir(erro, 0, 0, "no active restart to invoke");
+        return false;
+    }
+    sessao->acao_depurador_ao_vivo = ACAO_DEPURADOR_AO_VIVO_INVOCAR;
+    sessao->depurador_ao_vivo = false;
+    return true;
+}
+
+bool sef_sessao_ide_depurador_solicitar_recusa(SefSessaoIde *sessao, SefErro *erro) {
+    sef_erro_limpar(erro);
+    if (sessao == NULL || !sessao->depurador_ao_vivo) {
+        sef_erro_definir(erro, 0, 0, "no live debugger condition");
+        return false;
+    }
+    sessao->acao_depurador_ao_vivo = ACAO_DEPURADOR_AO_VIVO_RECUSAR;
+    sessao->depurador_ao_vivo = false;
+    return true;
+}
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao) { return sessao->estado.dados; }
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao) { return sessao->caminho.dados; }
 const char *sef_sessao_ide_abas(const SefSessaoIde *sessao) {
@@ -3181,6 +3339,7 @@ bool sef_sessao_ide_imagem_restaurar(SefSessaoIde *sessao, SefErro *erro) {
     liberar_diagnosticos(sessao);
     sef_runtime_destruir(sessao->runtime);
     sessao->runtime = restaurado;
+    sef_runtime_definir_depurador(sessao->runtime, depurador_condicao_ao_vivo, sessao);
     sessao->quantidade_formas_executadas = 0;
     if (!texto_definir(&sessao->inspetor, "OBJECTS: 0\nWORLD RESTORED", erro) ||
         !atualizar_depurador(sessao, erro) ||

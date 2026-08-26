@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 typedef struct SefSessaoIde SefSessaoIde;
+typedef void (*SefAoSuspenderDepuradorIde)(SefSessaoIde *sessao, void *dados);
 
 typedef enum SefMovimentoCursorIde {
     SEF_CURSOR_ESQUERDA,
@@ -50,6 +51,11 @@ typedef enum SefMovimentoCondicaoIde {
     SEF_CONDICAO_PROXIMA
 } SefMovimentoCondicaoIde;
 
+typedef enum SefMovimentoReinicioIde {
+    SEF_REINICIO_ANTERIOR,
+    SEF_REINICIO_PROXIMO
+} SefMovimentoReinicioIde;
+
 typedef enum SefMovimentoArquivoIde {
     SEF_ARQUIVO_ANTERIOR,
     SEF_ARQUIVO_PROXIMO
@@ -69,6 +75,16 @@ const char *sef_sessao_ide_transcricao(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_inspetor(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_navegador(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_depurador(const SefSessaoIde *sessao);
+void sef_sessao_ide_definir_ao_suspender_depurador(SefSessaoIde *sessao,
+                                                    SefAoSuspenderDepuradorIde ao_suspender,
+                                                    void *dados);
+bool sef_sessao_ide_depurador_ao_vivo(const SefSessaoIde *sessao);
+size_t sef_sessao_ide_depurador_reinicios_ao_vivo(const SefSessaoIde *sessao);
+size_t sef_sessao_ide_depurador_reinicio_selecionado(const SefSessaoIde *sessao);
+bool sef_sessao_ide_depurador_mover_reinicio(SefSessaoIde *sessao,
+                                             SefMovimentoReinicioIde movimento, SefErro *erro);
+bool sef_sessao_ide_depurador_solicitar_invocacao(SefSessaoIde *sessao, SefErro *erro);
+bool sef_sessao_ide_depurador_solicitar_recusa(SefSessaoIde *sessao, SefErro *erro);
 const char *sef_sessao_ide_estado(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_caminho(const SefSessaoIde *sessao);
 const char *sef_sessao_ide_abas(const SefSessaoIde *sessao);

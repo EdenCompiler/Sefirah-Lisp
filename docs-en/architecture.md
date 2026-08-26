@@ -156,9 +156,9 @@ vector of the restart objects active at the signal point. The vector is reset at
 the next evaluation, while the session copies its members into roots owned by
 the corresponding history entry. Restoring another world releases all
 condition, restart, and inspector roots before destroying the old runtime.
-Restart frames are intentionally not retained after unwinding; a future
-interactive debugger must suspend evaluation instead of storing dead `setjmp`
-destinations.
+Restart frames are intentionally not retained after unwinding. The interactive
+debugger suspends evaluation while those frames are live instead of storing
+dead `setjmp` destinations.
 
 The public synchronous debugger boundary performs that decision while the
 frames are live. After handlers decline, the runtime roots the condition and
@@ -167,9 +167,16 @@ callback. The host can return to decline or invoke one indexed restart with a
 copied argument vector. During invocation, the vector and the incrementally
 built Lisp list remain in runtime-owned GC roots until the ordinary transfer
 state takes ownership immediately before `longjmp`. Function pointers and host
-data are process-local and are never serialized in an image. The desktop layer
-must keep the callback on the evaluation thread and pump or coordinate UI work
-without recursively evaluating that runtime.
+data are process-local and are never serialized in an image.
+
+The desktop layer keeps the callback on the evaluation thread and enters a
+nested native event pump. Its event handler is restricted to live-debugger
+navigation while suspended. Invoke and Decline only record a requested action
+and end that pump; after the native dispatcher returns normally, the session
+callback either invokes the selected restart or returns to unwind. This
+two-stage handoff avoids non-local jumps across X11, Win32, and AppKit frames.
+Closing the window requests decline, and restoring a world installs the same
+process-local callback on the replacement runtime.
 
 The IDE's read-only Source Control adapter is also kept behind the session API.
 On POSIX it uses `fork`/`exec` with a pipe; on Windows it uses inherited

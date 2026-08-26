@@ -23,6 +23,8 @@ typedef struct EstadoJanelaMac {
     id vista;
 } EstadoJanelaMac;
 
+static EstadoJanelaMac *janela_ativa = NULL;
+
 enum {
     MODIFICADOR_SHIFT_MAC = 1ul << 17,
     MODIFICADOR_CONTROL_MAC = 1ul << 18,
@@ -321,6 +323,32 @@ static Class classe_delegada_sefirah(void) {
     return classe;
 }
 
+bool sef_janela_processar_modal(SefEnquantoModal enquanto_modal, void *dados) {
+    EstadoJanelaMac *estado = janela_ativa;
+    if (estado == NULL || enquanto_modal == NULL)
+        return false;
+    if (!redesenhar(estado))
+        return false;
+
+    id aplicacao = ENVIAR0(id, (id)objc_getClass("NSApplication"), "sharedApplication");
+    id data_distante = ENVIAR0(id, (id)objc_getClass("NSDate"), "distantFuture");
+    id modo = ENVIAR1(id, (id)objc_getClass("NSString"), "stringWithUTF8String:", const char *,
+                      "kCFRunLoopDefaultMode");
+    typedef id (*ProximoEvento)(id, SEL, unsigned long, id, id, signed char);
+    while (enquanto_modal(dados)) {
+        id evento = ((ProximoEvento)(void *)objc_msgSend)(
+            aplicacao, sel_registerName("nextEventMatchingMask:untilDate:inMode:dequeue:"),
+            ~0ul, data_distante, modo, 1);
+        if (evento == NULL)
+            return false;
+        ENVIAR1(void, aplicacao, "sendEvent:", id, evento);
+        ENVIAR0(void, aplicacao, "updateWindows");
+        if (!ENVIAR0(signed char, estado->janela, "isVisible"))
+            return false;
+    }
+    return true;
+}
+
 int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_desenhar,
                         SefAoEvento ao_evento, void *dados, char *mensagem_erro,
                         int capacidade_erro) {
@@ -392,7 +420,9 @@ int sef_janela_executar(const SefConfigJanela *configuracao, SefAoDesenhar ao_de
     ENVIAR1(void, estado.janela, "makeKeyAndOrderFront:", id, NULL);
     ENVIAR1(signed char, estado.janela, "makeFirstResponder:", id, estado.vista);
     ENVIAR1(void, aplicacao, "activateIgnoringOtherApps:", signed char, 1);
+    janela_ativa = &estado;
     ENVIAR0(void, aplicacao, "run");
+    janela_ativa = NULL;
 
     object_setInstanceVariable(estado.vista, "estadoSefirah", NULL);
     ENVIAR0(void, estado.vista, "release");
